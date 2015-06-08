@@ -128,21 +128,26 @@ void Lock::Acquire() {
 }
 
 void Lock::Release() {
-	Thread *thread;
-	IntStatus inter = interrupt->SetLevel(IntOff);
-	if(!isHeldByCurrentThread){
-		//print Error Message
-		interrupt->SetLevel(inter);
-		return;
-	}
-	if(waitingThreads->size() > 0){
-		thread = (Thread *)queue->Remove();
-		if (thread != NULL) scheduler->ReadyToRun(thread);
-		owner = thread;
-	}else{
-		available = true;
-		owner = NULL;
-	}
+  Thread *thread;
+  IntStatus inter = interrupt->SetLevel(IntOff);
+  if(!isHeldByCurrentThread){
+	//print Error Message
+	interrupt->SetLevel(inter);
+	return;
+  }
+  if(waitingThreads->size() > 0){
+	thread = (Thread *)queue->Remove();
+	if (thread != NULL) scheduler->ReadyToRun(thread);
+	owner = thread;
+  }else{
+	available = true;
+	owner = NULL;
+  }
+}
+
+bool Lock::isHeldByCurrentThread(){
+	if(owner == currentThread) return true;
+	return false;
 }
 
 Condition::Condition(char* debugName) { }
