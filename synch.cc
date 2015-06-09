@@ -24,6 +24,7 @@
 #include "copyright.h"
 #include "synch.h"
 #include "system.h"
+#include <iostream>
 
 //----------------------------------------------------------------------
 // Semaphore::Semaphore
@@ -111,6 +112,8 @@ Lock::~Lock() {
   delete waitingThreads;
 }
 
+// Acquire() - Turns a FREE lock to BUSY, if unavailable then adds thread to
+// 		waiting queue
 void Lock::Acquire() {
   IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
   if (isHeldByCurrentThread()){ // See if thread already owns this Lock
@@ -127,11 +130,13 @@ void Lock::Acquire() {
   interrupt->SetLevel(inter);
 }
 
+// Release() - Turns the lock to FREE and then wakes up a thread if there
+// 		are any in queue waiting
 void Lock::Release() {
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(!isHeldByCurrentThread()){ // Do you own this lock?
-	cout << "You already own this lock!\n";
+	std::cout << "You already own this lock!\n";
 	interrupt->SetLevel(inter);
 	return;
   }
@@ -160,12 +165,12 @@ Condition::~Condition() {
   delete waitingCV; // Deletes the List
 }
 
-//	Wait() -- release the lock, relinquish the CPU until signaled, 
+//	Wait() -- release the lock, relinquish the CPU until signalled, 
 //		then re-acquire the lock
 void Condition::Wait(Lock* conditionLock) { 
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(conditionLock == NULL){ // If input is null, end sequence
-    cout << "Your lock is null!\n";
+    std::cout << "Your lock is null!\n";
     interrupt->SetLevel(inter);
     return;
   }
