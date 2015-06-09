@@ -80,7 +80,7 @@ class Lock {
   private:
     char* name;				// for debugging
     bool available;
-    Thread *owner;
+    Thread* owner;
     List *waitingThreads;
     // plus some other stuff you'll need to define
 };

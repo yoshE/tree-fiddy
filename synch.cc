@@ -153,9 +153,12 @@ bool Lock::isHeldByCurrentThread(){
 Condition::Condition(char* debugName) { 
   name = debugName;
   waitingLock = NULL;
+  waitingCV = new List;
 }
 
-Condition::~Condition() { }
+Condition::~Condition() { 
+  delete waitingCV;
+}
 
 void Condition::Wait(Lock* conditionLock) { 
   IntStatus inter = interrupt->SetLevel(IntOff);
@@ -176,6 +179,7 @@ void Condition::Wait(Lock* conditionLock) {
 }
 
 void Condition::Signal(Lock* conditionLock) { 
+  Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(waitingCV->IsEmpty() <= 0){
     interrupt->SetLevel(inter);
