@@ -179,9 +179,9 @@ void Condition::Signal(Lock* conditionLock) {
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(waitingCV->Size() <= 0){
     interrupt->SetLevel(inter);
-	return;
+    return;
   }
-  thread = (Thread *)currentCV->Remove();
+  thread = (Thread *)waitingCV->Remove();
   if (thread != NULL) scheduler->ReadyToRun(thread);
   if (waitingCV->size() <= 0) waitingLock = NULL;
   interrupt->SetLevel(inter);
@@ -189,6 +189,6 @@ void Condition::Signal(Lock* conditionLock) {
 
 void Condition::Broadcast(Lock* conditionLock) { 
   while(waitingCV->size() > 0){
-	  Signal(conditionLock);
+	Signal(conditionLock);
   }
 }
