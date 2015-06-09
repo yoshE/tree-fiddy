@@ -103,7 +103,7 @@ Semaphore::V()
 
 Lock::Lock(char* debugName) {
   name = debugName;
-  availble = true;
+  available = true;
   waitingThreads = new List;
 }
 
@@ -119,10 +119,10 @@ void Lock::Acquire() {
   }
   if (available){
     available = false;
-    owner = currentThead;
+    owner = currentThread;
   }else{
     waitingThreads-> Append((void *)currentThread);
-    currentThread->sleep();
+    currentThread->Sleep();
   }
   interrupt->SetLevel(inter);
 }
@@ -130,7 +130,7 @@ void Lock::Acquire() {
 void Lock::Release() {
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
-  if(!isHeldByCurrentThread){
+  if(!isHeldByCurrentThread()){
 	//print Error Message
 	interrupt->SetLevel(inter);
 	return;
