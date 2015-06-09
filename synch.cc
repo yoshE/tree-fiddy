@@ -160,6 +160,8 @@ Condition::~Condition() {
   delete waitingCV; // Deletes the List
 }
 
+//	Wait() -- release the lock, relinquish the CPU until signaled, 
+//		then re-acquire the lock
 void Condition::Wait(Lock* conditionLock) { 
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(conditionLock == NULL){ // If input is null, end sequence
@@ -177,6 +179,8 @@ void Condition::Wait(Lock* conditionLock) {
   return;
 }
 
+//	Signal() -- wake up a thread, if there are any waiting on 
+//		the condition
 void Condition::Signal(Lock* conditionLock) { 
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
@@ -190,6 +194,7 @@ void Condition::Signal(Lock* conditionLock) {
   interrupt->SetLevel(inter);
 }
 
+//	Broadcast() -- wake up all threads waiting on the condition
 void Condition::Broadcast(Lock* conditionLock) { 
   while(!waitingCV->IsEmpty()){ // Cycle through and wake up all threads waiting one by one
 	Signal(conditionLock);
