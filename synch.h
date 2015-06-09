@@ -121,7 +121,7 @@ class Condition {
   public:
     Condition(char* debugName);		// initialize condition to 
 					// "no one waiting"
-	Condition();
+	//Condition();
     ~Condition();			// deallocate the condition
     char* getName() { return (name); }
     

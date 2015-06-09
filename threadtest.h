@@ -9,7 +9,7 @@ void SimpleThread(int which);
 void ThreadTest();
 int liaisonLine[LIAISONLINE_COUNT];
 //std::list<Condition> *liaisonLineCV;
-Condition liaisonLineCV[LIAISONLINE_COUNT];
+Condition *liaisonLineCV[LIAISONLINE_COUNT];
 Lock *liaisonLineLock;
 
 class Passenger {

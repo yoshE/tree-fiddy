@@ -109,9 +109,6 @@ void Passenger::ChooseLiaisonLine(){
 		}
 	}
 	if(liaisonLine[myLine] > 0){
-		/*iterator it = liaisonLineCV.begin();
-		advance(it, myLine);
-		it->Wait(liaisonLineLock);*/
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
 	}
 	liaisonLineLock->Release();
