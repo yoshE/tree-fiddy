@@ -103,8 +103,8 @@ Semaphore::V()
 
 Lock::Lock(char* debugName) {
   name = debugName;
-  available = true;
-  waitingThreads = new List;
+  available = true; // Sets the lock to FREE
+  waitingThreads = new List; // Create waiting list for threads
 }
 
 Lock::~Lock() {
@@ -112,17 +112,17 @@ Lock::~Lock() {
 }
 
 void Lock::Acquire() {
-  IntStatus inter = interrupt->SetLevel(IntOff);
-  if (isHeldByCurrentThread()){
+  IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
+  if (isHeldByCurrentThread()){ // See if thread already owns this Lock
     interrupt->SetLevel(inter);
     return;
   }
-  if (available){
-    available = false;
-    owner = currentThread;
+  if (available){ // If Lock is FREE
+    available = false; // Make Lock BUSY and...
+    owner = currentThread; // Assign this thread as the owner!
   }else{
-    waitingThreads-> Append((void *)currentThread);
-    currentThread->Sleep();
+    waitingThreads-> Append((void *)currentThread); // Add Thread to waiting List
+    currentThread->Sleep(); // Put thread to sleep while it waits for Lock to FREE up
   }
   interrupt->SetLevel(inter);
 }
@@ -130,49 +130,49 @@ void Lock::Acquire() {
 void Lock::Release() {
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
-  if(!isHeldByCurrentThread()){
-	//print Error Message
+  if(!isHeldByCurrentThread()){ // Do you own this lock?
+	cout << "You already own this lock!\n";
 	interrupt->SetLevel(inter);
 	return;
   }
-  if(waitingThreads->IsEmpty()){
-	thread = (Thread *)waitingThreads->Remove();
-	if (thread != NULL) scheduler->ReadyToRun(thread);
-	owner = thread;
-  }else{
+  if(!waitingThreads->IsEmpty()){ // If waiting List is not empty
+	thread = (Thread *)waitingThreads->Remove(); // Remove first thread and...
+	if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up!
+	owner = thread; // Then make that thread this thread's owner
+  }else{ // If the waiting is empty, then FREE up!
 	available = true;
 	owner = NULL;
   }
 }
 
-bool Lock::isHeldByCurrentThread(){
+bool Lock::isHeldByCurrentThread(){ // Quick check to see if thread owns the lock
   if(owner == currentThread) return true;
   return false;
 }
 
 Condition::Condition(char* debugName) { 
   name = debugName;
-  waitingLock = NULL;
+  waitingLock = NULL; // Creates a new Lock
   waitingCV = new List;
 }
 
 Condition::~Condition() { 
-  delete waitingCV;
+  delete waitingCV; // Deletes the List
 }
 
 void Condition::Wait(Lock* conditionLock) { 
   IntStatus inter = interrupt->SetLevel(IntOff);
-  if(conditionLock == NULL){
-    //Print Msg saying NULL
+  if(conditionLock == NULL){ // If input is null, end sequence
+    cout << "Your lock is null!\n";
     interrupt->SetLevel(inter);
     return;
   }
-  if(waitingLock == NULL){
-	  waitingLock = conditionLock;
+  if(waitingLock == NULL){ // If this CV's lock hasn't been set yet
+	  waitingLock = conditionLock; // Set the input lock as the CV lock
   }
-  conditionLock->Release();
-  waitingCV-> Append((void *)currentThread);
-  conditionLock->Acquire();
+  conditionLock->Release(); // FREE up the lock
+  waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
+  conditionLock->Acquire(); // BUSY the lock
   interrupt->SetLevel(inter);
   return;
 }
@@ -180,18 +180,18 @@ void Condition::Wait(Lock* conditionLock) {
 void Condition::Signal(Lock* conditionLock) { 
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
-  if(waitingCV->IsEmpty()){
+  if(waitingCV->IsEmpty()){ // If waiting list is empty, then end sequence
     interrupt->SetLevel(inter);
     return;
   }
-  thread = (Thread *)waitingCV->Remove();
-  if (thread != NULL) scheduler->ReadyToRun(thread);
-  if (waitingCV->IsEmpty()) waitingLock = NULL;
+  thread = (Thread *)waitingCV->Remove(); // Otherwise remove a thread
+  if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up
+  if (waitingCV->IsEmpty()) waitingLock = NULL; // If list is empty FREE up lock
   interrupt->SetLevel(inter);
 }
 
 void Condition::Broadcast(Lock* conditionLock) { 
-  while(waitingCV->IsEmpty()){
+  while(!waitingCV->IsEmpty()){ // Cycle through and wake up all threads waiting one by one
 	Signal(conditionLock);
   }
 }
