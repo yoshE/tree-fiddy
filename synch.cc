@@ -113,7 +113,7 @@ Lock::~Lock() {
 }
 
 // Acquire() - Turns a FREE lock to BUSY, if unavailable then adds thread to
-// 		waiting queue
+//		waiting queue
 void Lock::Acquire() {
   IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
   if (isHeldByCurrentThread()){ // See if thread already owns this Lock
@@ -131,7 +131,7 @@ void Lock::Acquire() {
 }
 
 // Release() - Turns the lock to FREE and then wakes up a thread if there
-// 		are any in queue waiting
+//		are any in queue waiting
 void Lock::Release() {
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
@@ -165,7 +165,7 @@ Condition::~Condition() {
   delete waitingCV; // Deletes the List
 }
 
-//	Wait() -- release the lock, relinquish the CPU until signalled, 
+//  Wait() -- release the lock, relinquish the CPU until signalled, 
 //		then re-acquire the lock
 void Condition::Wait(Lock* conditionLock) { 
   IntStatus inter = interrupt->SetLevel(IntOff);
@@ -184,7 +184,7 @@ void Condition::Wait(Lock* conditionLock) {
   return;
 }
 
-//	Signal() -- wake up a thread, if there are any waiting on 
+//  Signal() -- wake up a thread, if there are any waiting on 
 //		the condition
 void Condition::Signal(Lock* conditionLock) { 
   Thread *thread;
@@ -199,7 +199,7 @@ void Condition::Signal(Lock* conditionLock) {
   interrupt->SetLevel(inter);
 }
 
-//	Broadcast() -- wake up all threads waiting on the condition
+//  Broadcast() -- wake up all threads waiting on the condition
 void Condition::Broadcast(Lock* conditionLock) { 
   while(!waitingCV->IsEmpty()){ // Cycle through and wake up all threads waiting one by one
 	Signal(conditionLock);
