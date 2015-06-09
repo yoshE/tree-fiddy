@@ -161,6 +161,11 @@ Condition::Condition(char* debugName) {
   waitingCV = new List;
 }
 
+Condition::Condition(){
+	waitingLock = NULL; // Creates a new Lock
+	waitingCV = new List;
+}
+
 Condition::~Condition() { 
   delete waitingCV; // Deletes the List
 }
