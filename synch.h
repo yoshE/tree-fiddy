@@ -134,6 +134,8 @@ class Condition {
 
   private:
     char* name;
+	Lock* waitingLock;
+	List *waitingCV;
     // plus some other stuff you'll need to define
 };
 #endif // SYNCH_H

@@ -136,7 +136,7 @@ void Lock::Release() {
 	return;
   }
   if(waitingThreads->size() > 0){
-	thread = (Thread *)queue->Remove();
+	thread = (Thread *)waitingThreads->Remove();
 	if (thread != NULL) scheduler->ReadyToRun(thread);
 	owner = thread;
   }else{
@@ -146,12 +146,49 @@ void Lock::Release() {
 }
 
 bool Lock::isHeldByCurrentThread(){
-	if(owner == currentThread) return true;
-	return false;
+  if(owner == currentThread) return true;
+  return false;
 }
 
-Condition::Condition(char* debugName) { }
+Condition::Condition(char* debugName) { 
+  name = debugName;
+  waitingLock = NULL;
+}
+
 Condition::~Condition() { }
-void Condition::Wait(Lock* conditionLock) { ASSERT(FALSE); }
-void Condition::Signal(Lock* conditionLock) { }
-void Condition::Broadcast(Lock* conditionLock) { }
+
+void Condition::Wait(Lock* conditionLock) { 
+  IntStatus inter = interrupt->SetLevel(IntOff);
+  if(conditionLock == NULL){
+    //Print Msg saying NULL
+    interrupt->SetLevel(inter);
+    return;
+  }
+  if(waitingLock == NULL){
+	  waitingLock = conditionLock;
+  }
+  conditionLock->Release();
+  waitingCV-> Append((void *)currentThread);
+  conditionLock->Sleep();
+  conditionLock->Acquire();
+  interrupt->SetLevel(inter);
+  return;
+}
+
+void Condition::Signal(Lock* conditionLock) { 
+  IntStatus inter = interrupt->SetLevel(IntOff);
+  if(waitingCV->Size() <= 0){
+    interrupt->SetLevel(inter);
+	return;
+  }
+  thread = (Thread *)currentCV->Remove();
+  if (thread != NULL) scheduler->ReadyToRun(thread);
+  if (waitingCV->size() <= 0) waitingLock = NULL;
+  interrupt->SetLevel(inter);
+}
+
+void Condition::Broadcast(Lock* conditionLock) { 
+  while(waitingCV->size() > 0){
+	  Signal(conditionLock);
+  }
+}
