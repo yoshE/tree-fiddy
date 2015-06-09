@@ -135,7 +135,7 @@ void Lock::Release() {
 	interrupt->SetLevel(inter);
 	return;
   }
-  if(waitingThreads->size() > 0){
+  if(waitingThreads->IsEmpty() > 0){
 	thread = (Thread *)waitingThreads->Remove();
 	if (thread != NULL) scheduler->ReadyToRun(thread);
 	owner = thread;
@@ -177,18 +177,18 @@ void Condition::Wait(Lock* conditionLock) {
 
 void Condition::Signal(Lock* conditionLock) { 
   IntStatus inter = interrupt->SetLevel(IntOff);
-  if(waitingCV->Size() <= 0){
+  if(waitingCV->IsEmpty() <= 0){
     interrupt->SetLevel(inter);
     return;
   }
   thread = (Thread *)waitingCV->Remove();
   if (thread != NULL) scheduler->ReadyToRun(thread);
-  if (waitingCV->size() <= 0) waitingLock = NULL;
+  if (waitingCV->IsEmpty() <= 0) waitingLock = NULL;
   interrupt->SetLevel(inter);
 }
 
 void Condition::Broadcast(Lock* conditionLock) { 
-  while(waitingCV->size() > 0){
+  while(waitingCV->IsEmpty() > 0){
 	Signal(conditionLock);
   }
 }
