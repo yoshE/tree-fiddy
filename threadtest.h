@@ -11,6 +11,7 @@ void SimpleThread(int which);
 void ThreadTest();
 int liaisonLine[LIAISONLINE_COUNT];
 Condition *liaisonLineCV[LIAISONLINE_COUNT];
+Condition *liaisonOfficerCV[LIAISONLINE_COUNT];
 Condition *CheckIn1CV[CHECKIN_COUNT];
 Condition *CheckIn2CV[CHECKIN_COUNT];
 Condition *CheckIn3CV[CHECKIN_COUNT];
@@ -62,7 +63,7 @@ class LiaisonOfficer {
 
 class CheckInOfficer{
 	public:
-	  CheckInOfficer(char* deBugName, int i);
+	  CheckInOfficer(char* deBugName, int i, int y);
 	  ~CheckInOfficer();
 	  char* getName();
 	  bool getBreak(); // For managers to see who is on break

@@ -83,6 +83,9 @@ ThreadTest()
 		char* name = "Liaison Line CV " + i;
 		Condition *tempCondition = new Condition(name);
 		liaisonLineCV[i] = tempCondition;
+		char* name = "Liaison Officer CV " + i;
+		Condition *tempCondition = new Condition(name);
+		liaisonOfficerCV[i] = tempCondition;
 		char* name2 = "Liaison Line Lock " + i;
 		Lock *tempLock = new Lock(name2);
 		liaisonLineLocks[i] = tempLock;
@@ -133,19 +136,19 @@ void Passenger::ChooseLiaisonLine(){
 			myLine = i;
 		}
 	}
+	liaisonLine[myLine] = liaisonLine[myLine] + 1;
 	if(liaisonLine[myLine] > 0){
-		liaisonLine[myLine] = liaisonLine[myLine] + 1;
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
 	}
-	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLock->Release();
 	liaisonLineLocks[myLine]->Acquire(); // New lock needed for liaison interaction
 	liaisonOfficers[myLine]->setPassengerBaggageCount(this->getBaggageCount(), this); // Informs Liaison of baggage count and which passenger
-	liaisonLineCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
-	liaisonLineCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
+	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
+	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	liaisonOfficers[myLine]->PassengerLeaving(); // Inform liaison passenger is leaving
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking
 	
+	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
     ChooseCheckIn(); // Passenger is now going to airline check In
 }
 
@@ -225,8 +228,9 @@ void LiaisonOfficer::setPassengerBaggageCount(int n, Passenger* x) { // Passenge
 	info.passengerCount += 1;
 	info.baggageCount.at(info.passengerCount) = n; // Appends Passenger Bag info to Baggage Count Vector
 	x->setAirline(info.airline); // Informs the passenger of their airline
-	liaisonLineCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
-	liaisonLineCV[info.number]->Wait(liaisonLineLocks[info.number]); // Goes to sleep until next passenger starts interaction
+	liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
+	liaisonLineCV[info.number]->Signal(liaisonLineLock);
+	liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Goes to sleep until next passenger starts interaction
 }
 void LiaisonOfficer::PassengerLeaving(){} // Passenger informed Liaison they are leaving so Liaison stays asleep
 
