@@ -184,6 +184,7 @@ void Condition::Wait(Lock* conditionLock) {
   }
   conditionLock->Release(); // FREE up the lock
   waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
+  currentThread->Sleep();
   conditionLock->Acquire(); // BUSY the lock
   interrupt->SetLevel(inter);
   return;
