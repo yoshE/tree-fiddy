@@ -75,5 +75,5 @@ class CheckInOfficer{
 		std::vector<int>baggageCount;
 		int airline;
 		bool OnBreak;  
-	  };
+	  }info;
 };

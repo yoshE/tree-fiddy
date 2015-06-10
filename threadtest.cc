@@ -64,7 +64,7 @@ ThreadTest()
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		for (int y = 0; y < CHECKIN_COUNT; y++){
 			char* name = "Check In Officer " + y;
-			CheckInOfficer *tempCheckIn = new CheckInOfficer(name);
+			CheckInOfficer *tempCheckIn = new CheckInOfficer(name, y, i);
 			switch (i){
 				case 1:
 					CheckIn1[y] = tempCheckIn;
@@ -198,9 +198,7 @@ void Passenger::ChooseCheckIn(){
 	}else {
 		if (CheckIn3[myLine] > 0) CheckIn3[myLine] = CheckIn3[myLine] - 1;
 		CheckInLock->Release();
-	}
-	
-	
+	}	
 }
 
 //----------------------------------------------------------------------
@@ -235,7 +233,19 @@ void LiaisonOfficer::PassengerLeaving(){} // Passenger informed Liaison they are
 //----------------------------------------------------------------------
 // Check In Staff
 //----------------------------------------------------------------------
+CheckInOfficer(char* deBugName, int i, int y){
+	info.name = deBugName;
+	info.number = i;
+	info.airline = y;
+	info.passengerCount = 0;
+	info.baggageCount.clear();
+	info.OnBreak = true;
+}
 
+~CheckInOfficer();
+char* getName();
+bool getBreak(); // For managers to see who is on break
+	
 
 
 
