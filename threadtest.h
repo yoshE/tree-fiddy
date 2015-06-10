@@ -47,7 +47,7 @@ class LiaisonOfficer {
 	char getName();
 	int getPassengerCount(); // For manager to get passenger headcount
 	int getPassengerBaggageCount(int n); // For manager to get passenger bag count
-	void setPassengerBaggageCount(int n); // Increments passenger count and adds their baggage count to vector
+	void setPassengerBaggageCount(int n, Passenger* x); // Increments passenger count and adds their baggage count to vector
 	void PassengerLeaving();
   
   private:

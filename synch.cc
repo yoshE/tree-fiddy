@@ -206,7 +206,7 @@ void Condition::Signal(Lock* conditionLock) {
 
 //  Broadcast() -- wake up all threads waiting on the condition
 void Condition::Broadcast(Lock* conditionLock) { 
-  while(!(waitingCV->IsEmpty()){ // Cycle through and wake up all threads waiting one by one
+  while(!(waitingCV->IsEmpty())){ // Cycle through and wake up all threads waiting one by one
 	Signal(conditionLock);
   }
 }
