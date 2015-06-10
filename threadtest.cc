@@ -83,8 +83,8 @@ ThreadTest()
 		char* name = "Liaison Line CV " + i;
 		Condition *tempCondition = new Condition(name);
 		liaisonLineCV[i] = tempCondition;
-		char* name = "Liaison Officer CV " + i;
-		Condition *tempCondition = new Condition(name);
+		char* name4 = "Liaison Officer CV " + i;
+		tempCondition = new Condition(name4);
 		liaisonOfficerCV[i] = tempCondition;
 		char* name2 = "Liaison Line Lock " + i;
 		Lock *tempLock = new Lock(name2);
@@ -246,14 +246,15 @@ CheckInOfficer::CheckInOfficer(char* deBugName, int i, int y){
 	info.OnBreak = true;
 }
 
-CheckInOfficer::~CheckInOfficer();
-char* CheckInOfficer::getName();
-bool CheckInOfficer::getBreak(); // For managers to see who is on break
-	
-
-
-
-
+CheckInOfficer::~CheckInOfficer(){}
+char* CheckInOfficer::getName(){
+	char* s = new char[strlen(info.name)];
+	strcpy(s, info.name);
+	return s;
+}
+bool CheckInOfficer::getBreak(){ // For managers to see who is on break
+		return info.OnBreak;
+}
 
 // --------------------------------------------------
 // Test Suite
