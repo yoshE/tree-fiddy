@@ -237,7 +237,7 @@ void LiaisonOfficer::PassengerLeaving(){} // Passenger informed Liaison they are
 //----------------------------------------------------------------------
 // Check In Staff
 //----------------------------------------------------------------------
-CheckInOfficer(char* deBugName, int i, int y){
+CheckInOfficer::CheckInOfficer(char* deBugName, int i, int y){
 	info.name = deBugName;
 	info.number = i;
 	info.airline = y;
@@ -246,9 +246,9 @@ CheckInOfficer(char* deBugName, int i, int y){
 	info.OnBreak = true;
 }
 
-~CheckInOfficer();
-char* getName();
-bool getBreak(); // For managers to see who is on break
+CheckInOfficer::~CheckInOfficer();
+char* CheckInOfficer::getName();
+bool CheckInOfficer::getBreak(); // For managers to see who is on break
 	
 
 
