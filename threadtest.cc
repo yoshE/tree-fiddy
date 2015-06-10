@@ -116,41 +116,40 @@ void Passenger::ChooseLiaisonLine(){
 	}
 	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myline] - 1; //Passenger left the line
 	liaisonLineLock->Release();
-	liaisonLineLock[myLine]->Acquire();
-	liaisonOfficers[myLine]->setBaggageCount(this.getBaggageCount(), this);
-	liaisonLineCV[myLine]->Signal(liaisonLineLock[myLine]);
-	liaisonLineCV[myLine]->Wait(liaisonLineLock[myLine]);
-	liaisonOfficers[myLine]->PassengerLeaving();
-	liaisonLineCV[myLine]->Signal(liaisonLineLock[myLine]);
-	liaisonLineLock[myline]->Release();
-	// Go to Airline
+	liaisonLineLock[myLine]->Acquire(); // New lock needed for liaison interaction
+	liaisonOfficers[myLine]->setBaggageCount(this.getBaggageCount(), this); // Informs Liaison of baggage count and which passenger
+	liaisonLineCV[myLine]->Signal(liaisonLineLock[myLine]); // Wakes up Liaison Officer
+	liaisonLineCV[myLine]->Wait(liaisonLineLock[myLine]); // Goes to sleep until Liaison finishes assigning airline
+	liaisonOfficers[myLine]->PassengerLeaving(); // Inform liaison passenger is leaving
+	liaisonLineLock[myLine]->Release(); // Passenger is now leaving to go to airline checking
+	
+    ChooseCheckIn(); // Passenger is now going to airline checking
 }
 
 //----------------------------------------------------------------------
 // Liaison Officer
 //----------------------------------------------------------------------
-LiaisonOfficer(char* debugName){
+LiaisonOfficer::LiaisonOfficer(char* debugName){
 	Liaison info;
 	info.name = debugName;
 	info.passengerCount = 0;
 	info.baggageCount.clear();
 }
 
-~LiaisonOfficer(){}
-int getName() {return info.name;}
-int getPassengerCount() {return info.passengerCount;} // For manager to get passenger headcount
-int getPassengerBaggageCount(int n) {return info.baggageCount.at(n)}; // For manager to get passenger bag count
-void setPassengerBaggageCount(int n, Passenger x) {
+LiaisonOfficer::~LiaisonOfficer(){}
+int LiaisonOfficer::getName() {return info.name;}
+int LiaisonOfficer::getPassengerCount() {return info.passengerCount;} // For manager to get passenger headcount
+int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at(n)}; // For manager to get passenger bag count
+
+void LiaisonOfficer::setPassengerBaggageCount(int n, Passenger x) { // Passenger Liaison Interaction
 	info.airline = rand() % AIRLINE_COUNT; // Randomly generate airline for passenger
 	info.passengerCount += 1;
-	info.baggageCount.at(info.getPasengerCount()) = n;
-	x.setAirline(info.airline);
-	liaisonLineCV[myLine]->Signal(liaisonLinkLock[myLine]);
-	liaisonLineCV[myLine]->Wait(liaisonLinkLock[myLine]);
+	info.baggageCount.at(info.getPasengerCount()) = n; // Appends Passenger Bag info to Baggage Count Vector
+	x.setAirline(info.airline); // Informs the passenger of their airline
+	liaisonLineCV[myLine]->Signal(liaisonLineLock[myLine]); // Wakes up passenger
+	liaisonLineCV[myLine]->Wait(liaisonLineLock[myLine]); // Goes to sleep until next passenger starts interaction
 }
-void PassengerLeaving(){
-	liaisonLineCV[myLine]->Wait(liaisonLinkLock[myLine]);
-}
+void LiaisonOfficer::PassengerLeaving(){} // Passenger informed Liaison they are leaving so Liaison stays asleep
 
 //----------------------------------------------------------------------
 // Check In Staff

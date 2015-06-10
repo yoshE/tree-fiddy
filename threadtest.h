@@ -23,6 +23,7 @@ class Passenger {
 	  void ChooseLiaisonLine();
 	  int getBaggageCount() {return baggageCount;}
       void setAirline(int n);
+	  void ChooseCheckIn();
 	  
   private:
 	  int name;        // useful for debugging
