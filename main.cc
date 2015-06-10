@@ -89,12 +89,12 @@ main(int argc, char **argv)
     ThreadTest();
 #endif
 
-	TestSuite();
-
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
 	argCount = 1;
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
+		if (!strcmp(*argv, "-T"))
+			TestSuite();
 #ifdef USER_PROGRAM
         if (!strcmp(*argv, "-x")) {        	// run a user program
 	    ASSERT(argc > 1);
