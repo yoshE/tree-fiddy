@@ -2,23 +2,29 @@
 #include "system.h"
 #include "synch.h"
 #include <list>
+#include <vector>
 
 #define LIAISONLINE_COUNT 5
+#define CHECKIN_COUNT 5
 
 void SimpleThread(int which);
 void ThreadTest();
 int liaisonLine[LIAISONLINE_COUNT];
 Condition *liaisonLineCV[LIAISONLINE_COUNT];
+Condition *CheckIn1CV[CHECKIN_COUNT];
+Condition *CheckIn2CV[CHECKIN_COUNT];
+Condition *CheckIn3CV[CHECKIN_COUNT];
 Lock *liaisonLineLock;
-Lock *liaisonLineLock[LIAISONLINE_COUNT];
-LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];
+Lock *liaisonLineLocks[LIAISONLINE_COUNT];
+Lock *CheckInLock;
 
 class Passenger {
   public:
 	  Passenger(int n);
 	  ~Passenger();
-	  int getName() { return name;}			// debugging assist
+	  char getName() { return name;}			// debugging assist
 	  int getAirline() {return airline;}
+	  bool getClass() {return economy;}
 	  int getTicket() {return economy;}
 	  void ChooseLiaisonLine();
 	  int getBaggageCount() {return baggageCount;}
@@ -36,9 +42,9 @@ class Passenger {
 
 class LiaisonOfficer {
   public:
-    LiaisonOfficer();
+    LiaisonOfficer(char* deBugName);
 	~LiaisonOfficer();
-	int getName();
+	char getName();
 	int getPassengerCount(); // For manager to get passenger headcount
 	int getPassengerBaggageCount(int n); // For manager to get passenger bag count
 	void setPassengerBaggageCount(int n); // Increments passenger count and adds their baggage count to vector
@@ -51,4 +57,21 @@ class LiaisonOfficer {
 	  int passengerCount;
 	  std::vector<int>baggageCount;
 	}; // Contains name, passenger count, bag count per passenger
-}
+};
+
+class CheckInOfficer{
+	public:
+	  CheckInOfficer(char* deBugName);
+	  ~CheckInOfficer();
+	  char getName();
+	  bool getBreak(); // For managers to see who is on break
+	
+	private:
+	  struct CheckIn{
+		char* name;
+		int passengerCount;
+		std::vector<int>baggageCount;
+		int airline;
+		bool OnBreak;  
+	  };
+};
