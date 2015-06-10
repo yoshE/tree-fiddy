@@ -182,6 +182,11 @@ void Condition::Wait(Lock* conditionLock) {
   if(waitingLock == NULL){ // If this CV's lock hasn't been set yet
 	  waitingLock = conditionLock; // Set the input lock as the CV lock
   }
+  if(conditionLock != waitingLock){
+	std::cout << "Wrong lock!\n";
+	interrupt->SetLevel(inter);
+	return;
+  }
   conditionLock->Release(); // FREE up the lock
   waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
   currentThread->Sleep();
