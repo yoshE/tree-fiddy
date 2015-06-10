@@ -22,9 +22,9 @@
 
 using namespace std;
 LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];
-CheckInOfficer *CheckIn1[CHECKIN_COUNT];
-CheckInOfficer *CheckIn2[CHECKIN_COUNT];
-CheckInOfficer *CheckIn3[CHECKIN_COUNT];
+CheckInOfficer *CheckIn[CHECKIN_COUNT*AIRLINE_COUNT];
+LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[LIAISONLINE_COUNT];
+CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -61,23 +61,21 @@ ThreadTest()
 	}
 	srand (time(NULL));
 	
+	//For Economy Class
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		for (int y = 0; y < CHECKIN_COUNT; y++){
 			char* name = "Check In Officer " + y;
 			CheckInOfficer *tempCheckIn = new CheckInOfficer(name, y, i);
-			switch (i){
-				case 1:
-					CheckIn1[y] = tempCheckIn;
-					break;
-				case 2:
-					CheckIn1[y] = tempCheckIn;
-					break;
-				case 3:
-					CheckIn1[y] = tempCheckIn;
-					break;
-			}
+			CheckIn[(y+i)+AIRLINE_COUNT*i] = tempCheckIn;
 		}
 	}
+	//For Exec Line
+	for (int i = 0; i<AIRLINE_COUNT; i++){
+		name = "Check In Officer " + y;
+		CheckInOfficer *tempCheckIn = new CheckInOfficer(name, y, i);
+		CheckIn[CHECKING_COUNT*AIRLINE_COUNT + i] = tempCheckIn;
+	}
+	
 	
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
 		char* name = "Liaison Line CV " + i;
@@ -147,56 +145,38 @@ void Passenger::ChooseLiaisonLine(){
 	}
 	liaisonLineLock->Release();
 	liaisonLineLocks[myLine]->Acquire(); // New lock needed for liaison interaction
-	liaisonOfficers[myLine]->setPassengerBaggageCount(this->getBaggageCount(), this); // Informs Liaison of baggage count and which passenger
+	LPInfo.baggageCount = baggageCount; // Adds baggage Count to shared struct array
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
-	liaisonOfficers[myLine]->PassengerLeaving(); // Inform liaison passenger is leaving
+	airline = LPInfo.airline;
+	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking
 	
-	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
     ChooseCheckIn(); // Passenger is now going to airline check In
 }
 
 void Passenger::ChooseCheckIn(){
 	CheckInLock->Acquire();
 	if(!this->getClass()){
-		myLine = 0; //Executive line is 0
+		myLine = CHECKIN_COUNT*AIRLINE_COUNT+airline-1; // Executive Line is 15 (Airline 1),16 (Airline 2),17 (Airline 3)
 	} else {
-		myLine = 1;
-		for(int i = 1; i < CHECKIN_COUNT+1; i++){ // There are 4 economy and 1 executive queues
-			switch (this->getAirline()){
-				case 1:
-					if(CheckIn1[i] < CheckIn1[myLine]) myLine = i;
-					break;
-				case 2:
-					if(CheckIn2[i] < CheckIn2[myLine]) myLine = i;
-					break;
-				case 3:
-					if(CheckIn3[i] < CheckIn3[myLine]) myLine = i;
-					break;
-			}
+		myLine = 0; // Normal lines are 0-14 (Airline 1 is 0-4, Airline 2 is 5-9, Airline 3 is 10-14
+		for (int i = 1; i < CHECKIN_COUNT*AIRLINE_COUNT; i++){
+			if (CheckIn[i] < CheckIn[myLine]) myLine = i;	
 		}
 	}
-	CheckIn1[myLine] = CheckIn1[myLine] + 1;
-	CheckIn1CV[myLine]->Wait(CheckInLock);
-	CheckIn2CV[myLine]->Wait(CheckInLock);
-	CheckIn3CV[myLine]->Wait(CheckInLock);
-	if (this->getAirline() == 1){
-		if (CheckIn1[myLine] > 0) CheckIn1[myLine] = CheckIn1[myLine] - 1;
-		CheckInLock->Release();
-		CheckInLocks[myLine]->Acquire();
-	    CheckIn1[myLine]->setPassengerBaggageCount(this->bag, this);
-		CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]);
-		CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
-		
-		
-	} else if (this->getAirline() == 2){
-		if (CheckIn2[myLine] > 0) CheckIn2[myLine] = CheckIn2[myLine] - 1;
-		CheckInLock->Release();
-	}else {
-		if (CheckIn3[myLine] > 0) CheckIn3[myLine] = CheckIn3[myLine] - 1;
-		CheckInLock->Release();
-	}	
+	CheckIn[myLine] = CheckIn[myLine] + 1;
+	CheckInCV[myLine]->Wait(CheckInLock);
+	if(CheckIn[myLine] > 0) CheckIn[myLine] = CheckIn[myLine] - 1;
+	CheckInLock->Release();
+	CheckInLocks->Acquire();
+	CPInfo[myLine].baggageCount = baggageCount;
+	for (int i = 0; i < baggageCount; i++){
+		CPInfo[myLine].bag.push_back(Baggage());
+		CPInfo[myLine].bag[0].weight = PASSENGER WEIGHT IS;
+	}
+	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]);
+	CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
 }
 
 //----------------------------------------------------------------------
@@ -208,7 +188,6 @@ LiaisonOfficer::LiaisonOfficer(char* debugName, int i){
 	info.baggageCount.clear();
 	info.number = i;
 }
-
 LiaisonOfficer::~LiaisonOfficer(){}
 char* LiaisonOfficer::getName() {
 	char* s = new char[strlen(info.name)];
@@ -218,16 +197,24 @@ char* LiaisonOfficer::getName() {
 int LiaisonOfficer::getPassengerCount() {return info.passengerCount;} // For manager to get passenger headcount
 int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at(n);} // For manager to get passenger bag count
 
-void LiaisonOfficer::setPassengerBaggageCount(int n, Passenger* x) { // Passenger Liaison Interaction
-	info.airline = rand() % AIRLINE_COUNT; // Randomly generate airline for passenger
-	info.passengerCount += 1;
-	info.baggageCount.at(info.passengerCount) = n; // Appends Passenger Bag info to Baggage Count Vector
-	x->setAirline(info.airline); // Informs the passenger of their airline
-	liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
-	liaisonLineCV[info.number]->Signal(liaisonLineLock);
-	liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Goes to sleep until next passenger starts interaction
+void DoWork(){
+	while(true){
+		if (LiaisonLine[info.number].size() > 0){
+			liaisionLineLock->Acquire();
+			LiaisonLineCV[info.number]->Signal(liaisonLineLock);
+			LiaisonLineLocks[info.number]->Acquire();
+			liaisonLineLock->Release();
+			LiaisonLineCV[info.number]->Wait(liaisionLineLocks[info.number]);
+			// Passenger has given bag Count info and woken up the Liaison Officer
+			info.passengerCount += 1;
+			info.baggageCount.at(info.passengerCount) = n;
+			info.airline = rand() % AIRLINE_COUNT;
+			LPInfo.airline = info.airline;
+			liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
+			liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Goes to sleep until next passenger starts interaction
+		}
+	}
 }
-void LiaisonOfficer::PassengerLeaving(){} // Passenger informed Liaison they are leaving so Liaison stays asleep
 
 //----------------------------------------------------------------------
 // Check In Staff
@@ -248,13 +235,10 @@ char* CheckInOfficer::getName(){
 	strcpy(s, info.name);
 	return s;
 }
-
 bool CheckInOfficer::getBreak(){ // For managers to see who is on break
 	return info.OnBreak;
 }
-
 int CheckInOfficer::getAirline(){return info.airline;}
-
 int CheckInOfficer::getNumber() {return info.number;}
 
 void CheckInOfficer::DoWork(){
@@ -299,13 +283,12 @@ void CheckInOfficer::DoWork(){
 	}
 }
 
-void CheckInOfficer::setBaggageCount(struct y, passenger* x){
+void CheckInOfficer::setBaggageCount(struct y, passenger* x){ // ask question if the function is run then the thread is returned to its sleep position
 	info.passengerCount += 1;
 	this->setBag(y);
-	x->setSeat(int n);
+	x->setSeat(int n);//array of bools
 	CheckInOfficerCV[info.number]->Signal(CheckInLocks[info.number]);
 	CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);
-	
 }
 
 void CheckInOfficer::setBag(struct x){
