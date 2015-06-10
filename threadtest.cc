@@ -55,18 +55,17 @@ ThreadTest()
 		liaisonLine[i] = 0;
 	}
 	srand (time(NULL));
-	/*liaisonLineCV = new list<Condition>();
-	for(int i = 0; i < LIAISONLINE_COUNT; i++){
-		char* name = "Liaison Line CV" + i;
-		Condition *tempCondition = new Condition(name);
-		liaisonLineCV->push_front(tempCondition);
-	}*/
-
-	//liaisonLineCV = new List;
+	
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
 		char* name = "Liaison Line CV" + i;
 		Condition *tempCondition = new Condition(name);
 		liaisonLineCV[i] = tempCondition;
+		char* name2 = "Liaison Line Lock" + i;
+		Lock *tempLock = new Lock(name2);
+		liaisonLineLock[i] = tempLock;
+		char* name3 = "Liaison Officer" + i;
+		LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3);
+		liaisonOfficers[i] = tempLiaison;
 	}
 	char* lockName = "Passenger Line Lock";
 	liaisonLineLock = new Lock(lockName);
@@ -81,9 +80,11 @@ ThreadTest()
     SimpleThread(0);
 }
 
+//----------------------------------------------------------------------
+// Passenger
+//----------------------------------------------------------------------
 Passenger::Passenger(int n){
 	name = n;
-	airline = rand() % AIRLINE_COUNT;
 	economy = true;
 	if(rand() % 2 == 1){
 		economy = false;
@@ -92,13 +93,14 @@ Passenger::Passenger(int n){
 	for(int i = 0; i < baggageCount; i++){
 		baggageWeight[i] = rand() % 31 + BAGGAGE_WEIGHT;
 	}
-	
 }
 
 Passenger::~Passenger(){
 }
 
-//void randomAccessHelper(int 
+void Passenger::setAirline(int n){
+	airline = n;
+}
 
 void Passenger::ChooseLiaisonLine(){
 	liaisonLineLock->Acquire();
@@ -111,6 +113,46 @@ void Passenger::ChooseLiaisonLine(){
 	if(liaisonLine[myLine] > 0){
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
 	}
+	liaisonLine[myLine] = liaisonLine[myline] - 1; //One passenger has left the line
 	liaisonLineLock->Release();
-	//now go up to Liaison
+	liaisonLineLock[myLine]->Acquire();
+	liaisonOfficers[myLine]->setBaggageCount(this.getBaggageCount());
+	liaisonLineCV[myLine]->Signal(liaisonLineLock[myLine]);
+	liaisonLineCV[myLine]->Wait(liaisonLineLock[myLine]);
+	liaisonOfficers[myLine]->PassengerLeaving();
+	liaisonLineCV[myLine]->Signal(liaisonLineLock[myLine]);
+	liaisonLineLock[myline]->Release();
+	// Go to Airline
 }
+
+//----------------------------------------------------------------------
+// Liaison Officer
+//----------------------------------------------------------------------
+LiaisonOfficer(char* debugName){
+	Liaison info;
+	info.name = debugName;
+	info.passengerCount = 0;
+	info.baggageCount.clear();
+	info.airline = rand() % AIRLINE_COUNT;
+}
+
+~LiaisonOfficer(){}
+int getName() {return info.name;}
+int getPassengerCount() {return info.passengerCount;} // For manager to get passenger headcount
+int getPassengerBaggageCount(int n) {return info.baggageCount.at(n)}; // For manager to get passenger bag count
+void setPassengerBaggageCount(int n) {
+	info.passengerCount += 1;
+	info.baggageCount.at(info.getPasengerCount()) = n;
+}
+void PassengerLeaving(){}
+
+void TalkPassenger(){
+	
+}
+
+
+
+
+
+
+
