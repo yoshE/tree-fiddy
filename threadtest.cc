@@ -17,7 +17,7 @@
 
 #define BAGGAGE_COUNT 2
 #define BAGGAGE_WEIGHT 30
-#define AIRLINE_COUNT 3 // This is hard coded - DONT CHANGE
+#define AIRLINE_COUNT 3 
 #define CHECKIN_COUNT 5
 
 using namespace std;
@@ -25,6 +25,10 @@ LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];
 CheckInOfficer *CheckIn[CHECKIN_COUNT*AIRLINE_COUNT];
 LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[LIAISONLINE_COUNT];
 CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];
+
+deque<Baggage> conveyor;
+int aircraftBaggageCount[AIRLINE_COUNT];
+int aircraftBaggageWeight[AIRLINE_COUNT];
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -55,17 +59,18 @@ SimpleThread(int which)
 void
 ThreadTest()
 {
-	//set up Passenger
-	for(int i = 0; i < LIAISONLINE_COUNT; i++){
-		liaisonLine[i] = 0;
-	}
 	srand (time(NULL));
+	//TODO: set up Passenger here
+
+	char* lockName = "Passenger Line Lock";
+	liaisonLineLock = new Lock(lockName);
 	
 	//For Economy Class
+	//set up CIS
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		for (int y = 0; y < CHECKIN_COUNT; y++){
 			char* name = "Check In Officer " + y;
-			CheckInOfficer *tempCheckIn = new CheckInOfficer(name, y, i);
+			CheckInOfficer *tempCheckIn = new CheckInOfficer(name, (y+i)+AIRLINE_COUNT*i, i);
 			CheckIn[(y+i)+AIRLINE_COUNT*i] = tempCheckIn;
 		}
 	}
@@ -77,7 +82,9 @@ ThreadTest()
 	}
 	
 	
+	//set up Liaison
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
+		liaisonLine[i] = 0;
 		char* name = "Liaison Line CV " + i;
 		Condition *tempCondition = new Condition(name);
 		liaisonLineCV[i] = tempCondition;
@@ -91,9 +98,13 @@ ThreadTest()
 		LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3, i);
 		liaisonOfficers[i] = tempLiaison;
 	}
-	char* lockName = "Passenger Line Lock";
-	liaisonLineLock = new Lock(lockName);
-
+	
+	//TODO: set up Cargo Handler
+	lockName = "Cargo Handler Lock";
+	CargoHandlerLock = new Lock(lockName);
+	char* cvName = "Cargo Handler CV ";
+	Condition *tempCondition = new Condition(cvName);
+		
 	//end set up
 
     DEBUG('t', "Entering SimpleTest");
@@ -115,7 +126,8 @@ Passenger::Passenger(int n){
 	}
 	baggageCount = rand() % 2 + BAGGAGE_COUNT;
 	for(int i = 0; i < baggageCount; i++){
-		baggageWeight[i] = rand() % 31 + BAGGAGE_WEIGHT;
+		bags.push_back(Baggage());
+		bags[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
 	}
 	ChooseLiaisonLine();
 }
@@ -125,6 +137,9 @@ Passenger::~Passenger(){
 
 void Passenger::setAirline(int n){
 	airline = n;
+	for(int i = 0; i < baggageCount; i++){
+		bags[i].airlineCode = airline;
+	}
 }
 
 void Passenger::setSeat(int n){
@@ -149,6 +164,7 @@ void Passenger::ChooseLiaisonLine(){
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	airline = LPInfo.airline;
+	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
 	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking
 	
@@ -167,16 +183,21 @@ void Passenger::ChooseCheckIn(){
 	}
 	CheckIn[myLine] = CheckIn[myLine] + 1;
 	CheckInCV[myLine]->Wait(CheckInLock);
-	if(CheckIn[myLine] > 0) CheckIn[myLine] = CheckIn[myLine] - 1;
 	CheckInLock->Release();
 	CheckInLocks->Acquire();
 	CPInfo[myLine].baggageCount = baggageCount;
 	for (int i = 0; i < baggageCount; i++){
 		CPInfo[myLine].bag.push_back(Baggage());
-		CPInfo[myLine].bag[0].weight = PASSENGER WEIGHT IS;
+		CPInfo[myLine].bag[i].weight = bags[i].weight;
 	}
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]);
 	CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
+	seat = CPInfo.seat;
+	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
+	if (CheckIn[myLine] > 0) CheckIn[myLine] = CheckIn[myLine] - 1; //Passenger left the line
+	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking
+	
+	
 }
 
 //----------------------------------------------------------------------
@@ -199,20 +220,20 @@ int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at
 
 void DoWork(){
 	while(true){
+		liaisionLineLock->Acquire();
 		if (LiaisonLine[info.number].size() > 0){
-			liaisionLineLock->Acquire();
 			LiaisonLineCV[info.number]->Signal(liaisonLineLock);
-			LiaisonLineLocks[info.number]->Acquire();
-			liaisonLineLock->Release();
-			LiaisonLineCV[info.number]->Wait(liaisionLineLocks[info.number]);
-			// Passenger has given bag Count info and woken up the Liaison Officer
-			info.passengerCount += 1;
-			info.baggageCount.at(info.passengerCount) = n;
-			info.airline = rand() % AIRLINE_COUNT;
-			LPInfo.airline = info.airline;
-			liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
-			liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Goes to sleep until next passenger starts interaction
 		}
+		LiaisonLineLocks[info.number]->Acquire();		
+		liaisonLineLock->Release();
+		LiaisonLineCV[info.number]->Wait(liaisionLineLocks[info.number]);
+		// Passenger has given bag Count info and woken up the Liaison Officer
+		info.passengerCount += 1;
+		info.baggageCount.at(info.passengerCount) = n;
+		info.airline = rand() % AIRLINE_COUNT;
+		LPInfo.airline = info.airline;
+		liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
+		liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Waits for Passenger to say they are leaving
 	}
 }
 
@@ -238,62 +259,87 @@ char* CheckInOfficer::getName(){
 bool CheckInOfficer::getBreak(){ // For managers to see who is on break
 	return info.OnBreak;
 }
+
+void CheckinOfficer::setBreak(){
+	OnBreak = true;
+}
+
 int CheckInOfficer::getAirline(){return info.airline;}
 int CheckInOfficer::getNumber() {return info.number;}
 
 void CheckInOfficer::DoWork(){
-	while(!OnBreak){
-		if(this->getAirline() == 1){
-			if(CheckIn1[0].size() > 0){
-				CheckIn1CV[0]->Signal(CheckInLock);
-				CheckInLocks[this->getNumber()]->Acquire();
-				CheckInOfficer1CV[0]->Wait(CheckInLocks[this->getNumber()]);
-			} else if (CheckIn1[this->getNumber()].size() > 0) {
-				CheckIn1CV[this->getNumber()]->Signal(CheckInLock);
-				CheckInLocks[this->getNumber()]->Acquire();
-				CheckInOfficer1CV[this->getNumber()]->Wait(CheckInLocks[this->getNumber()]);
-			} else {
-				OnBreak = true;
-			}
-		}else if(this->getAirline() == 2){
-			if(CheckIn2[0].size() > 0){
-				CheckIn2CV[0]->Signal(CheckInLock);
-				CheckInLocks[this->getNumber()]->Acquire();
-				CheckInOfficer2CV[0]->Wait(CheckInLocks[this->getNumber()]);
-			} else if (CheckIn2[this->getNumber()].size() > 0) {
-				CheckIn2CV[this->getNumber()]->Signal(CheckInLock);
-				CheckInLocks[this->getNumber()]->Acquire();
-				CheckInOfficer2CV[this->getNumber()]->Wait(CheckInLocks[this->getNumber()]);
+	while(work){
+			CheckInLock->Acquire();
+			if(CheckIn[AIRLINE_COUNT*CHECKIN_COUNT + i - 1] > 0){
+				CheckInCV[AIRLINE_COUNT*CHECKIN_COUNT + i - 1]->Signal(CheckInLock);
+			}else if (CheckIn[info.number] > 0){
+				CheckInCV[info.number]->Signal(CheckInLock);
 			}else {
-				OnBreak = true;
+				setBreak();
+				CheckInBreakCV[info.number]->Wait(CheckInLock);
+				continue;
 			}
-		}else{
-			if(CheckIn3[0].size() > 0){
-				CheckIn3CV[0]->Signal(CheckInLock);
-				CheckInLocks[this->getNumber()]->Acquire();
-				CheckInOfficer3CV[0]->Wait(CheckInLocks[this->getNumber()]);
-			} else if (CheckIn3[this->getNumber()].size() > 0) {
-				CheckIn3CV[this->getNumber()]->Signal(CheckInLock);
-				CheckInLocks[this->getNumber()]->Acquire();
-				CheckInOfficer3CV[this->getNumber()]->Wait(CheckInLocks[this->getNumber()]);
-			}else {
-				OnBreak = true;
+			CheckInLocks[info.number]->Acquire();
+			CheckInLock->Release();
+			CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);
+			
+			info.bags = CPInfo[info.number].bag;
+			for (int i = 0; i < info.bag.size(); i++){
+				info.bag[i].airlineCode	= airline;
+				BaggageLock->Acquire();
+				conveyor.push_back(info.bag[i]);
+				BaggageLock->Release();
 			}
-		}	
+			airlineSeatLock->Acquire();
+			int seat = -1;
+			for (int i = (AIRLINE_COUNT - 1)*50; i < AIRLINE_COUNT * 50; i++ ){
+				if (seats[i]){
+					seats[i] = false;
+					seat = i;
+				}
+			}
+			if (seat == -1) return; // PRINT ERROR MESSAGE
+			airlineSeatLock->Release();
+			CPInfo.seat = seat;
+			CheckInOfficerCV[info.number]->Signal(CheckInLocks[info.number]);
+			CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);
 	}
 }
 
-void CheckInOfficer::setBaggageCount(struct y, passenger* x){ // ask question if the function is run then the thread is returned to its sleep position
-	info.passengerCount += 1;
-	this->setBag(y);
-	x->setSeat(int n);//array of bools
-	CheckInOfficerCV[info.number]->Signal(CheckInLocks[info.number]);
-	CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);
+//----------------------------------------------------------------------
+// Cargo Handler
+//----------------------------------------------------------------------
+CargoHandler::CargoHandler(int n){
+	name = n;
 }
 
-void CheckInOfficer::setBag(struct x){
-	bag.count = x.count;
-	bag.baggageWeight[3] = x.baggageWeight[3];
+CargoHandler::~CargoHandler(){}
+
+void CargoHandler::DoWork(){
+	onBreak = false;
+	while(!conveyor.empty()){
+		//grab the first bag on the conveyor belt and move it to the plane
+		CargoHandlerLock->Acquire();
+		if(conveyor.empty()){
+			CargoHandlerLock->Release();
+			onBreak = true;
+		} else {
+			aircraftBaggageCount[conveyor[0].airlineCode]++;
+			aircraftBaggageWeight[conveyor[0].airlineCode] += conveyor[0].weight;
+			//Cargo Handler [identifier] picked bag of airline [code] with weighing [weight] lbs
+			
+			conveyor.pop_front();
+			CargoHandlerLock->Release();
+		}
+	}
+	if(conveyor.empty()){
+		onBreak = true;
+		//if DoWork is called and the conveyor is empty, nap time
+		CargoHandlerLock->Acquire();
+		//wait for the manager to ruin your fun
+		CargoHandlerCV->Wait(CargoHandlerLock);
+		CargoHandlerLock->Release();
+	}
 }
 
 // --------------------------------------------------
@@ -606,10 +652,10 @@ void TestSuite() {
     printf("Starting Test 3\n");
 
     for (  i = 0 ; i < 5 ; i++ ) {
-	name = new char [20];
-	sprintf(name,"t3_waiter%d",i);
-	t = new Thread(name);
-	t->Fork((VoidFunctionPtr)t3_waiter,0);
+		name = new char [20];
+		sprintf(name,"t3_waiter%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)t3_waiter,0);
     }
     t = new Thread("t3_signaller");
     t->Fork((VoidFunctionPtr)t3_signaller,0);
@@ -623,10 +669,10 @@ void TestSuite() {
     printf("Starting Test 4\n");
 
     for (  i = 0 ; i < 5 ; i++ ) {
-	name = new char [20];
-	sprintf(name,"t4_waiter%d",i);
-	t = new Thread(name);
-	t->Fork((VoidFunctionPtr)t4_waiter,0);
+		name = new char [20];
+		sprintf(name,"t4_waiter%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)t4_waiter,0);
     }
     t = new Thread("t4_signaller");
     t->Fork((VoidFunctionPtr)t4_signaller,0);

@@ -3,9 +3,12 @@
 #include "synch.h"
 #include <list>
 #include <vector>
+#include <deque>
+
 
 #define LIAISONLINE_COUNT 5
 #define CHECKIN_COUNT 5
+#define AIRLINE_COUNT 3
 
 void SimpleThread(int which);
 
@@ -15,10 +18,21 @@ Condition *liaisonLineCV[LIAISONLINE_COUNT];
 Condition *liaisonOfficerCV[LIAISONLINE_COUNT];
 Condition *CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];
 Condition *CheckInOfficerCV[CHECKIN_COUNT*AIRLINE_COUNT];
+Condition *CheckInBreakCV[CHECKING_COUNT*AIRLINE_COUNT];
 Lock *liaisonLineLock;
 Lock *liaisonLineLocks[LIAISONLINE_COUNT];
-Lock *CheckInLocks[CHECKIN_COUNT];
+Lock *CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT];
 Lock *CheckInLock;
+Lock *CargoHandlerLock;
+Condition *CargoHandlerCV;
+bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
+Lock *airlineSeatLock;
+Lock *BaggageLock;
+
+struct Baggage{
+	int airlineCode;
+	int weight;
+};
 
 struct LiaisonPassengerInfo{
 	int baggageCount;
@@ -45,13 +59,14 @@ class Passenger {
 		void setSeat(int n);
 		void ChooseCheckIn();
 	  
-	private:
-		int name;        // useful for debugging
-		int baggageCount;
-		int airline;		//which airline does the passenger fly
-		bool economy;		//economy or executive ticket
-		int myLine;		//which line the passenger got into
-		int seat;
+  private:
+	  int name;        // useful for debugging
+	  int seat;			// Seat Number
+	  int airline;		//which airline does the passenger fly
+	  bool economy;		//economy or executive ticket
+	  int myLine;		//which line the passenger got into
+	  int baggageCount;
+	  std::vector<Baggage> bags;
 };
 
 class LiaisonOfficer {
@@ -77,25 +92,33 @@ class CheckInOfficer{
 	  CheckInOfficer(char* deBugName, int i, int y);
 	  ~CheckInOfficer();
 	  char* getName();
+	  void setBreak();
 	  bool getBreak(); // For managers to see who is on break
 	  void DoWork();
-	  void setPassengerBaggageCount(struct y, Passenger* x);
 	  int getAirline();
 	  int getNumber();
-	  void setBag(struct x); 
 	
 	private:
 	  struct CheckIn{
 		char* name;
 		int number;
 		int passengerCount;
-		std::vector<int>baggageCount;
+		std::vector<Baggage> bags;
 		int airline;
 		bool OnBreak;  
 		bool work;
-		struct Bag{
-			int count;
-			int baggageWeight[3];
-		}bag;
 	  }info;
+};
+
+class CargoHandler{
+	public:
+		CargoHandler(int n);
+		~CargoHandler();
+		int getName();
+		bool getBreak(){return onBreak;}
+		void DoWork();
+		
+	private:
+		int name;
+		bool onBreak;
 };
