@@ -199,6 +199,11 @@ void Condition::Signal(Lock* conditionLock) {
     interrupt->SetLevel(inter);
     return;
   }
+  if(conditionLock != waitingLock){
+	std::cout << "Wrong lock!\n";
+	interrupt->SetLevel(inter);
+	return;
+  }
   thread = (Thread *)waitingCV->Remove(); // Otherwise remove a thread
   if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up
   if (waitingCV->IsEmpty()) waitingLock = NULL; // If list is empty FREE up lock
