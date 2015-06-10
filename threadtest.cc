@@ -119,6 +119,7 @@ Passenger::Passenger(int n){
 	for(int i = 0; i < baggageCount; i++){
 		baggageWeight[i] = rand() % 31 + BAGGAGE_WEIGHT;
 	}
+	ChooseLiaisonLine();
 }
 
 Passenger::~Passenger(){
@@ -126,6 +127,10 @@ Passenger::~Passenger(){
 
 void Passenger::setAirline(int n){
 	airline = n;
+}
+
+void Passenger::setSeat(int n){
+	seat = n;
 }
 
 void Passenger::ChooseLiaisonLine(){
@@ -158,7 +163,7 @@ void Passenger::ChooseCheckIn(){
 		myLine = 0; //Executive line is 0
 	} else {
 		myLine = 1;
-		for(int i = 1; i < CHECKIN_COUNT-1; i++){ // There are 4 economy and 1 executive queues
+		for(int i = 1; i < CHECKIN_COUNT+1; i++){ // There are 4 economy and 1 executive queues
 			switch (this->getAirline()){
 				case 1:
 					if(CheckIn1[i] < CheckIn1[myLine]) myLine = i;
@@ -172,29 +177,19 @@ void Passenger::ChooseCheckIn(){
 			}
 		}
 	}
-	switch (this->getAirline()){
-		case 1:
-			if(CheckIn1[myLine] > 0){
-				CheckIn1[myLine] = CheckIn1[myLine] + 1;
-				CheckIn1CV[myLine]->Wait(CheckInLock);
-			}
-			break;
-		case 2:
-			if(CheckIn2[myLine] > 0){
-				CheckIn2[myLine] = CheckIn2[myLine] + 1;
-				CheckIn2CV[myLine]->Wait(CheckInLock);
-			}
-			break;
-		case 3:
-			if(CheckIn3[myLine] > 0){
-				CheckIn3[myLine] = CheckIn3[myLine] + 1;
-				CheckIn3CV[myLine]->Wait(CheckInLock);
-			}
-			break;
-	}
+	CheckIn1[myLine] = CheckIn1[myLine] + 1;
+	CheckIn1CV[myLine]->Wait(CheckInLock);
+	CheckIn2CV[myLine]->Wait(CheckInLock);
+	CheckIn3CV[myLine]->Wait(CheckInLock);
 	if (this->getAirline() == 1){
 		if (CheckIn1[myLine] > 0) CheckIn1[myLine] = CheckIn1[myLine] - 1;
 		CheckInLock->Release();
+		CheckInLocks[myLine]->Acquire();
+	    CheckIn1[myLine]->setPassengerBaggageCount(this->bag, this);
+		CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]);
+		CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
+		
+		
 	} else if (this->getAirline() == 2){
 		if (CheckIn2[myLine] > 0) CheckIn2[myLine] = CheckIn2[myLine] - 1;
 		CheckInLock->Release();
@@ -244,6 +239,7 @@ CheckInOfficer::CheckInOfficer(char* deBugName, int i, int y){
 	info.passengerCount = 0;
 	info.baggageCount.clear();
 	info.OnBreak = true;
+	info.work = true;
 }
 
 CheckInOfficer::~CheckInOfficer(){}
@@ -252,8 +248,69 @@ char* CheckInOfficer::getName(){
 	strcpy(s, info.name);
 	return s;
 }
+
 bool CheckInOfficer::getBreak(){ // For managers to see who is on break
-		return info.OnBreak;
+	return info.OnBreak;
+}
+
+int CheckInOfficer::getAirline(){return info.airline;}
+
+int CheckInOfficer::getNumber() {return info.number;}
+
+void CheckInOfficer::DoWork(){
+	while(!OnBreak){
+		if(this->getAirline() == 1){
+			if(CheckIn1[0].size() > 0){
+				CheckIn1CV[0]->Signal(CheckInLock);
+				CheckInLocks[this->getNumber()]->Acquire();
+				CheckInOfficer1CV[0]->Wait(CheckInLocks[this->getNumber()]);
+			} else if (CheckIn1[this->getNumber()].size() > 0) {
+				CheckIn1CV[this->getNumber()]->Signal(CheckInLock);
+				CheckInLocks[this->getNumber()]->Acquire();
+				CheckInOfficer1CV[this->getNumber()]->Wait(CheckInLocks[this->getNumber()]);
+			} else {
+				OnBreak = true;
+			}
+		}else if(this->getAirline() == 2){
+			if(CheckIn2[0].size() > 0){
+				CheckIn2CV[0]->Signal(CheckInLock);
+				CheckInLocks[this->getNumber()]->Acquire();
+				CheckInOfficer2CV[0]->Wait(CheckInLocks[this->getNumber()]);
+			} else if (CheckIn2[this->getNumber()].size() > 0) {
+				CheckIn2CV[this->getNumber()]->Signal(CheckInLock);
+				CheckInLocks[this->getNumber()]->Acquire();
+				CheckInOfficer2CV[this->getNumber()]->Wait(CheckInLocks[this->getNumber()]);
+			}else {
+				OnBreak = true;
+			}
+		}else{
+			if(CheckIn3[0].size() > 0){
+				CheckIn3CV[0]->Signal(CheckInLock);
+				CheckInLocks[this->getNumber()]->Acquire();
+				CheckInOfficer3CV[0]->Wait(CheckInLocks[this->getNumber()]);
+			} else if (CheckIn3[this->getNumber()].size() > 0) {
+				CheckIn3CV[this->getNumber()]->Signal(CheckInLock);
+				CheckInLocks[this->getNumber()]->Acquire();
+				CheckInOfficer3CV[this->getNumber()]->Wait(CheckInLocks[this->getNumber()]);
+			}else {
+				OnBreak = true;
+			}
+		}	
+	}
+}
+
+void CheckInOfficer::setBaggageCount(struct y, passenger* x){
+	info.passengerCount += 1;
+	this->setBag(y);
+	x->setSeat(int n);
+	CheckInOfficerCV[info.number]->Signal(CheckInLocks[info.number]);
+	CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);
+	
+}
+
+void CheckInOfficer::setBag(struct x){
+	bag.count = x.count;
+	bag.baggageWeight[3] = x.baggageWeight[3];
 }
 
 // --------------------------------------------------
