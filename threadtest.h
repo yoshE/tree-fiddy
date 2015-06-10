@@ -3,6 +3,8 @@
 #include "synch.h"
 #include <list>
 #include <vector>
+#include <deque>
+
 
 #define LIAISONLINE_COUNT 5
 #define CHECKIN_COUNT 5
@@ -18,6 +20,13 @@ Condition *CheckIn3CV[CHECKIN_COUNT];
 Lock *liaisonLineLock;
 Lock *liaisonLineLocks[LIAISONLINE_COUNT];
 Lock *CheckInLock;
+Lock *CargoHandlerLock;
+Condition *CargoHandlerCV;
+
+struct Baggage{
+	int airlineCode;
+	int weight;
+};
 
 class Passenger {
   public:
@@ -38,7 +47,7 @@ class Passenger {
 	  bool economy;		//economy or executive ticket
 	  int myLine;		//which line the passenger got into
 	  int baggageCount;
-	  int baggageWeight[3];
+	  std::vector<Baggage> bags;
 };
 
 class LiaisonOfficer {
@@ -77,4 +86,17 @@ class CheckInOfficer{
 		int airline;
 		bool OnBreak;  
 	  }info;
+};
+
+class CargoHandler{
+	public:
+		CargoHandler(int n);
+		~CargoHandler();
+		int getName();
+		bool getBreak(){return onBreak;}
+		void DoWork();
+		
+	private:
+		int name;
+		bool onBreak;
 };

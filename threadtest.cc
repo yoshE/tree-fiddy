@@ -26,6 +26,9 @@ CheckInOfficer *CheckIn1[CHECKIN_COUNT];
 CheckInOfficer *CheckIn2[CHECKIN_COUNT];
 CheckInOfficer *CheckIn3[CHECKIN_COUNT];
 
+deque<Baggage> conveyor;
+int aircraftBaggageCount[AIRLINE_COUNT];
+int aircraftBaggageWeight[AIRLINE_COUNT];
 //----------------------------------------------------------------------
 // SimpleThread
 // 	Loop 5 times, yielding the CPU to another ready thread 
@@ -55,12 +58,13 @@ SimpleThread(int which)
 void
 ThreadTest()
 {
-	//set up Passenger
-	for(int i = 0; i < LIAISONLINE_COUNT; i++){
-		liaisonLine[i] = 0;
-	}
 	srand (time(NULL));
+	//TODO: set up Passenger here
+
+	char* lockName = "Passenger Line Lock";
+	liaisonLineLock = new Lock(lockName);
 	
+	//set up CIS
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		for (int y = 0; y < CHECKIN_COUNT; y++){
 			char* name = "Check In Officer " + y;
@@ -79,7 +83,9 @@ ThreadTest()
 		}
 	}
 	
+	//set up Liaison
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
+		liaisonLine[i] = 0;
 		char* name = "Liaison Line CV " + i;
 		Condition *tempCondition = new Condition(name);
 		liaisonLineCV[i] = tempCondition;
@@ -93,9 +99,13 @@ ThreadTest()
 		LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3, i);
 		liaisonOfficers[i] = tempLiaison;
 	}
-	char* lockName = "Passenger Line Lock";
-	liaisonLineLock = new Lock(lockName);
-
+	
+	//TODO: set up Cargo Handler
+	lockName = "Cargo Handler Lock";
+	CargoHandlerLock = new Lock(lockName);
+	char* cvName = "Cargo Handler CV ";
+	Condition *tempCondition = new Condition(cvName);
+		
 	//end set up
 
     DEBUG('t', "Entering SimpleTest");
@@ -117,7 +127,8 @@ Passenger::Passenger(int n){
 	}
 	baggageCount = rand() % 2 + BAGGAGE_COUNT;
 	for(int i = 0; i < baggageCount; i++){
-		baggageWeight[i] = rand() % 31 + BAGGAGE_WEIGHT;
+		bags.push_back(Baggage());
+		bags[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
 	}
 }
 
@@ -126,6 +137,9 @@ Passenger::~Passenger(){
 
 void Passenger::setAirline(int n){
 	airline = n;
+	for(int i = 0; i < baggageCount; i++){
+		bags[i].airlineCode = airline;
+	}
 }
 
 void Passenger::ChooseLiaisonLine(){
@@ -254,6 +268,39 @@ char* CheckInOfficer::getName(){
 }
 bool CheckInOfficer::getBreak(){ // For managers to see who is on break
 		return info.OnBreak;
+}
+
+CargoHandler::CargoHandler(int n){
+	name = n;
+}
+
+CargoHandler::~CargoHandler(){}
+
+void CargoHandler::DoWork(){
+	onBreak = false;
+	while(!conveyor.empty()){
+		//grab the first bag on the conveyor belt and move it to the plane
+		CargoHandlerLock->Acquire();
+		if(conveyor.empty()){
+			CargoHandlerLock->Release();
+			onBreak = true;
+		} else {
+			aircraftBaggageCount[conveyor[0].airlineCode]++;
+			aircraftBaggageWeight[conveyor[0].airlineCode] += conveyor[0].weight;
+			//Cargo Handler [identifier] picked bag of airline [code] with weighing [weight] lbs
+			
+			conveyor.pop_front();
+			CargoHandlerLock->Release();
+		}
+	}
+	if(conveyor.empty()){
+		onBreak = true;
+		//if DoWork is called and the conveyor is empty, nap time
+		CargoHandlerLock->Acquire();
+		//wait for the manager to ruin your fun
+		CargoHandlerCV->Wait(CargoHandlerLock);
+		CargoHandlerLock->Release();
+	}
 }
 
 // --------------------------------------------------
@@ -566,10 +613,10 @@ void TestSuite() {
     printf("Starting Test 3\n");
 
     for (  i = 0 ; i < 5 ; i++ ) {
-	name = new char [20];
-	sprintf(name,"t3_waiter%d",i);
-	t = new Thread(name);
-	t->Fork((VoidFunctionPtr)t3_waiter,0);
+		name = new char [20];
+		sprintf(name,"t3_waiter%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)t3_waiter,0);
     }
     t = new Thread("t3_signaller");
     t->Fork((VoidFunctionPtr)t3_signaller,0);
@@ -583,10 +630,10 @@ void TestSuite() {
     printf("Starting Test 4\n");
 
     for (  i = 0 ; i < 5 ; i++ ) {
-	name = new char [20];
-	sprintf(name,"t4_waiter%d",i);
-	t = new Thread(name);
-	t->Fork((VoidFunctionPtr)t4_waiter,0);
+		name = new char [20];
+		sprintf(name,"t4_waiter%d",i);
+		t = new Thread(name);
+		t->Fork((VoidFunctionPtr)t4_waiter,0);
     }
     t = new Thread("t4_signaller");
     t->Fork((VoidFunctionPtr)t4_signaller,0);
