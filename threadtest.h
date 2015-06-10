@@ -42,7 +42,6 @@ class LiaisonOfficer {
 	int getPassengerBaggageCount(int n); // For manager to get passenger bag count
 	void setPassengerBaggageCount(int n); // Increments passenger count and adds their baggage count to vector
 	void PassengerLeaving();
-	void TalkPassenger();
   
   private:
 	struct Liaison{
