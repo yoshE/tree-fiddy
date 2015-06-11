@@ -76,16 +76,16 @@ ThreadTest()
 			int x = (y+i)+AIRLINE_COUNT*i;
 			CheckInLine[x] = 0;
 			char* name = "Check In Officer " + x;
-			CheckInOfficer *tempCheckIn = new CheckInOfficer(name, x, i);
+			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 			CheckIn[(y+i)+AIRLINE_COUNT*i] = tempCheckIn;
 		}
 	}
 	//For Exec Line
 	for (int i = 0; i<AIRLINE_COUNT; i++){
-		int x = 15+ i;
+		int x = AIRLINE_COUNT*CHECKIN_COUNT + i;
 		CheckInLine[x] = 0;
 		char* name = "Check In Officer " + x;
-		CheckInOfficer *tempCheckIn = new CheckInOfficer(name, x, i);
+		CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 		CheckIn[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCheckIn;
 	}
 	
@@ -112,7 +112,7 @@ ThreadTest()
 	//Set up security officers
 	for (int i = 0; i < SCREEN_COUNT; i++){
 		char* name = "Security Officer " + i;
-		SecurityOfficer *tempSecurity = new SecurityOfficer(name, i);
+		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
 		Security[i] = tempSecurity;
 	}
 	
@@ -226,23 +226,19 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	
 // ----------------------------------------------------[ Going to Security ]----------------------------------------
 
+
+
 }
 
 //----------------------------------------------------------------------
 // Liaison Officer
 //----------------------------------------------------------------------
-LiaisonOfficer::LiaisonOfficer(char* debugName, int i){		// Constructor
-	info.name = debugName;
+LiaisonOfficer::LiaisonOfficer(int i){		// Constructor
 	info.passengerCount = 0;
 	info.baggageCount.clear();
 	info.number = i;
 }
 LiaisonOfficer::~LiaisonOfficer(){}
-char* LiaisonOfficer::getName() {
-	char* s = new char[strlen(info.name)];
-	strcpy(s, info.name);
-	return s;
-}
 int LiaisonOfficer::getPassengerCount() {return info.passengerCount;} // For manager to get passenger headcount
 int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at(n);} // For manager to get passenger bag count
 
@@ -268,21 +264,15 @@ void LiaisonOfficer::DoWork(){
 //----------------------------------------------------------------------
 // Check In Staff
 //----------------------------------------------------------------------
-CheckInOfficer::CheckInOfficer(char* deBugName, int i, int y){
-	info.name = deBugName;
+CheckInOfficer::CheckInOfficer(int i){
 	info.number = i;
-	info.airline = y;
+	info.airline = i/CHECKIN_COUNT;
 	info.passengerCount = 0;
 	info.OnBreak = false;
 	info.work = true;
 }
 
 CheckInOfficer::~CheckInOfficer(){}
-char* CheckInOfficer::getName(){
-	char* s = new char[strlen(info.name)];
-	strcpy(s, info.name);
-	return s;
-}
 bool CheckInOfficer::getBreak() {return info.OnBreak;}
 void CheckInOfficer::setBreak() {info.OnBreak = true;}
 int CheckInOfficer::getAirline(){return info.airline;}
@@ -371,8 +361,7 @@ void CargoHandler::DoWork(){
 //----------------------------------------------------------------------
 // Screening Officer
 //----------------------------------------------------------------------
-ScreeningOfficer::ScreeningOfficer(char* deBugName, int i){
-	name = deBugName;
+ScreeningOfficer::ScreeningOfficer(int i){
 	number = i;
 }
 ScreeningOfficer::~ScreeningOfficer(){}
@@ -397,10 +386,15 @@ void ScreeningOfficer::DoWork(){
 			bool y = Security[i]->getAvail();
 			if (y){
 				SSInfo[i].pass = pass_fail;
+				SSInfo[i].ScreenLine = number;
 				SPInfo[number].line = i;
 			}
 		}
+		x = SPInfo[number].line;
+		SecurityLocks[x]->Acquire();
 		SecurityAvail->Release();
+		SecurityOfficerCV[x]->Signal(SecurityLocks[x]);
+		SecurityOfficerCV[x]->Wait(SecurityLocks[x]);
 		ScreenOfficerCV[number]->Signal(ScreenLocks[number]);
 		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);
 	}
@@ -409,15 +403,36 @@ void ScreeningOfficer::DoWork(){
 //----------------------------------------------------------------------
 // Security Officer
 //----------------------------------------------------------------------
-SecurityOfficer::SecurityOfficer(char* deBugName, int i){
-	name = deBugName;
+SecurityOfficer::SecurityOfficer(int i){
 	number = i;
 }
 SecurityOfficer::~SecurityOfficer(){}
 
 void SecurityOfficer::DoWork(){
 	while(true){
+		SecurityAvail->Acquire();
+		if (!available){
+			available = true;
+		}
+		SecurityLocks[number]->Acquire();
+		SecurityAvail->Release();
+		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
 		
+		pass_fail = SSInfo[number].pass;
+		SecurityAvail->Acquire();
+		available = false;
+		SecurityAvail->Release();
+		SecurityOfficerCV[number]->Signal(SecurityLocks[number]);
+		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
+		
+		int x = rand() % 5;		// Generate random value for pass/fail
+		SecurityPass = true;		// Default is pass
+		if (x == 0) SecurityPass = false;		// 20% of failure
+		
+		TotalPass = true;
+		if (!pass_fail || !SecurityPass) TotalPass = false;
+		
+		// If False tell Passenger to go questioning, if true, then tell passenger to move forward
 		
 	}
 }
@@ -800,7 +815,7 @@ void testLiaison(int liaisonIndex) {
 	Lock *tempLock = new Lock(name2);
 	liaisonLineLocks[liaisonIndex] = tempLock;
 	char* name3 = "Liaison Officer " + liaisonIndex;
-	LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3, liaisonIndex);
+	LiaisonOfficer *tempLiaison = new LiaisonOfficer(liaisonIndex);
 	liaisonOfficers[liaisonIndex] = tempLiaison;
 }
 

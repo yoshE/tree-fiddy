@@ -68,6 +68,7 @@ struct ScreenPassengerInfo{
 
 struct SecurityScreenInfo{
 	bool pass;
+	int ScreenLine;
 };
 
 //----------------------------------------------------------------------
@@ -98,9 +99,8 @@ class Passenger {
 //----------------------------------------------------------------------
 class LiaisonOfficer {
   public:
-    LiaisonOfficer(char* deBugName, int i);
+    LiaisonOfficer(int i);
 	~LiaisonOfficer();
-	char* getName();		// Returns name for debugging purposes
 	void DoWork();
 	int getPassengerCount(); // For manager to get passenger headcount
 	int getPassengerBaggageCount(int n); // For manager to get passenger bag count
@@ -120,9 +120,8 @@ class LiaisonOfficer {
 //----------------------------------------------------------------------
 class CheckInOfficer{
 	public:
-	  CheckInOfficer(char* deBugName, int i, int y);
+	  CheckInOfficer(int i);
 	  ~CheckInOfficer();
-	  char* getName();
 	  void setBreak();		// Go on Break
 	  bool getBreak();		// For managers to see who is on break
 	  void DoWork();
@@ -162,10 +161,9 @@ class CargoHandler{
 //----------------------------------------------------------------------
 class ScreeningOfficer{
 	public:
-		ScreeningOfficer(char* deBugName, int i);
+		ScreeningOfficer(int i);
 		~ScreeningOfficer();
 		void DoWork();
-		char* getName(){return name;}
 	
 	private:
 		char* name;
@@ -178,15 +176,16 @@ class ScreeningOfficer{
 //----------------------------------------------------------------------
 class SecurityOfficer{
 	public:
-		SecurityOfficer(char* deBugName, int i);
+		SecurityOfficer(int i);
 		~SecurityOfficer();
 		void DoWork();
-		char* getName() {return name;}
 		bool getAvail(){return available;}
 		
 	private:
 		bool available;
 		char* name;
-		bool pass;
+		bool pass_fail;
+		bool SecurityPass;
+		bool TotalPass;
 		int number;
 };
