@@ -23,8 +23,11 @@
 using namespace std;
 LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];		// Array of Liaison Officers
 CheckInOfficer *CheckIn[CHECKIN_COUNT*AIRLINE_COUNT];		// Array of CheckIn Officers
+SecurityOfficer *Security[SCREEN_COUNT];		// Array of Security Officers
 LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[LIAISONLINE_COUNT];		// Array of Structs that contain info from passenger to Liaison
 CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Array of Structs that contain info from pasenger to CheckIn
+ScreenPassengerInfo * SPInfo = new ScreenPassengerInfo[SCREEN_COUNT+1];
+SecurityScreenInfo * SSInfo = new SecurityScreenInfo[SCREEN_COUNT];
 
 deque<Baggage> conveyor;		// Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers
 int aircraftBaggageCount[AIRLINE_COUNT];		// Number of baggage on a single airline
@@ -106,6 +109,13 @@ ThreadTest()
 	}
 	*/
 	
+	//Set up security officers
+	for (int i = 0; i < SCREEN_COUNT; i++){
+		char* name = "Security Officer " + i;
+		SecurityOfficer *tempSecurity = new SecurityOfficer(name, i);
+		Security[i] = tempSecurity;
+	}
+	
 	//TODO: set up Cargo Handler
 	lockName = "Cargo Handler Lock";
 	CargoHandlerLock = new Lock(lockName);
@@ -168,21 +178,22 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
 
 	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());
-    ChooseCheckIn(); // Passenger is now going to airline check In
-}
+	
+// ----------------------------------------------------[ Going to CheckIn ]----------------------------------------
 
-void Passenger::ChooseCheckIn(){
 	CheckInLock->Acquire();		// Acquire lock to find shortest line
 	if(!this->getClass()){		// If executive class
 		myLine = CHECKIN_COUNT*AIRLINE_COUNT+airline-1; // Executive Line is 15 (Airline 1),16 (Airline 2),17 (Airline 3)
-	} else {
-		myLine = 0; // Economy lines are 0-14 (Airline 1 is 0-4, Airline 2 is 5-9, Airline 3 is 10-14
+	} else { 
+		myLine = (airline - 1)*5;		// Economy lines are 0-14 (Airline 1 is 0-4, Airline 2 is 5-9, Airline 3 is 10-14
 		for (int i = (airline - 1)*5; i < airline*5; i++){ // Find shortest line for my airline
 			if (CheckInLine[i] < CheckInLine[myLine]) myLine = i;	
 		}
 	}
 	CheckInLine[myLine] = CheckInLine[myLine] + 1;		// Increment line when I enter line
 	CheckInCV[myLine]->Wait(CheckInLock);		// Wait for CheckIn Officer to signal
+	int oldLine = myLine;		// Save old line to decrement it later when you leave
+	myLine = CPInfo[myLine].line;		// Sets its line to that of the Officer
 	CheckInLock->Release();
 	CheckInLocks[myLine]->Acquire();
 	CPInfo[myLine].baggageCount = baggageCount;		// Place baggage onto counter (into shared struct)
@@ -192,10 +203,29 @@ void Passenger::ChooseCheckIn(){
 	}
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]);		// Wake up CheckIn Officer 
 	CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
-	seat = CPInfo->seat;		// Get seat number from shared struct
+	seat = CPInfo[myLine].seat;		// Get seat number from shared struct
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]); // Wakes up CheckIn Officer to say I'm leaving
-	if (CheckInLine[myLine] > 0) CheckInLine[myLine] = CheckInLine[myLine] - 1; //Passenger left the line
-	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to security
+	if (CheckInLine[oldLine] > 0) CheckInLine[oldLine] = CheckInLine[oldLine] - 1; //Passenger left the line
+	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to screening
+
+// ----------------------------------------------------[ Going to Screening ]----------------------------------------
+
+	ScreenLines->Acquire();
+	ScreenLine[0] = ScreenLine[0] + 1;		// Increment length of Screening Line
+	ScreenLineCV[0]->Wait(ScreenLines);
+	myLine = SPInfo[SCREEN_COUNT+1].line;		// Receive line of which Screening Officer to see
+	ScreenLines->Release();
+	ScreenLocks[myLine]->Acquire();
+	ScreenOfficerCV[myLine]->Signal(ScreenLocks[myLine]);		// Tell Screening Officer that passenger is ready for scan
+	ScreenOfficerCV[myLine]->Wait(ScreenLocks[myLine]);
+	oldLine = myLine;		// Save old line to signal to Screening you are leaving
+	myLine = SPInfo[myLine].line;		// Receive line of which Security Officer to wait for
+	ScreenOfficerCV[oldLine]->Signal(ScreenLocks[myLine]);
+	if(ScreenLine[0] > 1) ScreenLine[0] = ScreenLine[0] - 1;
+	ScreenLocks[oldLine]->Release();
+	
+// ----------------------------------------------------[ Going to Security ]----------------------------------------
+
 }
 
 //----------------------------------------------------------------------
@@ -227,9 +257,9 @@ void LiaisonOfficer::DoWork(){
 		liaisonLineCV[info.number]->Wait(liaisonLineLocks[info.number]);		// Wait for passenger to give you baggage info
 		// Passenger has given bag Count info and woken up the Liaison Officer
 		info.passengerCount += 1;		// Increment internal passenger counter
-		info.baggageCount.at(info.passengerCount) = LPInfo->baggageCount;		// Track baggage count
+		info.baggageCount.push_back(LPInfo[info.number].baggageCount);		// Track baggage Count
 		info.airline = rand() % AIRLINE_COUNT;		// Generate airline for passenger
-		LPInfo->airline = info.airline;		// Put airline number in shared struct for passenger
+		LPInfo[info.number].airline = info.airline;		// Put airline number in shared struct for passenger
 		liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
 		liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Waits for Passenger to say they are leaving
 	}
@@ -263,6 +293,7 @@ void CheckInOfficer::DoWork(){
 		CheckInLock->Acquire();		// Acquire line lock to see if there are passengers in line
 		int x = AIRLINE_COUNT*CHECKIN_COUNT + info.airline - 1;		// Check Executive Line for your airline first
 		if(CheckInLine[x] > 0){
+			CPInfo[x].line = info.number;
 			CheckInCV[x]->Signal(CheckInLock);
 		}else if (CheckInLine[info.number] > 0){		// If no executive, then check your normal line
 			CheckInCV[info.number]->Signal(CheckInLock);
@@ -296,7 +327,7 @@ void CheckInOfficer::DoWork(){
 			return;
 		}
 		airlineSeatLock->Release();
-		CPInfo->seat = seat;		// Tell Passenger Seat number
+		CPInfo[info.number].seat = seat;		// Tell Passenger Seat number
 		CheckInOfficerCV[info.number]->Signal(CheckInLocks[info.number]);
 		CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);		// Passenger will wake up you when they leave, starting the loop over again
 	}
@@ -335,6 +366,60 @@ void CargoHandler::DoWork(){
 		//wait for the manager to ruin your fun
 		CargoHandlerCV->Wait(CargoHandlerLock);
 		CargoHandlerLock->Release();
+	}
+}
+
+//----------------------------------------------------------------------
+// Screening Officer
+//----------------------------------------------------------------------
+ScreeningOfficer::ScreeningOfficer(char* deBugName, int i){
+	name = deBugName;
+	number = i;
+}
+ScreeningOfficer::~ScreeningOfficer(){}
+
+void ScreeningOfficer::DoWork(){
+	while(true){
+		ScreenLines -> Acquire();
+		if (ScreenLine[0] > 0){
+			SPInfo[SCREEN_COUNT+1].line = number;
+			ScreenLineCV[0]->Signal(ScreenLines);
+		}
+		ScreenLocks[number]->Acquire();
+		ScreenLines->Release();
+		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);		// Wait for Passenger to start conversation
+		
+		int x = rand() % 5;		// Generate random value for pass/fail
+		bool pass_fail = true;		// Default is pass
+		if (x == 0) pass_fail = false;		// 20% of failure
+		
+		SecurityAvail->Acquire();
+		for (int i = 0; i < SCREEN_COUNT; i++){
+			bool y = Security[i]->getAvail();
+			if (y){
+				SSInfo[i].pass = pass_fail;
+				SPInfo[number].line = i;
+			}
+		}
+		SecurityAvail->Release();
+		ScreenOfficerCV[number]->Signal(ScreenLocks[number]);
+		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);
+	}
+}
+
+//----------------------------------------------------------------------
+// Security Officer
+//----------------------------------------------------------------------
+SecurityOfficer::SecurityOfficer(char* deBugName, int i){
+	name = deBugName;
+	number = i;
+}
+SecurityOfficer::~SecurityOfficer(){}
+
+void SecurityOfficer::DoWork(){
+	while(true){
+		
+		
 	}
 }
 

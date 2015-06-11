@@ -9,6 +9,7 @@
 #define LIAISONLINE_COUNT 5 // Number of Liaison Officers
 #define CHECKIN_COUNT 5  // Number of CheckIn Officers
 #define AIRLINE_COUNT 3  // Number of Airlines
+#define SCREEN_COUNT 4		// Number of Screening and Security Officers
 
 void SimpleThread(int which);
 void ThreadTest();
@@ -18,6 +19,10 @@ void ThreadTest();
 //----------------------------------------------------------------------
 int liaisonLine[LIAISONLINE_COUNT];		// Array of line sizes for each Liaison Officer
 int CheckInLine[CHECKIN_COUNT * AIRLINE_COUNT];		// Array of line sizes for each CheckIn Officer
+int ScreenLine[1];		// Array of line sizes for each Screening Officer
+Condition *ScreenLineCV[1];			// Condition Variables for the Screening Line
+Condition *ScreenOfficerCV[SCREEN_COUNT];		// Condition Variables for each Screening Officer
+Condition *SecurityOfficerCV[SCREEN_COUNT];		// Condition Variables for each Security Officer
 Condition *liaisonLineCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Line
 Condition *liaisonOfficerCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Officer
 Condition *CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Condition Variables for each CheckIn Line
@@ -26,12 +31,16 @@ Condition *CheckInBreakCV[CHECKIN_COUNT*AIRLINE_COUNT];		// Condition Variables 
 Lock *liaisonLineLock;		// Lock to get into a liaison Line
 Lock *liaisonLineLocks[LIAISONLINE_COUNT];		// Array of Locks for Liaison Officers
 Lock *CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT];		//Array of Locks for CheckIn Officers
+Lock *ScreenLocks[SCREEN_COUNT];		// Array of Locks for Screening Officers
+Lock *SecurityLocks[SCREEN_COUNT];		// Array of Locks for Security Officers
 Lock *CheckInLock;		// Lock to get into CheckIn Line
+Lock *ScreenLines;		// Lock to get into Screening Line
 Lock *CargoHandlerLock;		// Lock for Cargo Handlers for placing baggage onto the airline
 Condition *CargoHandlerCV;		// Condition Variable for Cargo Handlers
 bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
 Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
+Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
 
 //----------------------------------------------------------------------
 // Structs
@@ -49,7 +58,16 @@ struct LiaisonPassengerInfo{		// Information passed between Liaison Officer and 
 struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and Passenger
 	int baggageCount;
 	int seat;
+	int line;
 	std::vector<Baggage> bag;		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
+};
+
+struct ScreenPassengerInfo{
+	int line;
+};
+
+struct SecurityScreenInfo{
+	bool pass;
 };
 
 //----------------------------------------------------------------------
@@ -64,7 +82,6 @@ class Passenger {
 		bool getClass() {return economy;}		// Gets Economy or Executive Class
 		void ChooseLiaisonLine();
 		int getBaggageCount() {return baggageCount;}		// Returns number of baggage
-		void ChooseCheckIn();
 	  
   private:
 	  int name;        // useful for debugging
@@ -139,3 +156,37 @@ class CargoHandler{
 		int name;
 		bool onBreak;
 };
+
+//----------------------------------------------------------------------
+// Screening Officer
+//----------------------------------------------------------------------
+class ScreeningOfficer{
+	public:
+		ScreeningOfficer(char* deBugName, int i);
+		~ScreeningOfficer();
+		void DoWork();
+		char* getName(){return name;}
+	
+	private:
+		char* name;
+		bool pass;
+		int number;
+}
+
+//----------------------------------------------------------------------
+// Security Officer
+//----------------------------------------------------------------------
+class SecurityOfficer{
+	public:
+		SecurityOfficer(char* deBugName, int i);
+		~SecurityOfficer();
+		void DoWork();
+		char* getName() {return name;}
+		bool getAvail(){return available;}
+		
+	private:
+		bool available;
+		char* name;
+		bool pass;
+		int number;
+}
