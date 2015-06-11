@@ -58,6 +58,7 @@ SimpleThread(int which)
 void
 ThreadTest()
 {
+	printf("Setting up stuff!\n");
 	srand (time(NULL));
 	//TODO: set up Passenger here
 
@@ -83,6 +84,7 @@ ThreadTest()
 		}
 	}
 	
+	/*
 	//set up Liaison
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
 		liaisonLine[i] = 0;
@@ -99,6 +101,7 @@ ThreadTest()
 		LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3, i);
 		liaisonOfficers[i] = tempLiaison;
 	}
+	*/
 	
 	//TODO: set up Cargo Handler
 	lockName = "Cargo Handler Lock";
@@ -150,11 +153,17 @@ void Passenger::ChooseLiaisonLine(){
 			myLine = i;
 		}
 	}
+	
+	//
+	printf("Passenger %d chose Liaison %d with a line of length %d\n", name, myLine, liaisonLine[myLine]);
+	//
+	
 	liaisonLine[myLine] = liaisonLine[myLine] + 1;
 	if(liaisonLine[myLine] > 0){
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
 	}
 	liaisonLineLock->Release();
+	printf("about to do liaison stuff\n");
 	liaisonLineLocks[myLine]->Acquire(); // New lock needed for liaison interaction
 	liaisonOfficers[myLine]->setPassengerBaggageCount(this->getBaggageCount(), this); // Informs Liaison of baggage count and which passenger
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
@@ -163,6 +172,11 @@ void Passenger::ChooseLiaisonLine(){
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking
 	
 	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
+	
+	//
+	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());
+	//
+	
     ChooseCheckIn(); // Passenger is now going to airline check In
 }
 
@@ -238,6 +252,7 @@ int LiaisonOfficer::getPassengerCount() {return info.passengerCount;} // For man
 int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at(n);} // For manager to get passenger bag count
 
 void LiaisonOfficer::setPassengerBaggageCount(int n, Passenger* x) { // Passenger Liaison Interaction
+	printf("Entering setPassengerBaggageCount() for Passenger %c\n", x->getName());
 	info.airline = rand() % AIRLINE_COUNT; // Randomly generate airline for passenger
 	info.passengerCount += 1;
 	info.baggageCount.at(info.passengerCount) = n; // Appends Passenger Bag info to Baggage Count Vector
@@ -657,9 +672,27 @@ void TestSuite() {
 
 // Test A1
 // Passenger & Airport Liaison Interaction
-void testPL(int passengerIndex) {
+void testPassenger(int passengerIndex) {
 	Passenger *p = new Passenger(passengerIndex);
 	p->ChooseLiaisonLine();
+}
+
+void testLiaison(int liaisonIndex) {
+	printf("Creating Liaison Officer %d\n", liaisonIndex);
+	liaisonLine[liaisonIndex] = 0;
+	char* name = "Liaison Line CV " + liaisonIndex;
+	Condition *tempCondition = new Condition(name);
+	liaisonLineCV[liaisonIndex] = tempCondition;
+	char* name4 = "Liaison Officer CV " + liaisonIndex;
+	tempCondition = new Condition(name4);
+	liaisonOfficerCV[liaisonIndex] = tempCondition;
+	char* name2 = "Liaison Line Lock " + liaisonIndex;
+	Lock *tempLock = new Lock(name2);
+	liaisonLineLocks[liaisonIndex] = tempLock;
+	char* name3 = "Liaison Officer " + liaisonIndex;
+	LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3, liaisonIndex);
+	liaisonOfficers[liaisonIndex] = tempLiaison;
+	
 }
 
 void AirportTests() {
@@ -667,11 +700,14 @@ void AirportTests() {
 	printf("TESTING PART 2\n");
 	printf("================\n");
 	
-	// Test AI
 	Thread *t;
 	
 	for(int i = 0; i < 5; i++) {
 		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testPL,i);
+		t->Fork((VoidFunctionPtr)testLiaison,i);
+	}
+	for(int i = 0; i < 5; i++) {
+		t = new Thread("");
+		t->Fork((VoidFunctionPtr)testPassenger,i);
 	}
 }
