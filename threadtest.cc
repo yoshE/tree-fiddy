@@ -90,7 +90,17 @@ ThreadTest()
 			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 			CheckIn[(y+i)+AIRLINE_COUNT*i] = tempCheckIn;
 			lockName = "CheckIn Officer Lock";
-			CheckInLocks[(y+i)+AIRLINE_COUNT*i] = new Lock(lockName);
+			Lock *tempLock = new Lock(lockName);
+			CheckInLocks[(y+i)+AIRLINE_COUNT*i] = tempLock;
+			name = "CheckIn Break Time CV";
+			Condition *tempCondition = new Condition(name);
+			CheckInBreakCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
+			name = "CheckIn Line CV";
+			Condition *tempCondition = new Condition(name);
+			CheckInCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
+			name = "CheckIn Officer CV";
+			Condition *tempCondition = new COndition(name);
+			CheckInOfficerCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
 		}
 	}
 	//For Exec Line
@@ -101,7 +111,11 @@ ThreadTest()
 		CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 		CheckIn[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCheckIn;
 		lockName = "CheckIn Officer Lock";
-		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = new Lock(lockName);
+		Lock *tempLock = new Lock(lockName);
+		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempLock;
+		name = "CheckIn Line CV";
+		Condition *tempCondition = new Condition(name);
+		CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCondition;
 	}
 	
 	
