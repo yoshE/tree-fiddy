@@ -86,6 +86,8 @@ ThreadTest()
 	lockName = "Security Availability lock";
 	SecurityAvail = new Lock(lockName);
 	
+	char *name = "Test";
+	
 	//For Economy Class
 	//set up CIS
 	for (int i = 0; i < AIRLINE_COUNT; i++){
@@ -97,9 +99,7 @@ ThreadTest()
 			lockName = "CheckIn Officer Lock";
 			Lock *tempLock = new Lock(lockName);
 			CheckInLocks[(y+i)+(AIRLINE_COUNT+1)*i] = tempLock;
-			char *name = "CheckIn Break Time CV";
-			Condition *tempCondition = new Condition(name);
-			CheckInBreakCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition;
+			CheckInBreakCV[(y+i)+(AIRLINE_COUNT+1)*i] = new Condition("CheckIn Break Time CV");
 			name = "CheckIn Line CV";
 			Condition *tempCondition2 = new Condition(name);
 			CheckInCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition2;
@@ -117,7 +117,7 @@ ThreadTest()
 		lockName = "CheckIn Officer Lock";
 		Lock *tempLock2 = new Lock(lockName);
 		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempLock2;
-		char *name = "CheckIn Line CV";
+		name = "CheckIn Line CV";
 		Condition *tempCondition4 = new Condition(name);
 		CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCondition4;
 	}
@@ -144,7 +144,7 @@ ThreadTest()
 	
 	//Set up security officers and Screening Officers
 	for (int i = 0; i < SCREEN_COUNT; i++){
-		char* name = "Security Officer " + i;
+		name = "Security Officer " + i;
 		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
 		Security[i] = tempSecurity;
 		name = "Screen Officer CV";
@@ -162,7 +162,7 @@ ThreadTest()
 	
 	}
 	
-	char *name = "Screen Line CV";
+	name = "Screen Line CV";
 	Condition *tempCondition7 = new Condition(name);
 	ScreenLineCV[0] = tempCondition7;			// Condition Variables for the Screening Line
 	
@@ -360,6 +360,9 @@ void CheckInOfficer::DoWork(){
 		}else {		// Else, there are no passengers waiting and you can go on break
 			setBreak();
 			printf("Code Line 355\n");
+			/*for (int i = 0; i< 15; i++){
+				printf("Index %d name is %s", i, CheckInBreakCV[i]->getName());
+			}*/
 			CheckInBreakCV[info.number]->Wait(CheckInLock);		// Go to sleep until manager wakes you up
 			printf("Code Line 357\n");
 			continue;		// When woken up, restart from top of while loop
@@ -951,8 +954,7 @@ void testCIO(int x) {
 	CheckIn[x] = tempCheckIn;
 	Lock *tempLock = new Lock("CheckIn Officer Lock");
 	CheckInLocks[x] = tempLock;
-	Condition *tempCondition = new Condition("CheckIn Break Time CV");
-	CheckInBreakCV[x] = tempCondition;
+	CheckInBreakCV[x] = new Condition("CheckIn Break Time CV");
 	Condition *tempCondition2 = new Condition("CheckIn Line CV");
 	CheckInCV[x] = tempCondition2;
 	Condition *tempCondition3 = new Condition("CheckIn Officer CV");
