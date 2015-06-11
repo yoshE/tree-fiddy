@@ -104,7 +104,7 @@ ThreadTest()
 	lockName = "Cargo Handler Lock";
 	CargoHandlerLock = new Lock(lockName);
 	char* cvName = "Cargo Handler CV ";
-	Condition *tempCondition = new Condition(cvName);
+	CargoHandlerCV = new Condition(cvName);
 		
 	//end set up
 
@@ -269,7 +269,9 @@ char* CheckInOfficer::getName(){
 bool CheckInOfficer::getBreak(){ // For managers to see who is on break
 		return info.OnBreak;
 }
-
+//----------------------------------------------------------------------
+// Cargo Handler
+//----------------------------------------------------------------------
 CargoHandler::CargoHandler(int n){
 	name = n;
 }
@@ -277,26 +279,25 @@ CargoHandler::CargoHandler(int n){
 CargoHandler::~CargoHandler(){}
 
 void CargoHandler::DoWork(){
+	cout << "Cargo Handler " << name << " returned from break" << endl;
 	onBreak = false;
 	while(!conveyor.empty()){
-		//grab the first bag on the conveyor belt and move it to the plane
+		// grab the first bag on the conveyor belt and move it to the plane
 		CargoHandlerLock->Acquire();
-		if(conveyor.empty()){
-			CargoHandlerLock->Release();
-			onBreak = true;
-		} else {
-			aircraftBaggageCount[conveyor[0].airlineCode]++;
-			aircraftBaggageWeight[conveyor[0].airlineCode] += conveyor[0].weight;
-			//Cargo Handler [identifier] picked bag of airline [code] with weighing [weight] lbs
-			
-			conveyor.pop_front();
-			CargoHandlerLock->Release();
-		}
+		//cout << conveyor.size() << endl;
+		Baggage temp = conveyor[0];
+		conveyor.pop_front();
+		CargoHandlerLock->Release();
+		aircraftBaggageCount[temp.airlineCode]++;
+		aircraftBaggageWeight[temp.airlineCode] += temp.weight;
+		cout << "Cargo Handler " << name << " picked bag of airline " << temp.airlineCode << " with weighing " << temp.weight << " lbs" << endl;
 	}
+	
 	if(conveyor.empty()){
 		onBreak = true;
 		//if DoWork is called and the conveyor is empty, nap time
 		CargoHandlerLock->Acquire();
+		cout << "Cargo Handler " << name << " is going for a break" << endl;
 		//wait for the manager to ruin your fun
 		CargoHandlerCV->Wait(CargoHandlerLock);
 		CargoHandlerLock->Release();
@@ -662,6 +663,12 @@ void testPL(int passengerIndex) {
 	p->ChooseLiaisonLine();
 }
 
+void testCH(int CHIndex){
+	CargoHandler *c = new CargoHandler(CHIndex);
+	c->DoWork();
+	cout << "Did work " << CHIndex << endl;
+}
+
 void AirportTests() {
 	printf("================\n");
 	printf("TESTING PART 2\n");
@@ -674,4 +681,18 @@ void AirportTests() {
 		t = new Thread("");
 		t->Fork((VoidFunctionPtr)testPL,i);
 	}
+	
+	for(int i = 0; i < 23; i++){
+		conveyor.push_back(Baggage());
+		conveyor[i].airlineCode = i % 3;
+		conveyor[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
+		//cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
+	}
+	
+	for(int i = 0; i < 5; i++) {
+		t = new Thread("");
+		cout << "testCH " << i << endl;
+		t->Fork((VoidFunctionPtr)testCH,i);
+	}
+	cout << "exited for loops" << endl;
 }
