@@ -90,7 +90,7 @@ ThreadTest()
 	//set up CIS
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		for (int y = 0; y < CHECKIN_COUNT; y++){
-			int x = (y+i)+AIRLINE_COUNT*i;
+			int x = (y+i)+(AIRLINE_COUNT+1)*i;
 			CheckInLine[x] = 0;
 			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 			CheckIn[(y+i)+(AIRLINE_COUNT+1)*i] = tempCheckIn;
