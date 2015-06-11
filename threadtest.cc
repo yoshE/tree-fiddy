@@ -21,14 +21,15 @@
 #define CHECKIN_COUNT 5		// Number of CheckIn Officers
 
 using namespace std;
+int gates[AIRLINE_COUNT];		// Tracks gate numbers for each airline
 LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];		// Array of Liaison Officers
 CheckInOfficer *CheckIn[CHECKIN_COUNT*AIRLINE_COUNT];		// Array of CheckIn Officers
 SecurityOfficer *Security[SCREEN_COUNT];		// Array of Security Officers
 LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[LIAISONLINE_COUNT];		// Array of Structs that contain info from passenger to Liaison
 CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Array of Structs that contain info from pasenger to CheckIn
-ScreenPassengerInfo * SPInfo = new ScreenPassengerInfo[SCREEN_COUNT+1];
-SecurityScreenInfo * SSInfo = new SecurityScreenInfo[SCREEN_COUNT];
-SecurityPassengerInfo * SecPInfo = new SecurityPassengerInfo[SCREEN_COUNT];
+ScreenPassengerInfo * SPInfo = new ScreenPassengerInfo[SCREEN_COUNT+1];		// Array of Structs that contain info from screening to passenger
+SecurityScreenInfo * SSInfo = new SecurityScreenInfo[SCREEN_COUNT];		// Array of structs that contains info from security to screener
+SecurityPassengerInfo * SecPInfo = new SecurityPassengerInfo[SCREEN_COUNT];		// Array of structs that contains info from security to passenger
 
 deque<Baggage> conveyor;		// Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers
 int aircraftBaggageCount[AIRLINE_COUNT];		// Number of baggage on a single airline
@@ -67,6 +68,7 @@ ThreadTest()
 	srand (time(NULL));
 	//TODO: set up Passenger here
 
+	// Sets up various Locks used
 	char* lockName = "Liaison Line Lock";
 	liaisonLineLock = new Lock(lockName);
 	lockName = "CheckIn Line Lock";
@@ -87,19 +89,19 @@ ThreadTest()
 			int x = (y+i)+AIRLINE_COUNT*i;
 			CheckInLine[x] = 0;
 			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
-			CheckIn[(y+i)+AIRLINE_COUNT*i] = tempCheckIn;
+			CheckIn[(y+i)+(AIRLINE_COUNT+1)*i] = tempCheckIn;
 			lockName = "CheckIn Officer Lock";
 			Lock *tempLock = new Lock(lockName);
-			CheckInLocks[(y+i)+AIRLINE_COUNT*i] = tempLock;
+			CheckInLocks[(y+i)+(AIRLINE_COUNT+1)*i] = tempLock;
 			char *name = "CheckIn Break Time CV";
 			Condition *tempCondition = new Condition(name);
-			CheckInBreakCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
+			CheckInBreakCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition;
 			name = "CheckIn Line CV";
 			Condition *tempCondition2 = new Condition(name);
-			CheckInCV[(y+i)+AIRLINE_COUNT*i] = tempCondition2;
+			CheckInCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition2;
 			name = "CheckIn Officer CV";
 			Condition *tempCondition3 = new Condition(name);
-			CheckInOfficerCV[(y+i)+AIRLINE_COUNT*i] = tempCondition3;
+			CheckInOfficerCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition3;
 		}
 	}
 	//For Exec Line
@@ -136,7 +138,7 @@ ThreadTest()
 	}
 	*/
 	
-	//Set up security officers
+	//Set up security officers and Screening Officers
 	for (int i = 0; i < SCREEN_COUNT; i++){
 		char* name = "Security Officer " + i;
 		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
@@ -205,13 +207,12 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 		}
 	}
 	
-	printf("Passenger %d chose Liaison %d with a line of length %d\n", name, myLine, liaisonLine[myLine]);
+	printf("Passenger %d chose Liaison %d with a line of length %d\n", name, myLine, liaisonLine[myLine]);		// OFFICIAL OUTPUT STATEMENT
 	liaisonLine[myLine] = liaisonLine[myLine] + 1;		// Increment size of line you join
 	if(liaisonLine[myLine] > 1){		// If you are waiting, go to sleep until signalled by Liaison Officer
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
 	}
 	liaisonLineLock->Release();		// Release the lock you acquired from waking up
-	std::cout << "About to start convo with Liaison Officer!\n";	// Debugging purposes
 	liaisonLineLocks[myLine]->Acquire(); // New lock needed for liaison interaction
 	LPInfo->baggageCount = baggageCount; // Adds baggage Count to shared struct array
 	printf("Signalling liasonLineLock #%d\n", myLine);
@@ -223,18 +224,20 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	if (liaisonLine[myLine] > 1) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
 
-	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());
+	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());		// OFFICIAL OUTPUT STATEMENT
 	
 // ----------------------------------------------------[ Going to CheckIn ]----------------------------------------
 
 	CheckInLock->Acquire();		// Acquire lock to find shortest line
 	if(!this->getClass()){		// If executive class
 		myLine = CHECKIN_COUNT*AIRLINE_COUNT+airline-1; // Executive Line is 15 (Airline 1),16 (Airline 2),17 (Airline 3)
+		printf("Passenger %d of Airline %d is waiting in the executive class line", name, this->getAirline());		// OFFICIAL OUTPUT STATEMENT
 	} else { 
 		myLine = (airline - 1)*5;		// Economy lines are 0-14 (Airline 1 is 0-4, Airline 2 is 5-9, Airline 3 is 10-14
 		for (int i = (airline - 1)*5; i < airline*5; i++){ // Find shortest line for my airline
 			if (CheckInLine[i] < CheckInLine[myLine]) myLine = i;	
 		}
+		printf("Passenger %d of Airline %d chose Airline Check-In staff %d with a line length %d", name, this->getAirline(), CheckIn[myLine], CheckInLine[myLine]);		// OFFICIAL OUTPUT STATEMENT
 	}
 	CheckInLine[myLine] = CheckInLine[myLine] + 1;		// Increment line when I enter line
 	CheckInCV[myLine]->Wait(CheckInLock);		// Wait for CheckIn Officer to signal
@@ -253,6 +256,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]); // Wakes up CheckIn Officer to say I'm leaving
 	if (CheckInLine[oldLine] > 1) CheckInLine[oldLine] = CheckInLine[oldLine] - 1; //Passenger left the line
 	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to screening
+	printf("Passenger [identifier] of Airline [Code] was informed to board at gate [identifier]");		//OFFICIAL OUTPUT STATEMENT
 
 // ----------------------------------------------------[ Going to Screening ]----------------------------------------
 
@@ -266,21 +270,21 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	ScreenOfficerCV[myLine]->Wait(ScreenLocks[myLine]);
 	oldLine = myLine;		// Save old line to signal to Screening you are leaving
 	myLine = SPInfo[myLine].line;		// Receive line of which Security Officer to wait for
-	ScreenOfficerCV[oldLine]->Signal(ScreenLocks[myLine]);
+	ScreenOfficerCV[oldLine]->Signal(ScreenLocks[myLine]);		// Tells Screening Officer Passenger is leaving
 	if(ScreenLine[0] > 1) ScreenLine[0] = ScreenLine[0] - 1;
 	ScreenLocks[oldLine]->Release();
 	
 // ----------------------------------------------------[ Going to Security ]----------------------------------------
 
 	SecurityLocks[myLine]->Acquire();
-	SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);
+	SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);		// Tell Security that you have arrived
 	SecurityOfficerCV[myLine]->Wait(SecurityLocks[myLine]);
 
-	NotTerrorist = SecPInfo[myLine].PassedSecurity;
-	if (NotTerrorist){
+	NotTerrorist = SecPInfo[myLine].PassedSecurity;		// Bool of whether the passenger has passed all security
+	if (NotTerrorist){		// If they did pass, then go to boarding area
 		SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);
 		// GO TO BOARDING AREA
-	} else {
+	} else {		// If they failed, then go to questioning
 		// GO TO QUESTIONING
 	}
 }
@@ -466,8 +470,8 @@ ScreeningOfficer::~ScreeningOfficer(){}
 void ScreeningOfficer::DoWork(){
 	while(true){
 		ScreenLines -> Acquire();
-		if (ScreenLine[0] > 0){
-			SPInfo[SCREEN_COUNT+1].line = number;
+		if (ScreenLine[0] > 0){		// Checks if the screening line has passengers
+			SPInfo[SCREEN_COUNT+1].line = number;		// Tell first passenger in line to come to which officer
 			ScreenLineCV[0]->Signal(ScreenLines);
 		}
 		ScreenLocks[number]->Acquire();
@@ -479,23 +483,23 @@ void ScreeningOfficer::DoWork(){
 		if (x == 0) ScreenPass = false;		// 20% of failure
 		
 		SecurityAvail->Acquire();
-		while(true){
-			for (int i = 0; i < SCREEN_COUNT; i++){
-				bool y = Security[i]->getAvail();
-				if (y){
-					SSInfo[i].PassedScreening = ScreenPass;
+		while(true){		// Wait for Security Officer to become available
+			for (int i = 0; i < SCREEN_COUNT; i++){		// Iterate through all security officers
+				bool y = Security[i]->getAvail();		// See if they are busy
+				if (y){			// If a security officer is not busy, obtain his number and inform passenger
+					SSInfo[i].PassedScreening = ScreenPass;		// Inform Security whether passenger passed screening
 					SSInfo[i].ScreenLine = number;
 					SPInfo[number].line = i;
-					break;
+					break;		// End the while loop
 				}
 			}
 		}
-		x = SPInfo[number].line;
+		x = SPInfo[number].line;		
 		SecurityLocks[x]->Acquire();
 		SecurityAvail->Release();
-		SecurityOfficerCV[x]->Signal(SecurityLocks[x]);
+		SecurityOfficerCV[x]->Signal(SecurityLocks[x]);		// Signal Security Officer that passenger is on route
 		SecurityOfficerCV[x]->Wait(SecurityLocks[x]);
-		ScreenOfficerCV[number]->Signal(ScreenLocks[number]);
+		ScreenOfficerCV[number]->Signal(ScreenLocks[number]);		// Signal Passenger that they should move on
 		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);
 	}
 }
@@ -511,37 +515,37 @@ SecurityOfficer::~SecurityOfficer(){}
 void SecurityOfficer::DoWork(){
 	while(true){
 		SecurityAvail->Acquire();
-		if (!available){
+		if (!available){		// Always see if Officer is busy or not
 			available = true;
 		}
 		SecurityLocks[number]->Acquire();
 		SecurityAvail->Release();
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
 		
-		didPassScreening = SSInfo[number].PassedScreening;
+		didPassScreening = SSInfo[number].PassedScreening;		// After being woken by Screening Officer, get screening report on incoming passenger
 		SecurityAvail->Acquire();
-		available = false;
+		available = false;		// Set to busy since passenger is coming
 		SecurityAvail->Release();
-		SecurityOfficerCV[number]->Signal(SecurityLocks[number]);
+		SecurityOfficerCV[number]->Signal(SecurityLocks[number]);		// Tell Screening Officer you got the message
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
-		
+		// Passenger will wake up Security Officer
 		int x = rand() % 5;		// Generate random value for pass/fail
 		SecurityPass = true;		// Default is pass
 		if (x == 0) SecurityPass = false;		// 20% of failure
 		
 		TotalPass = true;
-		if (!didPassScreening || !SecurityPass) TotalPass = false;
+		if (!didPassScreening || !SecurityPass) TotalPass = false;		// Passenger only passes if they pass both tests
 		SecPInfo[number].PassedSecurity = TotalPass;
 		
-		if(!TotalPass){
+		if(!TotalPass){		// If they don't pass, passenger will go for questioning and the Officer is free again
 			SecurityAvail->Acquire();
 			available = true;
 			SecurityAvail->Release();
 			// Tell Person to undergo questioning
-		}else{
+		}else{		// If they pass, tell passenger to go to boarding area and increment passed passenger count
 			PassedPassengers += 1;
 			std::cout<<"Passenger is cleared and should head to Boarding Area!\n";
-			SecurityOfficerCV[number]->Signal(SecurityLocks[number]);
+			SecurityOfficerCV[number]->Signal(SecurityLocks[number]);		// Signal passenger to move onwards
 			SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
 		}
 	}

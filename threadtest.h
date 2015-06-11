@@ -62,16 +62,16 @@ struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and 
 	std::vector<Baggage> bag;		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
 };
 
-struct ScreenPassengerInfo{
+struct ScreenPassengerInfo{		// Information passed between Screening Officer and Passenger
 	int line;
 };
 
-struct SecurityScreenInfo{
+struct SecurityScreenInfo{		// Information passed between Security Officer and Screening Officer
 	bool PassedScreening;
 	int ScreenLine;
 };
 
-struct SecurityPassengerInfo{
+struct SecurityPassengerInfo{		// Information passed between Security and Passenger
 	bool PassedSecurity;
 };
 
@@ -193,7 +193,7 @@ class ScreeningOfficer{
 	
 	private:
 		char* name;
-		bool ScreenPass;
+		bool ScreenPass;		// If the current Passenger Passed Screening, Given to Security Officer
 		int number;
 };
 
@@ -209,11 +209,10 @@ class SecurityOfficer{
 		
 	private:
 		bool available;
-		char* name;
-		int PassedPassengers;
-		bool didPassScreening;
-		bool SecurityPass;
-		bool TotalPass;
+		int PassedPassengers;		// Number of passengers that passed security
+		bool didPassScreening;		// If the current passenger passed screening
+		bool SecurityPass;			// If the current passenger passed security
+		bool TotalPass;				// If the current passenger passed both screening and security
 		int number;
 };
 
