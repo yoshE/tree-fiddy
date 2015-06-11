@@ -307,6 +307,10 @@ void CheckInOfficer::DoWork(){
 //----------------------------------------------------------------------
 CargoHandler::CargoHandler(int n){
 	name = n;
+	//assuming there is no baggage on the conveyor to start with
+	CargoHandlerLock->Acquire();
+	CargoHandlerCV->Wait(CargoHandlerLock);
+	CargoHandlerLock->Release();
 }
 
 CargoHandler::~CargoHandler(){}
@@ -337,6 +341,29 @@ void CargoHandler::DoWork(){
 	}
 }
 
+AirportManager::AirportManager(){}
+
+AirportManager::~AirportManager(){}
+
+void AirportManager::WakeUpLazyCargoPeople(){
+	
+}
+
+void AirportManager::DoWork(){
+	while(true){
+		if(!conveyor.empty() && cargoHandlers[0]->getBreak()){
+			CargoHandlerLock->Acquire();
+			//cout << "Cargo Handler " << name << " is going for a break" << endl;
+			//wake up cargo handlers
+			CargoHandlerCV->Broadcast(CargoHandlerLock);
+			CargoHandlerLock->Release();
+		}
+	}
+}
+
+void AirportManager::AddCargoHandler(CargoHandler *ch){
+	
+}
 // --------------------------------------------------
 // Test Suite
 // --------------------------------------------------
@@ -738,10 +765,10 @@ void AirportTests() {
 		t->Fork((VoidFunctionPtr)testPassenger,i);
 	}
 	
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testLiaison,i);
-	}
+	// for(int i = 0; i < 5; i++) {
+		// t = new Thread("");
+		// t->Fork((VoidFunctionPtr)testLiaison,i);
+	// }
 	
 	for(int i = 0; i < 5; i++) {
 		t = new Thread("");

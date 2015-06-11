@@ -139,3 +139,15 @@ class CargoHandler{
 		int name;
 		bool onBreak;
 };
+
+class AirportManager{
+	public:
+		AirportManager();
+		~AirportManager();
+		void WakeUpLazyCargoPeople();
+		void DoWork();
+		void AddCargoHandler(CargoHandler *ch);
+		
+	private:
+		std::vector<CargoHandler*> cargoHandlers;
+};
