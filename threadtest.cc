@@ -359,12 +359,7 @@ void CheckInOfficer::DoWork(){
 			CheckInCV[info.number]->Signal(CheckInLock);
 		}else {		// Else, there are no passengers waiting and you can go on break
 			setBreak();
-			printf("Code Line 355\n");
-			/*for (int i = 0; i< 15; i++){
-				printf("Index %d name is %s", i, CheckInBreakCV[i]->getName());
-			}*/
 			CheckInBreakCV[info.number]->Wait(CheckInLock);		// Go to sleep until manager wakes you up
-			printf("Code Line 357\n");
 			continue;		// When woken up, restart from top of while loop
 		}
 		CheckInLocks[info.number]->Acquire();
