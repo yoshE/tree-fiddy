@@ -735,13 +735,18 @@ void AirportTests() {
 	
 	for(int i = 0; i < 5; i++) {
 		t = new Thread("");
+		t->Fork((VoidFunctionPtr)testPassenger,i);
+	}
+	
+	for(int i = 0; i < 5; i++) {
+		t = new Thread("");
+		t->Fork((VoidFunctionPtr)testLiaison,i);
+	}
+	
+	for(int i = 0; i < 5; i++) {
+		t = new Thread("");
 		cout << "testCH " << i << endl;
 		t->Fork((VoidFunctionPtr)testCH,i);
 	}
 	cout << "exited for loops" << endl;
-
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testPassenger,i);
-	}
 }
