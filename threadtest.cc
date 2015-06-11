@@ -359,9 +359,9 @@ void CheckInOfficer::DoWork(){
 			CheckInCV[info.number]->Signal(CheckInLock);
 		}else {		// Else, there are no passengers waiting and you can go on break
 			setBreak();
-			printf("Code Line 355\n");
+			printf("BeforeSeg\n");
 			CheckInBreakCV[info.number]->Wait(CheckInLock);		// Go to sleep until manager wakes you up
-			printf("Code Line 357\n");
+			printf("AfterSeg\n");
 			continue;		// When woken up, restart from top of while loop
 		}
 		CheckInLocks[info.number]->Acquire();
@@ -945,7 +945,7 @@ void testLiaison(int liaisonIndex) {
 	liaisonOfficers[liaisonIndex]->DoWork();
 }
 
-void testCIO(int x) {
+void testCIOEconomy(int x) {
 	CheckInLine[x] = 0;
 	CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 	CheckIn[x] = tempCheckIn;
@@ -957,6 +957,18 @@ void testCIO(int x) {
 	CheckInCV[x] = tempCondition2;
 	Condition *tempCondition3 = new Condition("CheckIn Officer CV");
 	CheckInOfficerCV[x] = tempCondition3;
+	
+	CheckIn[x]->DoWork();
+}
+
+void testCIOExecutive(int x) {
+	CheckInLine[x] = 0;
+	CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
+	CheckIn[x] = tempCheckIn;
+	Lock *tempLock = new Lock("CheckIn Officer Lock");
+	CheckInLocks[x] = tempLock;
+	Condition *tempCondition = new Condition("CheckIn Line CV");
+	CheckInCV[x] = tempCondition;
 	
 	CheckIn[x]->DoWork();
 }
@@ -991,13 +1003,13 @@ void AirportTests() {
 	for(int i = 0; i < AIRLINE_COUNT; i++) {
 		for(int j = 0; j < CHECKIN_COUNT; j++) {
 			t = new Thread("");
-			t->Fork((VoidFunctionPtr)testCIO, j + i + (AIRLINE_COUNT+1)*i);
+			t->Fork((VoidFunctionPtr)testCIOEconomy, j + i + (AIRLINE_COUNT+1)*i);
 		}
 	}
 	
 	for(int i = 0; i < AIRLINE_COUNT; i++) {
 		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testCIO, AIRLINE_COUNT * CHECKIN_COUNT + i);
+		t->Fork((VoidFunctionPtr)testCIOExecutive, AIRLINE_COUNT * CHECKIN_COUNT + i);
 	}
 	
 	for(int i = 0; i < 5; i++) {
