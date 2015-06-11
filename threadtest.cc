@@ -408,6 +408,8 @@ void CargoHandler::DoWork(){
 		aircraftBaggageCount[temp.airlineCode]++;
 		aircraftBaggageWeight[temp.airlineCode] += temp.weight;
 		cout << "Cargo Handler " << name << " picked bag of airline " << temp.airlineCode << " with weighing " << temp.weight << " lbs" << endl;
+		weight += temp.weight;
+		count++;
 	}
 	
 	if(conveyor.empty()){
@@ -421,28 +423,36 @@ void CargoHandler::DoWork(){
 	}
 }
 
+//----------------------------------------------------------------------
+// Airport Manager
+//----------------------------------------------------------------------
+
 AirportManager::AirportManager(){}
 
 AirportManager::~AirportManager(){}
 
-void AirportManager::WakeUpLazyCargoPeople(){
-	
-}
-
 void AirportManager::DoWork(){
 	while(true){
+		//if the conveyor belt is not empty and cargo people are on break, wake them up
 		if(!conveyor.empty() && cargoHandlers[0]->getBreak()){
 			CargoHandlerLock->Acquire();
-			//cout << "Cargo Handler " << name << " is going for a break" << endl;
-			//wake up cargo handlers
 			CargoHandlerCV->Broadcast(CargoHandlerLock);
+			cout << "Airport manager calls back all the cargo handlers from break" << endl;
 			CargoHandlerLock->Release();
+			break;
 		}
 	}
 }
 
+void AirportManager::EndOfDay(){
+	for(int i = 0; i < cargoHandlers.size(); i++){
+		CargoHandlerTotalWeight += cargoHandlers[i]->getWeight();
+		CargoHandlerTotalCount += cargoHandlers[i]->getCount();
+	}
+}
+
 void AirportManager::AddCargoHandler(CargoHandler *ch){
-	
+	cargoHandlers.push_back(ch);
 }
 
 //----------------------------------------------------------------------
@@ -536,6 +546,7 @@ void SecurityOfficer::DoWork(){
 		}
 	}
 }
+
 // --------------------------------------------------
 // Test Suite
 // --------------------------------------------------

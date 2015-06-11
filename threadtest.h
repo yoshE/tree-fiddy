@@ -116,7 +116,7 @@ class LiaisonOfficer {
 	  int airline;		// Airline the liaison will assign to the passenger
 	  int number;		// Number of the liaison (which line they control)
 	  int passengerCount;		// Number of passengers the liaison has helped
-	  std::vector<int>baggageCount;		// Vector keeping track of baggage count for each passenger
+  std::vector<int>baggageCount;		// Vector keeping track of baggage count for each passenger
 	} info; 
 };
 
@@ -155,11 +155,16 @@ class CargoHandler{
 		char getName(){return name;}
 		bool getBreak(){return onBreak;}
 		void DoWork();
+		int getWeight(){return weight;}
+		int getCount(){return count;}
 		
 	private:
 		int name;
 		bool onBreak;
+		int weight;
+		int count;
 };
+
 //----------------------------------------------------------------------
 // Airport Manager
 //----------------------------------------------------------------------
@@ -167,12 +172,14 @@ class AirportManager{
 	public:
 		AirportManager();
 		~AirportManager();
-		void WakeUpLazyCargoPeople();
 		void DoWork();
 		void AddCargoHandler(CargoHandler *ch);
+		void EndOfDay();
 		
 	private:
 		std::vector<CargoHandler*> cargoHandlers;
+		int CargoHandlerTotalWeight;
+		int CargoHandlerTotalCount;
 		
 };
 //----------------------------------------------------------------------
@@ -209,3 +216,4 @@ class SecurityOfficer{
 		bool TotalPass;
 		int number;
 };
+
