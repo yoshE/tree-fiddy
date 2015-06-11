@@ -171,7 +171,7 @@ class ScreeningOfficer{
 		char* name;
 		bool pass;
 		int number;
-}
+};
 
 //----------------------------------------------------------------------
 // Security Officer
@@ -189,4 +189,4 @@ class SecurityOfficer{
 		char* name;
 		bool pass;
 		int number;
-}
+};
