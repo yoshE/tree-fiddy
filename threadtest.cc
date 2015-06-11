@@ -86,36 +86,34 @@ ThreadTest()
 		for (int y = 0; y < CHECKIN_COUNT; y++){
 			int x = (y+i)+AIRLINE_COUNT*i;
 			CheckInLine[x] = 0;
-			char* name = "Check In Officer " + x;
 			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 			CheckIn[(y+i)+AIRLINE_COUNT*i] = tempCheckIn;
 			lockName = "CheckIn Officer Lock";
 			Lock *tempLock = new Lock(lockName);
 			CheckInLocks[(y+i)+AIRLINE_COUNT*i] = tempLock;
-			name = "CheckIn Break Time CV";
+			char *name = "CheckIn Break Time CV";
 			Condition *tempCondition = new Condition(name);
 			CheckInBreakCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
 			name = "CheckIn Line CV";
-			Condition *tempCondition = new Condition(name);
-			CheckInCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
+			Condition *tempCondition2 = new Condition(name);
+			CheckInCV[(y+i)+AIRLINE_COUNT*i] = tempCondition2;
 			name = "CheckIn Officer CV";
-			Condition *tempCondition = new COndition(name);
-			CheckInOfficerCV[(y+i)+AIRLINE_COUNT*i] = tempCondition;
+			Condition *tempCondition3 = new Condition(name);
+			CheckInOfficerCV[(y+i)+AIRLINE_COUNT*i] = tempCondition3;
 		}
 	}
 	//For Exec Line
 	for (int i = 0; i<AIRLINE_COUNT; i++){
 		int x = AIRLINE_COUNT*CHECKIN_COUNT + i;
 		CheckInLine[x] = 0;
-		char* name = "Check In Officer " + x;
 		CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
 		CheckIn[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCheckIn;
 		lockName = "CheckIn Officer Lock";
-		Lock *tempLock = new Lock(lockName);
-		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempLock;
-		name = "CheckIn Line CV";
-		Condition *tempCondition = new Condition(name);
-		CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCondition;
+		Lock *tempLock2 = new Lock(lockName);
+		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempLock2;
+		char *name = "CheckIn Line CV";
+		Condition *tempCondition4 = new Condition(name);
+		CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCondition4;
 	}
 	
 	
@@ -143,7 +141,24 @@ ThreadTest()
 		char* name = "Security Officer " + i;
 		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
 		Security[i] = tempSecurity;
+		name = "Screen Officer CV";
+		Condition *tempCondition5 = new Condition(name);
+		ScreenOfficerCV[i] = tempCondition5;
+		name = "Security Officer CV";
+		Condition *tempCondition6 = new Condition(name);
+		SecurityOfficerCV[i] = tempCondition6;
+		name = "Screen Lock";
+		Lock *tempLock3 = new Lock(name);
+		ScreenLocks[i] = tempLock3;
+		name = "Security Lock";
+		Lock *tempLock4 = new Lock(name);
+		SecurityLocks[i] = tempLock4;
+	
 	}
+	
+	char *name = "Screen Line CV";
+	Condition *tempCondition7 = new Condition(name);
+	ScreenLineCV[0] = tempCondition7;			// Condition Variables for the Screening Line
 	
 	//TODO: set up Cargo Handler
 	lockName = "Cargo Handler Lock";
