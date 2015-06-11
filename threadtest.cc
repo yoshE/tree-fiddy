@@ -679,3 +679,24 @@ void TestSuite() {
     t->Fork((VoidFunctionPtr)t5_t2,0);
 
 }
+
+// Test A1
+// Passenger & Airport Liaison Interaction
+void testPL(int passengerIndex) {
+	Passenger *p = new Passenger(passengerIndex);
+	p->ChooseLiaisonLine();
+}
+
+void AirportTests() {
+	printf("================\n");
+	printf("TESTING PART 2\n");
+	printf("================\n");
+	
+	// Test AI
+	Thread *t;
+	
+	for(int i = 0; i < 5; i++) {
+		t = new Thread("");
+		t->Fork((VoidFunctionPtr)testPL,i);
+	}
+}
