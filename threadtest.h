@@ -148,7 +148,7 @@ class CargoHandler{
 	public:
 		CargoHandler(int n);
 		~CargoHandler();
-		int getName();
+		char getName(){return name;}
 		bool getBreak(){return onBreak;}
 		void DoWork();
 		
