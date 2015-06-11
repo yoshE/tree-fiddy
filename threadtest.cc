@@ -163,18 +163,20 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	
 	printf("Passenger %d chose Liaison %d with a line of length %d\n", name, myLine, liaisonLine[myLine]);
 	liaisonLine[myLine] = liaisonLine[myLine] + 1;		// Increment size of line you join
-	if(liaisonLine[myLine] > 0){		// If you are waiting, go to sleep until signalled by Liaison Officer
+	if(liaisonLine[myLine] > 1){		// If you are waiting, go to sleep until signalled by Liaison Officer
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
 	}
 	liaisonLineLock->Release();		// Release the lock you acquired from waking up
 	std::cout << "About to start convo with Liaison Officer!\n";	// Debugging purposes
 	liaisonLineLocks[myLine]->Acquire(); // New lock needed for liaison interaction
 	LPInfo->baggageCount = baggageCount; // Adds baggage Count to shared struct array
+	printf("Signalling liasonLineLock #%d\n", myLine);
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
+	printf("Woke up liaison #%d\n", myLine);
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	airline = LPInfo->airline;		// Gets airline info from Liaison Officer shared struct
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
-	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
+	if (liaisonLine[myLine] > 1) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
 
 	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());
@@ -205,7 +207,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
 	seat = CPInfo[myLine].seat;		// Get seat number from shared struct
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]); // Wakes up CheckIn Officer to say I'm leaving
-	if (CheckInLine[oldLine] > 0) CheckInLine[oldLine] = CheckInLine[oldLine] - 1; //Passenger left the line
+	if (CheckInLine[oldLine] > 1) CheckInLine[oldLine] = CheckInLine[oldLine] - 1; //Passenger left the line
 	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to screening
 
 // ----------------------------------------------------[ Going to Screening ]----------------------------------------
@@ -247,6 +249,7 @@ int LiaisonOfficer::getPassengerCount() {return info.passengerCount;} // For man
 int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at(n);} // For manager to get passenger bag count
 
 void LiaisonOfficer::DoWork(){
+	printf("Liaison officer is doing work\n");
 	while(true){		// Always be running, never go on break
 		liaisonLineLock->Acquire();		// Acquire lock for lining up in order to see if there is someone waiting in your line
 		if (liaisonLine[info.number] > 0){		// Check if passengers are in your line
@@ -254,7 +257,10 @@ void LiaisonOfficer::DoWork(){
 		}
 		liaisonLineLocks[info.number]->Acquire();		
 		liaisonLineLock->Release();
-		liaisonLineCV[info.number]->Wait(liaisonLineLocks[info.number]);		// Wait for passenger to give you baggage info
+		//liaisonLineCV[info.number]->Wait(liaisonLineLocks[info.number]);		// Wait for passenger to give you baggage info
+		printf("Waiting on liasonLineLock #%d\n", info.number);
+		liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]);		// Wait for passenger to give you baggage info
+		printf("Liaison #%d has AWAKENED!\n", info.number);
 		// Passenger has given bag Count info and woken up the Liaison Officer
 		info.passengerCount += 1;		// Increment internal passenger counter
 		info.baggageCount.push_back(LPInfo[info.number].baggageCount);		// Track baggage Count
@@ -802,6 +808,8 @@ void testLiaison(int liaisonIndex) {
 	char* name3 = "Liaison Officer " + liaisonIndex;
 	LiaisonOfficer *tempLiaison = new LiaisonOfficer(name3, liaisonIndex);
 	liaisonOfficers[liaisonIndex] = tempLiaison;
+	
+	liaisonOfficers[liaisonIndex]->DoWork();
 }
 
 void AirportTests() {
@@ -820,12 +828,12 @@ void AirportTests() {
 	
 	for(int i = 0; i < 5; i++) {
 		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testPassenger,i);
+		t->Fork((VoidFunctionPtr)testLiaison,i);
 	}
 	
 	for(int i = 0; i < 5; i++) {
 		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testLiaison,i);
+		t->Fork((VoidFunctionPtr)testPassenger,i);
 	}
 	
 	for(int i = 0; i < 5; i++) {
