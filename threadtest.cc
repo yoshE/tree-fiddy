@@ -359,7 +359,9 @@ void CheckInOfficer::DoWork(){
 			CheckInCV[info.number]->Signal(CheckInLock);
 		}else {		// Else, there are no passengers waiting and you can go on break
 			setBreak();
+			printf("Code Line 355\n");
 			CheckInBreakCV[info.number]->Wait(CheckInLock);		// Go to sleep until manager wakes you up
+			printf("Code Line 357\n");
 			continue;		// When woken up, restart from top of while loop
 		}
 		CheckInLocks[info.number]->Acquire();
@@ -943,10 +945,39 @@ void testLiaison(int liaisonIndex) {
 	liaisonOfficers[liaisonIndex]->DoWork();
 }
 
+void testCIO(int x) {
+	CheckInLine[x] = 0;
+	CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
+	CheckIn[x] = tempCheckIn;
+	Lock *tempLock = new Lock("CheckIn Officer Lock");
+	CheckInLocks[x] = tempLock;
+	Condition *tempCondition = new Condition("CheckIn Break Time CV");
+	CheckInBreakCV[x] = tempCondition;
+	Condition *tempCondition2 = new Condition("CheckIn Line CV");
+	CheckInCV[x] = tempCondition2;
+	Condition *tempCondition3 = new Condition("CheckIn Officer CV");
+	CheckInOfficerCV[x] = tempCondition3;
+	
+	CheckIn[x]->DoWork();
+}
+
 void AirportTests() {
 	printf("================\n");
 	printf("TESTING PART 2\n");
 	printf("================\n");
+	
+	char* lockName = "Liaison Line Lock";
+	liaisonLineLock = new Lock(lockName);
+	lockName = "CheckIn Line Lock";
+	CheckInLock = new Lock(lockName);
+	lockName = "Screen Line Lock";
+	ScreenLines = new Lock(lockName);
+	lockName = "Airline Seat Lock";
+	airlineSeatLock = new Lock(lockName);
+	lockName = "Baggage Lock";
+	BaggageLock = new Lock(lockName);
+	lockName = "Security Availability lock";
+	SecurityAvail = new Lock(lockName);
 	
 	Thread *t;
 	
@@ -956,15 +987,27 @@ void AirportTests() {
 		conveyor[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
 		//cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
 	}
-
-	for(int i = 0; i < 5; i++) {
+	
+	for(int i = 0; i < AIRLINE_COUNT; i++) {
+		for(int j = 0; j < CHECKIN_COUNT; j++) {
+			t = new Thread("");
+			t->Fork((VoidFunctionPtr)testCIO, j + i + (AIRLINE_COUNT+1)*i);
+		}
+	}
+	
+	for(int i = 0; i < AIRLINE_COUNT; i++) {
 		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testPassenger,i);
+		t->Fork((VoidFunctionPtr)testCIO, AIRLINE_COUNT * CHECKIN_COUNT + i);
 	}
 	
 	for(int i = 0; i < 5; i++) {
 		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testLiaison,i);
+		t->Fork((VoidFunctionPtr)testPassenger, i);
+	}
+	
+	for(int i = 0; i < 5; i++) {
+		t = new Thread("");
+		t->Fork((VoidFunctionPtr)testLiaison, i);
 	}
 	
 	for(int i = 0; i < 5; i++) {

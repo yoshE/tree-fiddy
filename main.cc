@@ -86,7 +86,7 @@ main(int argc, char **argv)
     (void) Initialize(argc, argv);
     
 #ifdef THREADS
-    ThreadTest();
+    //ThreadTest();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
@@ -94,7 +94,7 @@ main(int argc, char **argv)
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
 		if (!strcmp(*argv, "-T")) {
-			TestSuite();			// part 1 tests
+			//TestSuite();			// part 1 tests
 			AirportTests();			// part 2 tests
 		}
 #ifdef USER_PROGRAM
