@@ -67,8 +67,12 @@ struct ScreenPassengerInfo{
 };
 
 struct SecurityScreenInfo{
-	bool pass;
+	bool PassedScreening;
 	int ScreenLine;
+};
+
+struct SecurityPassengerInfo{
+	bool PassedSecurity;
 };
 
 //----------------------------------------------------------------------
@@ -85,6 +89,7 @@ class Passenger {
 		int getBaggageCount() {return baggageCount;}		// Returns number of baggage
 	  
   private:
+	  bool NotTerrorist;
 	  int name;        // useful for debugging
 	  int seat;			// Seat Number
 	  int airline;		//which airline does the passenger fly
@@ -167,7 +172,7 @@ class ScreeningOfficer{
 	
 	private:
 		char* name;
-		bool pass;
+		bool ScreenPass;
 		int number;
 };
 
@@ -184,7 +189,8 @@ class SecurityOfficer{
 	private:
 		bool available;
 		char* name;
-		bool pass_fail;
+		int PassedPassengers;
+		bool didPassScreening;
 		bool SecurityPass;
 		bool TotalPass;
 		int number;
