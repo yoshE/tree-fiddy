@@ -58,6 +58,7 @@ struct LiaisonPassengerInfo{		// Information passed between Liaison Officer and 
 struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and Passenger
 	int baggageCount;
 	int seat;
+	int gate;
 	int line;
 	std::vector<Baggage> bag;		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
 };
@@ -90,6 +91,7 @@ class Passenger {
 	  
   private:
 	  bool NotTerrorist;
+	  int gate;
 	  int name;        // useful for debugging
 	  int seat;			// Seat Number
 	  int airline;		//which airline does the passenger fly

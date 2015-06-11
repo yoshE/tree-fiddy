@@ -64,6 +64,10 @@ SimpleThread(int which)
 void
 ThreadTest()
 {
+	for (int i = 0; i < AIRLINE_COUNT; i++){
+		gates[i] = i;
+	}
+	
 	printf("Setting up stuff!\n");
 	srand (time(NULL));
 	//TODO: set up Passenger here
@@ -253,10 +257,11 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]);		// Wake up CheckIn Officer 
 	CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
 	seat = CPInfo[myLine].seat;		// Get seat number from shared struct
+	gate = CPInfo[myLine].gate;		// Get gate number from shared struct
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]); // Wakes up CheckIn Officer to say I'm leaving
 	if (CheckInLine[oldLine] > 1) CheckInLine[oldLine] = CheckInLine[oldLine] - 1; //Passenger left the line
 	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to screening
-	printf("Passenger [identifier] of Airline [Code] was informed to board at gate [identifier]");		//OFFICIAL OUTPUT STATEMENT
+	printf("Passenger %d of Airline %d was informed to board at gate %d", name, this->getAirline(), gate);		//OFFICIAL OUTPUT STATEMENT
 
 // ----------------------------------------------------[ Going to Screening ]----------------------------------------
 
@@ -266,6 +271,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	myLine = SPInfo[SCREEN_COUNT+1].line;		// Receive line of which Screening Officer to see
 	ScreenLines->Release();
 	ScreenLocks[myLine]->Acquire();
+	printf("Passenger %d gives the hand-luggage to screening officer %d", name, myLine);		// OFFICIAL OUTPUT STATEMENT
 	ScreenOfficerCV[myLine]->Signal(ScreenLocks[myLine]);		// Tell Screening Officer that passenger is ready for scan
 	ScreenOfficerCV[myLine]->Wait(ScreenLocks[myLine]);
 	oldLine = myLine;		// Save old line to signal to Screening you are leaving
@@ -321,6 +327,7 @@ void LiaisonOfficer::DoWork(){
 		LPInfo[info.number].airline = info.airline;		// Put airline number in shared struct for passenger
 		liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
 		liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Waits for Passenger to say they are leaving
+		printf("Airport Liaison %d directed passenger %d of airline %d", info.number, info.passengerCount, info.airline);		// OFFICIAL OUTPUT STATEMENT
 	}
 }
 
@@ -381,6 +388,7 @@ void CheckInOfficer::DoWork(){
 		}
 		airlineSeatLock->Release();
 		CPInfo[info.number].seat = seat;		// Tell Passenger Seat number
+		CPInfo[info.number].gate = gates[info.airline];		// Tell Passenger Gate Number
 		CheckInOfficerCV[info.number]->Signal(CheckInLocks[info.number]);
 		CheckInOfficerCV[info.number]->Wait(CheckInLocks[info.number]);		// Passenger will wake up you when they leave, starting the loop over again
 	}
@@ -449,7 +457,7 @@ void AirportManager::DoWork(){
 }
 
 void AirportManager::EndOfDay(){
-	for(int i = 0; i < cargoHandlers.size(); i++){
+	for(int i = 0; i < (signed)cargoHandlers.size(); i++){
 		CargoHandlerTotalWeight += cargoHandlers[i]->getWeight();
 		CargoHandlerTotalCount += cargoHandlers[i]->getCount();
 	}
