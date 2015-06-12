@@ -75,7 +75,7 @@ ThreadTest()
 {
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		gates[i] = i;
-		totalPassengersOfAirline[i] = seats.size()/AIRLINE_COUNT;
+		totalPassengersOfAirline[i] = seatsPerPlane;
 	}
 	
 	for (int i = 0; i < AIRLINE_COUNT; i++){
@@ -594,7 +594,7 @@ void AirportManager::EndOfDay(){
 		}
 	}
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
-		for(int j = 0; j < liaisonOfficers[i]->getPassengers(); j++){
+		for(int j = 0; j < liaisonOfficers[i]->getPassengerCount(); j++){
 			LiaisonTotalCount += liaisonOfficers[i]->getPassengerBaggageCount(j);
 		}
 	}

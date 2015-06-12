@@ -41,6 +41,7 @@ Lock *ScreenLines;		// Lock to get into Screening Line
 Lock *CargoHandlerLock;		// Lock for Cargo Handlers for taking baggage off conveyor
 Condition *CargoHandlerCV;		// Condition Variable for Cargo Handlers
 bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
+int seatsPerPlane = 50;
 Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
 Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
