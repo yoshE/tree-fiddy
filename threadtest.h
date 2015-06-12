@@ -19,10 +19,12 @@ void ThreadTest();
 //----------------------------------------------------------------------
 int liaisonLine[LIAISONLINE_COUNT];		// Array of line sizes for each Liaison Officer
 int CheckInLine[CHECKIN_COUNT * AIRLINE_COUNT];		// Array of line sizes for each CheckIn Officer
+int SecurityLine[SCREEN_COUNT];		// Array of line sizes for return passengers from security questioning
 int ScreenLine[1];		// Array of line sizes for each Screening Officer
 Condition *ScreenLineCV[1];			// Condition Variables for the Screening Line
 Condition *ScreenOfficerCV[SCREEN_COUNT];		// Condition Variables for each Screening Officer
 Condition *SecurityOfficerCV[SCREEN_COUNT];		// Condition Variables for each Security Officer
+Condition *SecurityLineCV[SCREEN_COUNT];		// Condition Variables for returning passengers from questioning
 Condition *liaisonLineCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Line
 Condition *liaisonOfficerCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Officer
 Condition *CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Condition Variables for each CheckIn Line
@@ -42,6 +44,7 @@ bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
 Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
 Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
+Lock *SecurityLine;			// Lock for returning passengers from Security
 
 //----------------------------------------------------------------------
 // Structs

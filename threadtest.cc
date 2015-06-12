@@ -84,6 +84,8 @@ ThreadTest()
 	liaisonLineLock = new Lock(lockName);
 	lockName = "CheckIn Line Lock";
 	CheckInLock = new Lock(lockName);
+	lockName = "Security Line Lock";
+	SecurityLine = new Lock(lockName);
 	lockName = "Screen Line Lock";
 	ScreenLines = new Lock(lockName);
 	lockName = "Airline Seat Lock";
@@ -157,6 +159,7 @@ ThreadTest()
 	
 	//Set up security officers and Screening Officers
 	for (int i = 0; i < SCREEN_COUNT; i++){
+		SecurityLine[i] = 0;
 		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
 		Security[i] = tempSecurity;
 		ScreeningOfficer *tempScreen = new ScreeningOfficer(i);
@@ -173,7 +176,8 @@ ThreadTest()
 		name = "Security Lock";
 		Lock *tempLock4 = new Lock(name);
 		SecurityLocks[i] = tempLock4;
-	
+		Condition *tempCondition8 = new Condition("Security line CV");
+		SecurityLineCV[i] = tempCondition8;
 	}
 	
 	name = "Screen Line CV";
@@ -313,12 +317,36 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);		// Tell Security that you have arrived
 	SecurityOfficerCV[myLine]->Wait(SecurityLocks[myLine]);
 
-	NotTerrorist = SecPInfo[myLine].PassedSecurity;		// Bool of whether the passenger has passed all security
+	NotTerrorist = SecPInfo[myLine].PassedSecurity;		// Boolean of whether the passenger has passed all security
+	SecPInfo[myLine].PassedSecurity = NULL;
 	if (NotTerrorist){		// If they did pass, then go to boarding area
 		SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);
-		// GO TO BOARDING AREA
+		SecurityLocks[myLine]->Release();
 	} else {		// If they failed, then go to questioning
-		// GO TO QUESTIONING
+		SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);
+		SecurityLocks[myLine]->Release();		// Go To Questioning
+		
+		printf("Passenger %s goes for further questioning", name);		// OFFICIAL OUTPUT STATEMENT
+		int r = rand() % 4;		// Random length of questioning
+		for (int i = 0; i < r; i++){
+			currentThread->Yield();
+		}
+
+		SecurityLine->Acquire();		// Lock for waiting in Line
+		SecurityLine[myLine] = SecurityLine[myLine] + 1;		// Add yourself to line length
+		SecurityLineCV[myLine] = Wait(SecurityLine);		// Wait on security officer to wake you up
+		SecurityLine->Release();
+		SecurityLocks[myLine]->Acquire();
+		
+		SecPInfo[myLine].passenger = name;
+		SecPInfo[myLine].PassedSecurity = false;
+		printf("Passenger %d comes back to security inspector %d after further examination", name, myLine);		// OFFICIAL OUTPUT STATEMENT
+		SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);		// Tell Security that you have returned from questioning
+		SecurityOfficerCV[myLine]->Wait(SecurityLocks[myLine]);
+		
+		if(SecurityLine[myLine] > 1) SecurityLine[myLine] = SecurityLine[myLine] - 1;		// Leave the line
+		SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);		
+		SecurityLocks[myLine]->Release();		// Go To Boarding Area
 	}
 	
 // ----------------------------------------------------[ Going to Gate ]----------------------------------------
@@ -555,12 +583,17 @@ void ScreeningOfficer::DoWork(){
 		ScreenLocks[number]->Acquire();
 		ScreenLines->Release();
 		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);		// Wait for Passenger to start conversation
-		
+
 		int z = SPInfo[number].passenger;
 		int x = rand() % 5;		// Generate random value for pass/fail
 		ScreenPass = true;		// Default is pass
 		if (x == 0) ScreenPass = false;		// 20% of failure
 		ScreeningResult[z] = ScreenPass;
+		if (ScreenPass){
+			printf("Screening officer %d is not suspicious of the hand luggage of passenger %d", number, z);		// OFFICIAL OUTPUT STATEMENT
+		}else {
+			printf("Screening officer %d is suspicious of the hand luggage of passenger %d", number, z);		// OFFICIAL OUTPUT STATEMENT
+		}
 		
 		while(true){		// Wait for Security Officer to become available
 			SecurityAvail->Acquire();
@@ -575,6 +608,8 @@ void ScreeningOfficer::DoWork(){
 			}
 			currentThread->Yield();
 		}
+		
+		printf("Screening officer %d directs passenger %d to security inspector %d", number, z, SPInfo[number].SecurityOfficer);		// OFFICIAL OUTPUT STATEMENT
 		ScreenOfficerCV[number]->Signal(ScreenLocks[number]);		// Signal Passenger that they should move on
 		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);
 	}
@@ -590,12 +625,16 @@ SecurityOfficer::~SecurityOfficer(){}
 
 void SecurityOfficer::DoWork(){
 	while(true){
+		SecurityLine->Acquire();
 		SecurityAvail->Acquire();
-		if (!available){		// Always see if Officer is busy or not
+		if (SecurityLine[number] > 0){		// Always see if Officer is busy or not
+			SecurityLineCV[number]->Signal(SecurityLine);
+		} else {
 			available = true;
 		}
 		SecurityLocks[number]->Acquire();
 		SecurityAvail->Release();
+		SecurityLine->Release();
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
 		
 		int z = SecPInfo[number].passenger;
@@ -606,20 +645,32 @@ void SecurityOfficer::DoWork(){
 		SecurityPass = true;		// Default is pass
 		if (x == 0) SecurityPass = false;		// 20% of failure
 		
-		TotalPass = true;
-		if (!didPassScreening || !SecurityPass) TotalPass = false;		// Passenger only passes if they pass both tests
-		SecPInfo[number].PassedSecurity = TotalPass;
-		
-		if(!TotalPass){		// If they don't pass, passenger will go for questioning and the Officer is free again
-			SecurityAvail->Acquire();
-			available = true;
-			SecurityAvail->Release();
-			// Tell Person to undergo questioning
-		}else{		// If they pass, tell passenger to go to boarding area and increment passed passenger count
+		if (SecPInfo[number].PassedSecurity != NULL){		// Passenger has just returned from questioning
+			TotalPass = true;		// Allow returned passenger to continue to boarding area
 			PassedPassengers += 1;
-			std::cout<<"Passenger is cleared and should head to Boarding Area!\n";
 			SecurityOfficerCV[number]->Signal(SecurityLocks[number]);		// Signal passenger to move onwards
+			printf("Security inspector %d permits returning passenger %d to board", number, z);		// OFFICIAL OUTPUT STATEMENT
 			SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
+		}else {		// Passenger is first time
+			if (!didPassScreening || !SecurityPass){
+				TotalPass = false;		// Passenger only passes if they pass both tests
+				printf("Security inspector %d is suspicious of the passenger %d", number, z);		// OFFICIAL OUTPUT STATEMENT
+			}else {
+				Total Pass = true;
+				printf("Security inspector %d is not suspicious of the passenger %d", number, z);		// OFFICIAL OUTPUT STATEMENT
+			}
+			SecPInfo[number].PassedSecurity = TotalPass;
+		
+			if(!TotalPass){		// If they don't pass, passenger will go for questioning and the Officer is free again
+				SecurityOfficerCV[number]->Signal(SecurityLocks[number]);		// Signal passenger to move to questioning
+				printf("Security inspector %d asks passenger %d to go for further examination",number, z);
+				SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
+			}else{		// If they pass, tell passenger to go to boarding area and increment passed passenger count
+				PassedPassengers += 1;
+				printf("Security inspector %d allows passenger %d to board", number, z);		// OFFICIAL OUTPUT STATEMENT
+				SecurityOfficerCV[number]->Signal(SecurityLocks[number]);		// Signal passenger to move onwards
+				SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
+			}
 		}
 	}
 }
