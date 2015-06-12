@@ -33,9 +33,10 @@ Lock *liaisonLineLocks[LIAISONLINE_COUNT];		// Array of Locks for Liaison Office
 Lock *CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT];		//Array of Locks for CheckIn Officers
 Lock *ScreenLocks[SCREEN_COUNT];		// Array of Locks for Screening Officers
 Lock *SecurityLocks[SCREEN_COUNT];		// Array of Locks for Security Officers
+Lock *AirlineBaggage[AIRLINE_COUNT]; 		// Array of Locks for placing baggage on airlines
 Lock *CheckInLock;		// Lock to get into CheckIn Line
 Lock *ScreenLines;		// Lock to get into Screening Line
-Lock *CargoHandlerLock;		// Lock for Cargo Handlers for placing baggage onto the airline
+Lock *CargoHandlerLock;		// Lock for Cargo Handlers for taking baggage off conveyor
 Condition *CargoHandlerCV;		// Condition Variable for Cargo Handlers
 bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
 Lock *airlineSeatLock;		// Lock for find seat number for customers
@@ -57,6 +58,8 @@ struct LiaisonPassengerInfo{		// Information passed between Liaison Officer and 
 
 struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and Passenger
 	int baggageCount;
+	int passenger;
+	bool IsEconomy;
 	int seat;
 	int gate;
 	int line;
@@ -64,16 +67,17 @@ struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and 
 };
 
 struct ScreenPassengerInfo{		// Information passed between Screening Officer and Passenger
-	int line;
+	int passenger;
+	int SecurityOfficer;
 };
 
 struct SecurityScreenInfo{		// Information passed between Security Officer and Screening Officer
-	bool PassedScreening;
 	int ScreenLine;
 };
 
 struct SecurityPassengerInfo{		// Information passed between Security and Passenger
 	bool PassedSecurity;
+	int passenger;
 };
 
 //----------------------------------------------------------------------
@@ -192,9 +196,12 @@ class ScreeningOfficer{
 		ScreeningOfficer(int i);
 		~ScreeningOfficer();
 		void DoWork();
+		bool getBusy() {return IsBusy;}
+		void setBusy() {IsBusy = true;}
 	
 	private:
 		char* name;
+		bool IsBusy;
 		bool ScreenPass;		// If the current Passenger Passed Screening, Given to Security Officer
 		int number;
 };
@@ -208,6 +215,7 @@ class SecurityOfficer{
 		~SecurityOfficer();
 		void DoWork();
 		bool getAvail(){return available;}
+		void setBusy(){available = false;}
 		
 	private:
 		bool available;

@@ -180,10 +180,13 @@ void Condition::Wait(Lock* conditionLock) {
     return;
   }
   if(waitingLock == NULL){ // If this CV's lock hasn't been set yet
-	  waitingLock = conditionLock; // Set the input lock as the CV lock
+	waitingLock = conditionLock; // Set the input lock as the CV lock
+	//std::cout << "Lock name when waitingLock == null " << conditionLock->getName() << "\n";
   }
   if(conditionLock != waitingLock){
 	std::cout << "Wrong lock!\n";
+	//std::cout << "Lock name " << conditionLock->getName() << "\n";
+	//exit(1);
 	interrupt->SetLevel(inter);
 	return;
   }
