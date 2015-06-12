@@ -75,6 +75,7 @@ ThreadTest()
 {
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		gates[i] = i;
+		totalPassengersOfAirline[i] = seats.size()/AIRLINE_COUNT;
 	}
 	
 	for (int i = 0; i < AIRLINE_COUNT; i++){
@@ -252,7 +253,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	airline = LPInfo->airline;		// Gets airline info from Liaison Officer shared struct
-	totalPassengersOfAirline[airline]++;
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
 	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
@@ -564,6 +564,7 @@ void AirportManager::DoWork(){
 			CargoHandlerLock->Release();
 			break;
 		}
+		int planeCount = 0;
 		// if all passengers and bags have been processed in an airline, release the kraken (plane)
 		for(int i = 0; i < AIRLINE_COUNT; i++){
 			if(boardingLounges[i] == totalPassengersOfAirline[i]){
@@ -571,6 +572,11 @@ void AirportManager::DoWork(){
 				cout << "Airport Manager gives a boarding call to airline " << i << endl;
 				gateLocksCV[i]->Broadcast(gateLocks[i]);
 				gateLocks[i]->Release();
+				planeCount++;
+				if(planeCount == AIRLINE_COUNT){
+					EndOfDay();
+					break;
+				}
 			}
 		}
 	}
@@ -585,6 +591,11 @@ void AirportManager::EndOfDay(){
 		CIOTotalCount += CheckIn[i]->totalBags.size();
 		for(int j = 0; j < (signed)CheckIn[i]->totalBags.size(); j++){
 			CIOTotalWeight += CheckIn[i]->totalBags[j].weight;
+		}
+	}
+	for(int i = 0; i < LIAISONLINE_COUNT; i++){
+		for(int j = 0; j < liaisonOfficers[i]->getPassengers(); j++){
+			LiaisonTotalCount += liaisonOfficers[i]->getPassengerBaggageCount(j);
 		}
 	}
 }
