@@ -44,7 +44,7 @@ bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
 Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
 Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
-Lock *SecurityLine;			// Lock for returning passengers from Security
+Lock *SecurityLines;			// Lock for returning passengers from Security
 
 //----------------------------------------------------------------------
 // Structs

@@ -85,7 +85,7 @@ ThreadTest()
 	lockName = "CheckIn Line Lock";
 	CheckInLock = new Lock(lockName);
 	lockName = "Security Line Lock";
-	SecurityLine = new Lock(lockName);
+	SecurityLines = new Lock(lockName);
 	lockName = "Screen Line Lock";
 	ScreenLines = new Lock(lockName);
 	lockName = "Airline Seat Lock";
@@ -326,16 +326,16 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 		SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);
 		SecurityLocks[myLine]->Release();		// Go To Questioning
 		
-		printf("Passenger %s goes for further questioning", name);		// OFFICIAL OUTPUT STATEMENT
+		printf("Passenger %d goes for further questioning", name);		// OFFICIAL OUTPUT STATEMENT
 		int r = rand() % 4;		// Random length of questioning
 		for (int i = 0; i < r; i++){
 			currentThread->Yield();
 		}
 
-		SecurityLine->Acquire();		// Lock for waiting in Line
+		SecurityLines->Acquire();		// Lock for waiting in Line
 		SecurityLine[myLine] = SecurityLine[myLine] + 1;		// Add yourself to line length
-		SecurityLineCV[myLine] = Wait(SecurityLine);		// Wait on security officer to wake you up
-		SecurityLine->Release();
+		SecurityLineCV[myLine]->Wait(SecurityLines);		// Wait on security officer to wake you up
+		SecurityLines->Release();
 		SecurityLocks[myLine]->Acquire();
 		
 		SecPInfo[myLine].passenger = name;
@@ -625,16 +625,16 @@ SecurityOfficer::~SecurityOfficer(){}
 
 void SecurityOfficer::DoWork(){
 	while(true){
-		SecurityLine->Acquire();
+		SecurityLines->Acquire();
 		SecurityAvail->Acquire();
 		if (SecurityLine[number] > 0){		// Always see if Officer is busy or not
-			SecurityLineCV[number]->Signal(SecurityLine);
+			SecurityLineCV[number]->Signal(SecurityLines);
 		} else {
 			available = true;
 		}
 		SecurityLocks[number]->Acquire();
 		SecurityAvail->Release();
-		SecurityLine->Release();
+		SecurityLines->Release();
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
 		
 		int z = SecPInfo[number].passenger;
@@ -656,7 +656,7 @@ void SecurityOfficer::DoWork(){
 				TotalPass = false;		// Passenger only passes if they pass both tests
 				printf("Security inspector %d is suspicious of the passenger %d", number, z);		// OFFICIAL OUTPUT STATEMENT
 			}else {
-				Total Pass = true;
+				TotalPass = true;
 				printf("Security inspector %d is not suspicious of the passenger %d", number, z);		// OFFICIAL OUTPUT STATEMENT
 			}
 			SecPInfo[number].PassedSecurity = TotalPass;
