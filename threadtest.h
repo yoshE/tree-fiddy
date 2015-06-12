@@ -83,6 +83,7 @@ struct SecurityScreenInfo{		// Information passed between Security Officer and S
 
 struct SecurityPassengerInfo{		// Information passed between Security and Passenger
 	bool PassedSecurity;
+	bool questioning;
 	int passenger;
 };
 
@@ -228,11 +229,11 @@ class SecurityOfficer{
 		SecurityOfficer(int i);
 		~SecurityOfficer();
 		void DoWork();
-		bool getAvail(){return available;}
+		void setFree(){available = true;}
 		void setBusy(){available = false;}
+		bool available;
 		
 	private:
-		bool available;
 		int PassedPassengers;		// Number of passengers that passed security
 		bool didPassScreening;		// If the current passenger passed screening
 		bool SecurityPass;			// If the current passenger passed security
