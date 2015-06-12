@@ -115,18 +115,25 @@ Lock::~Lock() {
 // Acquire() - Turns a FREE lock to BUSY, if unavailable then adds thread to
 //		waiting queue
 void Lock::Acquire() {
+  printf("Acquire\n");
   IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
+  printf("Disabled Interrupts\n");
   if (isHeldByCurrentThread()){ // See if thread already owns this Lock
+    printf("Thread already has lock\n");
     interrupt->SetLevel(inter);
     return;
   }
+  printf("Acquire before availability\n");
   if (available){ // If Lock is FREE
     available = false; // Make Lock BUSY and...
     owner = currentThread; // Assign this thread as the owner!
+	printf("Acquired ownership\n");
   }else{
+	printf("Lock was taken, added to wait\n");
     waitingThreads-> Append((void *)currentThread); // Add Thread to waiting List
     currentThread->Sleep(); // Put thread to sleep while it waits for Lock to FREE up
   }
+  printf("End Acquire\n");
   interrupt->SetLevel(inter);
 }
 
@@ -151,6 +158,8 @@ void Lock::Release() {
 }
 
 bool Lock::isHeldByCurrentThread(){ // Quick check to see if thread owns the lock
+  printf("Start of IsHeldByCurrentThread\n");
+  printf("%p \n", currentThread);
   if(owner == currentThread) return true;
   return false;
 }
@@ -173,6 +182,7 @@ Condition::~Condition() {
 //  Wait() -- release the lock, relinquish the CPU until signalled, 
 //		then re-acquire the lock
 void Condition::Wait(Lock* conditionLock) { 
+	printf("wait\n");
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(conditionLock == NULL){ // If input is null, end sequence
     std::cout << "Your lock is null!\n";
@@ -190,9 +200,12 @@ void Condition::Wait(Lock* conditionLock) {
 	interrupt->SetLevel(inter);
 	return;
   }
+  printf("Releasing Lock %s\n", conditionLock->getName());
   conditionLock->Release(); // FREE up the lock
   waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
+  if (waitingCV->IsEmpty())printf("TEST\n");
   currentThread->Sleep();
+  printf("TEST after awoken\n");
   conditionLock->Acquire(); // BUSY the lock
   interrupt->SetLevel(inter);
   return;
@@ -212,9 +225,14 @@ void Condition::Signal(Lock* conditionLock) {
 	interrupt->SetLevel(inter);
 	return;
   }
+  if (waitingCV->IsEmpty()) printf("Waiting CV is already empty\n");
   thread = (Thread *)waitingCV->Remove(); // Otherwise remove a thread
   if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up
-  if (waitingCV->IsEmpty()) waitingLock = NULL; // If list is empty FREE up lock
+  if (waitingCV->IsEmpty()){
+	   waitingLock = NULL; // If list is empty FREE up lock
+	   printf("Waiting Lock is NULL\n");
+  }
+  printf("Leaving Signal\n");
   interrupt->SetLevel(inter);
 }
 

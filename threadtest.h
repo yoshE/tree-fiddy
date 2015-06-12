@@ -6,10 +6,10 @@
 #include <deque>
 
 
-#define LIAISONLINE_COUNT 5 // Number of Liaison Officers
-#define CHECKIN_COUNT 5  // Number of CheckIn Officers
-#define AIRLINE_COUNT 3  // Number of Airlines
-#define SCREEN_COUNT 4		// Number of Screening and Security Officers
+#define LIAISONLINE_COUNT 1 // Number of Liaison Officers
+#define CHECKIN_COUNT 1  // Number of CheckIn Officers
+#define AIRLINE_COUNT 1  // Number of Airlines
+#define SCREEN_COUNT 1		// Number of Screening and Security Officers
 
 void SimpleThread(int which);
 void ThreadTest();

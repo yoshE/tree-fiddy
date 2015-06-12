@@ -17,8 +17,8 @@
 
 #define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
-#define AIRLINE_COUNT 3 		// Number of airlines
-#define CHECKIN_COUNT 5		// Number of CheckIn Officers
+#define AIRLINE_COUNT 1 		// Number of airlines
+#define CHECKIN_COUNT 1		// Number of CheckIn Officers
 #define PASSENGER_COUNT 150
 
 using namespace std;
@@ -230,20 +230,26 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	}
 	
 	printf("Passenger %d chose Liaison %d with a line of length %d\n", name, myLine, liaisonLine[myLine]);		// OFFICIAL OUTPUT STATEMENT
-	liaisonLine[myLine] = liaisonLine[myLine] + 1;		// Increment size of line you join
-	if(liaisonLine[myLine] > 1){		// If you are waiting, go to sleep until signalled by Liaison Officer
+	if(liaisonLine[myLine] > 0){		// If you are waiting, go to sleep until signalled by Liaison Officer
+		printf("my line %d length %d liaisonLineLock %s\n", myLine, liaisonLine[myLine], liaisonLineLock->getName());
+		printf("Waiting lock for liaisonLineCV[%d]", myLine);
 		liaisonLineCV[myLine]->Wait(liaisonLineLock);
+		printf("Derp\n");
 	}
+	liaisonLine[myLine] = liaisonLine[myLine] + 1;		// Increment size of line you join
 	liaisonLineLock->Release();		// Release the lock you acquired from waking up
 	liaisonLineLocks[myLine]->Acquire(); // New lock needed for liaison interaction
 	LPInfo->baggageCount = baggageCount; // Adds baggage Count to shared struct array
 	printf("Signalling liasonLineLock #%d\n", myLine);
+	fflush (stdout);
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
-	printf("Woke up liaison #%d\n", myLine);
+	//printf("%s ", tempLock->getName());
+	printf("Hello World\n");
+	printf("Waiting lock for liaisonLineCV[%d]", myLine);
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	airline = LPInfo->airline;		// Gets airline info from Liaison Officer shared struct
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
-	if (liaisonLine[myLine] > 1) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
+	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
 
 	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());		// OFFICIAL OUTPUT STATEMENT
@@ -1029,9 +1035,20 @@ void TestSuite() {
 
 // Test A1
 // Passenger & Airport Liaison Interaction
+
 void testPassenger(int passengerIndex) {
 	Passenger *p = new Passenger(passengerIndex);
 	p->ChooseLiaisonLine();
+}
+
+void testLiaison(int liaisonIndex){
+	LiaisonOfficer *l = new LiaisonOfficer(liaisonIndex);
+	l->DoWork();
+}
+
+void testCheckIn(int checkinIndex){
+	CheckInOfficer *c = new CheckInOfficer(checkinIndex);
+	c->DoWork();
 }
 
 void testCH(int CHIndex){
@@ -1039,52 +1056,111 @@ void testCH(int CHIndex){
 	c->DoWork();
 	cout << "Did work " << CHIndex << endl;
 }
-	
-void testLiaison(int liaisonIndex) {
-	printf("Creating Liaison Officer %d\n", liaisonIndex);
-	liaisonLine[liaisonIndex] = 0;
-	char* name = "Liaison Line CV " + liaisonIndex;
-	Condition *tempCondition = new Condition(name);
-	liaisonLineCV[liaisonIndex] = tempCondition;
-	char* name4 = "Liaison Officer CV " + liaisonIndex;
-	tempCondition = new Condition(name4);
-	liaisonOfficerCV[liaisonIndex] = tempCondition;
-	char* name2 = "Liaison Line Lock " + liaisonIndex;
-	Lock *tempLock = new Lock(name2);
-	liaisonLineLocks[liaisonIndex] = tempLock;
-	char* name3 = "Liaison Officer " + liaisonIndex;
-	LiaisonOfficer *tempLiaison = new LiaisonOfficer(liaisonIndex);
-	liaisonOfficers[liaisonIndex] = tempLiaison;
-	
-	liaisonOfficers[liaisonIndex]->DoWork();
-}
 
-void testCIOEconomy(int x) {
-	CheckInLine[x] = 0;
-	CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
-	CheckIn[x] = tempCheckIn;
-	Lock *tempLock = new Lock("CheckIn Officer Lock");
-	CheckInLocks[x] = tempLock;
-	Condition *tempCondition = new Condition ("CheckIn Break Time CV");
-	CheckInBreakCV[x] = tempCondition;
-	Condition *tempCondition2 = new Condition("CheckIn Line CV");
-	CheckInCV[x] = tempCondition2;
-	Condition *tempCondition3 = new Condition("CheckIn Officer CV");
-	CheckInOfficerCV[x] = tempCondition3;
+void setup(){
+// -----------------------------------[ Setting Up Singular Locks ]--------------------------
+	char* lockName = "Liaison Line Lock";
+	liaisonLineLock = new Lock(lockName);
+	char *lockName2 = "CheckIn Line Lock";
+	CheckInLock = new Lock(lockName2);
+	char *lockName3 = "Screen Line Lock";
+	ScreenLines = new Lock(lockName3);
+	char *lockName4 = "Airline Seat Lock";
+	airlineSeatLock = new Lock(lockName4);
+	char *lockName5 = "Baggage Lock";
+	BaggageLock = new Lock(lockName5);
+	char *lockName6 = "Security Availability lock";
+	SecurityAvail = new Lock(lockName6);
+	char *lockName7 = "Security Line Lock";
+	SecurityLines = new Lock(lockName7);
 	
-	CheckIn[x]->DoWork();
-}
-
-void testCIOExecutive(int x) {
-	CheckInLine[x] = 0;
-	CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
-	CheckIn[x] = tempCheckIn;
-	Lock *tempLock = new Lock("CheckIn Officer Lock");
-	CheckInLocks[x] = tempLock;
-	Condition *tempCondition = new Condition("CheckIn Line CV");
-	CheckInCV[x] = tempCondition;
+// -----------------------------------[ Setting Up Check In Officer Locks and CVs ]--------------------------
+	for (int i = 0; i < AIRLINE_COUNT; i++){
+		for (int y = 0; y < CHECKIN_COUNT; y++){
+			int x = (y+i)+(AIRLINE_COUNT+1)*i;
+			CheckInLine[x] = 0;
+			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
+			CheckIn[(y+i)+(AIRLINE_COUNT+1)*i] = tempCheckIn;
+			char *lockName8 = "CheckIn Officer Lock";
+			Lock *tempLock = new Lock(lockName8);
+			CheckInLocks[(y+i)+(AIRLINE_COUNT+1)*i] = tempLock;
+			Condition *tempCondition = new Condition("CheckIn Break Time CV");
+			CheckInBreakCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition;
+			char *name = "CheckIn Line CV";
+			Condition *tempCondition2 = new Condition(name);
+			CheckInCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition2;
+			char *name2 = "CheckIn Officer CV";
+			Condition *tempCondition3 = new Condition(name2);
+			CheckInOfficerCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition3;
+		}
+	}
 	
-	CheckIn[x]->DoWork();
+	//For Exec Line
+	for (int i = 0; i<AIRLINE_COUNT; i++){
+		int x = AIRLINE_COUNT*CHECKIN_COUNT + i;
+		CheckInLine[x] = 0;
+		CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
+		CheckIn[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCheckIn;
+		char *lockName9 = "CheckIn Officer Lock";
+		Lock *tempLock2 = new Lock(lockName9);
+		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempLock2;
+		char *name3 = "CheckIn Line CV";
+		Condition *tempCondition4 = new Condition(name3);
+		CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCondition4;
+	}
+	
+// -----------------------------------[ Setting Up Liaison ]--------------------------
+	for(int i = 0; i < LIAISONLINE_COUNT; i++){
+		liaisonLine[i] = 0;
+		char* name4 = "Liaison Line CV " + i;
+		Condition *tempCondition5 = new Condition(name4);
+		liaisonLineCV[i] = tempCondition5;
+		char* name5 = "Liaison Officer CV " + 1;
+		Condition *tempCondition6 = new Condition(name5);
+		liaisonOfficerCV[i] = tempCondition6;
+		char* name6 = "Liaison Line Lock " + i;
+		Lock *tempLock3 = new Lock(name6);
+		liaisonLineLocks[i] = tempLock3;
+		printf("Set up line locks\n");
+		printf("%p ", liaisonLineLocks[i]);
+		LiaisonOfficer *tempLiaison = new LiaisonOfficer(i);
+		liaisonOfficers[i] = tempLiaison;
+	}
+	
+// -----------------------------------[ Setting Up Security and Screening ]--------------------------
+	for (int i = 0; i < SCREEN_COUNT; i++){
+		SecurityLine[i] = 0;
+		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
+		Security[i] = tempSecurity;
+		ScreeningOfficer *tempScreen = new ScreeningOfficer(i);
+		Screen[i] = tempScreen;
+		char *name = "Screen Officer CV";
+		Condition *tempCondition5 = new Condition(name);
+		ScreenOfficerCV[i] = tempCondition5;
+		name = "Security Officer CV";
+		Condition *tempCondition6 = new Condition(name);
+		SecurityOfficerCV[i] = tempCondition6;
+		name = "Screen Lock";
+		Lock *tempLock3 = new Lock(name);
+		ScreenLocks[i] = tempLock3;
+		name = "Security Lock";
+		Lock *tempLock4 = new Lock(name);
+		SecurityLocks[i] = tempLock4;
+		Condition *tempCondition8 = new Condition("Security line CV");
+		SecurityLineCV[i] = tempCondition8;
+	}
+	
+	char *name = "Screen Line CV";
+	Condition *tempCondition7 = new Condition(name);
+	ScreenLineCV[0] = tempCondition7;	
+	
+// -----------------------------------[ Setting Up Baggage Conveyor ]--------------------------
+	for(int i = 0; i < 23; i++){
+		conveyor.push_back(Baggage());
+		conveyor[i].airlineCode = i % 3;
+		conveyor[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
+		//cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
+	}
 }
 
 void AirportTests() {
@@ -1092,54 +1168,30 @@ void AirportTests() {
 	printf("TESTING PART 2\n");
 	printf("================\n");
 	
-	char* lockName = "Liaison Line Lock";
-	liaisonLineLock = new Lock(lockName);
-	lockName = "CheckIn Line Lock";
-	CheckInLock = new Lock(lockName);
-	lockName = "Screen Line Lock";
-	ScreenLines = new Lock(lockName);
-	lockName = "Airline Seat Lock";
-	airlineSeatLock = new Lock(lockName);
-	lockName = "Baggage Lock";
-	BaggageLock = new Lock(lockName);
-	lockName = "Security Availability lock";
-	SecurityAvail = new Lock(lockName);
-	
+	setup();	// Sets up CVs and Locks
 	Thread *t;
-	
-	for(int i = 0; i < 23; i++){
-		conveyor.push_back(Baggage());
-		conveyor[i].airlineCode = i % 3;
-		conveyor[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
-		//cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
-	}
 	
 	for(int i = 0; i < AIRLINE_COUNT; i++) {
 		for(int j = 0; j < CHECKIN_COUNT; j++) {
-			t = new Thread("");
-			t->Fork((VoidFunctionPtr)testCIOEconomy, j + i + (AIRLINE_COUNT+1)*i);
+			t = new Thread("CheckIn Officer");
+			t->Fork((VoidFunctionPtr)testCheckIn, j + i + (AIRLINE_COUNT+1)*i);
 		}
 	}
 	
-	for(int i = 0; i < AIRLINE_COUNT; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testCIOExecutive, AIRLINE_COUNT * CHECKIN_COUNT + i);
-	}
-	
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testPassenger, i);
-	}
-	
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
+	for(int i = 0; i < LIAISONLINE_COUNT; i++) {
+		t = new Thread("Liaison Officer");
 		t->Fork((VoidFunctionPtr)testLiaison, i);
 	}
 	
-	for(int i = 0; i < 5; i++) {
+	for(int i = 0; i < 1; i++) {
+		t = new Thread("Passenger");
+		t->Fork((VoidFunctionPtr)testPassenger, i);
+	}
+
+	/*for(int i = 0; i < 5; i++) {
 		t = new Thread("");
 		cout << "testCH " << i << endl;
 		t->Fork((VoidFunctionPtr)testCH,i);
 	}
-	cout << "exited for loops" << endl;
+	cout << "exited for loops" << endl;*/
 }

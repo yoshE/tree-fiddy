@@ -124,6 +124,11 @@ class Condition {
 	//Condition();
     ~Condition();			// deallocate the condition
     char* getName() { return (name); }
+	Lock* getLock() { 
+		printf("TEST\n");
+		return waitingLock;
+		printf("TEST\n");
+	}
     
     void Wait(Lock *conditionLock); 	// these are the 3 operations on 
 					// condition variables; releasing the 
