@@ -38,6 +38,10 @@ deque<Baggage> conveyor;		// Conveyor queue that takes bags from the CheckIn and
 int aircraftBaggageCount[AIRLINE_COUNT];		// Number of baggage on a single airline
 int aircraftBaggageWeight[AIRLINE_COUNT];		// Weight of baggage on a single airline
 
+int boardingLounges[AIRLINE_COUNT];
+int totalPassengersOfAirline[AIRLINE_COUNT];
+AirportManager* am = new AirportManager(); //for testing purposes
+
 //----------------------------------------------------------------------
 // SimpleThread
 // 	Loop 5 times, yielding the CPU to another ready thread 
@@ -98,7 +102,7 @@ ThreadTest()
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		lockName = "Ariline Baggage Lock";
 		AirlineBaggage[i] = new Lock(lockName);
-	}	
+	}
 	
 	char *name = "Test";
 	
@@ -242,6 +246,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	printf("Woke up liaison #%d\n", myLine);
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	airline = LPInfo->airline;		// Gets airline info from Liaison Officer shared struct
+	totalPassengersOfAirline[airline]++;
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
 	if (liaisonLine[myLine] > 1) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
@@ -351,8 +356,12 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	
 // ----------------------------------------------------[ Going to Gate ]----------------------------------------
 
+	gateLocks[airline]->Acquire();
 	printf("Passenger %d of Airline %d reached the gate %d", name, airline, gate);		// OFFICIAL OUTPUT STATEMENT
+	boardingLounges[airline]++;
+	gateLocksCV[airline]->Wait(gateLocks[airline]);
 	printf("Passenger %d of Airline %d boarded airline %d", name, airline, airline);		// OFFICIAL OUTPUT STATEMENT
+	gateLocks[airline]->Release();
 }
 
 //----------------------------------------------------------------------
@@ -435,6 +444,7 @@ void CheckInOfficer::DoWork(){
 			BaggageLock->Acquire();			// Acquire lock for putting baggage on conveyor
 			conveyor.push_back(info.bags[i]);		// Place baggage onto conveyor belt for Cargo Handlers
 			BaggageLock->Release();		// Release baggage lock
+			totalBags.push_back(info.bags[i]);
 		}
 		printf("Airline check-in staff %d of airline %d dropped bags to the conveyor system", info.number, info.airline);		// OFFICIAL OUTPUT STATEMENT
 		airlineSeatLock->Acquire();
@@ -471,8 +481,13 @@ CargoHandler::CargoHandler(int n){
 	name = n;
 	//assuming there is no baggage on the conveyor to start with
 	CargoHandlerLock->Acquire();
+	onBreak = true;
+	am->AddCargoHandler(this);
+	printf("Cargo Handler %d is going for a break\n", name);		// OFFICIAL OUTPUT STATEMENT
 	CargoHandlerCV->Wait(CargoHandlerLock);
 	CargoHandlerLock->Release();
+	printf("Cargo Handler %d returned from break\n", name);		// OFFICIAL OUTPUT STATEMENT
+	DoWork();
 }
 
 CargoHandler::~CargoHandler(){}
@@ -487,9 +502,9 @@ void CargoHandler::DoWork(){
 			conveyor.pop_front();		// Remove a piece of baggage
 		} else {
 			onBreak = true;
-			printf("Cargo Handler %d is going for a break", name);		// OFFICIAL OUTPUT STATEMENT
+			printf("Cargo Handler %d is going for a break\n", name);		// OFFICIAL OUTPUT STATEMENT
 			CargoHandlerCV->Wait(CargoHandlerLock);		// Sleep until woken up by manager
-			printf("Cargo Handler %d returned from break", name);		// OFFICIAL OUTPUT STATEMENT
+			printf("Cargo Handler %d returned from break\n", name);		// OFFICIAL OUTPUT STATEMENT
 			continue;		// Restart loop
 		}
 		AirlineBaggage[temp.airlineCode]->Acquire();		// Acquire lock to put baggage on an airline
@@ -497,7 +512,8 @@ void CargoHandler::DoWork(){
 		
 		aircraftBaggageCount[temp.airlineCode]++;		// Increase baggage count of airline
 		aircraftBaggageWeight[temp.airlineCode] += temp.weight;		// Increase baggage weight of airline
-		printf("Cargo Handler %d picked bag of airline %d with weighing %d lbs", name, temp.airlineCode, temp.weight);		// OFFICIAL OUTPUT STATEMENT
+		printf("Cargo Handler %d picked bag of airline %d with weighing %d lbs\n", name, temp.airlineCode, temp.weight);		// OFFICIAL OUTPUT STATEMENT
+		// cout << conveyor.size() << endl;
 		weight += temp.weight;		// Increment total weight of baggage this handler has dealt with
 		count ++;		// Increment total count of baggage this handler has dealt with
 		AirlineBaggage[temp.airlineCode]->Release();
@@ -536,7 +552,13 @@ void CargoHandler::DoWork(){
 // Airport Manager
 //----------------------------------------------------------------------
 
-AirportManager::AirportManager(){}
+AirportManager::AirportManager(){
+	CIOTotalCount = 0;
+	CIOTotalWeight = 0;
+	LiaisonTotalCount = 0;
+	CargoHandlerTotalWeight = 0;
+	CargoHandlerTotalCount = 0;
+}
 
 AirportManager::~AirportManager(){}
 
@@ -550,6 +572,15 @@ void AirportManager::DoWork(){
 			CargoHandlerLock->Release();
 			break;
 		}
+		// if all passengers and bags have been processed in an airline, release the kraken (plane)
+		for(int i = 0; i < AIRLINE_COUNT; i++){
+			if(boardingLounges[i] == totalPassengersOfAirline[i]){
+				gateLocks[i]->Acquire();
+				cout << "Airport Manager gives a boarding call to airline " << i << endl;
+				gateLocksCV[i]->Broadcast(gateLocks[i]);
+				gateLocks[i]->Release();
+			}
+		}
 	}
 }
 
@@ -558,10 +589,24 @@ void AirportManager::EndOfDay(){
 		CargoHandlerTotalWeight += cargoHandlers[i]->getWeight();
 		CargoHandlerTotalCount += cargoHandlers[i]->getCount();
 	}
+	for(int i = 0; i < CHECKIN_COUNT; i++){
+		CIOTotalCount += CheckIn[i]->totalBags.size();
+		for(int j = 0; j < (signed)CheckIn[i]->totalBags.size(); j++){
+			CIOTotalWeight += CheckIn[i]->totalBags[j].weight;
+		}
+	}
 }
 
 void AirportManager::AddCargoHandler(CargoHandler *ch){
 	cargoHandlers.push_back(ch);
+}
+
+void AirportManager::AddLiaisonOfficer(LiaisonOfficer *lo){
+	liaisonOfficers.push_back(lo);
+}
+
+void AirportManager::AddCheckInOfficer(CheckInOfficer *cio){
+	checkInOfficers.push_back(cio);
 }
 
 //----------------------------------------------------------------------
@@ -1037,6 +1082,7 @@ void testPassenger(int passengerIndex) {
 void testCH(int CHIndex){
 	CargoHandler *c = new CargoHandler(CHIndex);
 	c->DoWork();
+	am->DoWork();
 	cout << "Did work " << CHIndex << endl;
 }
 	
@@ -1087,6 +1133,31 @@ void testCIOExecutive(int x) {
 	CheckIn[x]->DoWork();
 }
 
+
+void ForkCH(int x){
+	if(x == 5){
+		am->DoWork();
+		cout << "Cargo Handler " << x << " does not wake up" << endl;
+	}
+	CargoHandler *c = new CargoHandler(x);
+}
+
+void testAM(){
+	Thread* t;
+
+	// for(int i = 0; i < 23; i++){
+		// conveyor.push_back(Baggage());
+		// conveyor[i].airlineCode = i % 3;
+		// conveyor[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
+		// cout << conveyor[i].airlineCode << " weight " << conveyor[i].weight << " size " << conveyor.size() << endl;
+	// }
+	for(int i = 0; i < 6; i++){
+		t = new Thread("");
+		t->Fork((VoidFunctionPtr)ForkCH, i);
+		cout << "fork cargo" << endl;
+	}
+}
+
 void AirportTests() {
 	printf("================\n");
 	printf("TESTING PART 2\n");
@@ -1105,41 +1176,54 @@ void AirportTests() {
 	lockName = "Security Availability lock";
 	SecurityAvail = new Lock(lockName);
 	
+	for (int i = 0; i < AIRLINE_COUNT; i++){
+		lockName = "Ariline Baggage Lock";
+		AirlineBaggage[i] = new Lock(lockName);
+	}
+	lockName = "Cargo Handler Lock";
+	CargoHandlerLock = new Lock(lockName);
+	char* cvName = "Cargo Handler CV ";
+	CargoHandlerCV = new Condition(cvName);
+	
 	Thread *t;
 	
-	for(int i = 0; i < 23; i++){
+	for(int i = 0; i < 25; i++){
 		conveyor.push_back(Baggage());
 		conveyor[i].airlineCode = i % 3;
 		conveyor[i].weight = rand() % 31 + BAGGAGE_WEIGHT;
-		//cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
+		cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
 	}
 	
-	for(int i = 0; i < AIRLINE_COUNT; i++) {
-		for(int j = 0; j < CHECKIN_COUNT; j++) {
-			t = new Thread("");
-			t->Fork((VoidFunctionPtr)testCIOEconomy, j + i + (AIRLINE_COUNT+1)*i);
-		}
-	}
+	// for(int i = 0; i < AIRLINE_COUNT; i++) {
+		// for(int j = 0; j < CHECKIN_COUNT; j++) {
+			// t = new Thread("");
+			// t->Fork((VoidFunctionPtr)testCIOEconomy, j + i + (AIRLINE_COUNT+1)*i);
+		// }
+	// }
 	
-	for(int i = 0; i < AIRLINE_COUNT; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testCIOExecutive, AIRLINE_COUNT * CHECKIN_COUNT + i);
-	}
+	// for(int i = 0; i < AIRLINE_COUNT; i++) {
+		// t = new Thread("");
+		// t->Fork((VoidFunctionPtr)testCIOExecutive, AIRLINE_COUNT * CHECKIN_COUNT + i);
+	// }
 	
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testPassenger, i);
-	}
+	// for(int i = 0; i < 5; i++) {
+		// t = new Thread("");
+		// t->Fork((VoidFunctionPtr)testPassenger, i);
+	// }
 	
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)testLiaison, i);
-	}
+	// for(int i = 0; i < 5; i++) {
+		// t = new Thread("");
+		// t->Fork((VoidFunctionPtr)testLiaison, i);
+	// }
 	
-	for(int i = 0; i < 5; i++) {
-		t = new Thread("");
-		cout << "testCH " << i << endl;
-		t->Fork((VoidFunctionPtr)testCH,i);
-	}
+	// for(int i = 0; i < 5; i++) {
+		// t = new Thread("");
+		// cout << "testCH " << i << endl;
+		// t->Fork((VoidFunctionPtr)testCH,i);
+	// }
+	
+	t = new Thread("");
+	cout << "test AM" << endl;
+	t->Fork((VoidFunctionPtr)testAM, 0);
 	cout << "exited for loops" << endl;
 }

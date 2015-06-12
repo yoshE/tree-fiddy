@@ -45,6 +45,8 @@ Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
 Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
 Lock *SecurityLines;			// Lock for returning passengers from Security
+Lock *gateLocks[AIRLINE_COUNT];				//Locks for waiting at the gate
+Condition *gateLocksCV[AIRLINE_COUNT];		//CVs for waiting at the gate
 
 //----------------------------------------------------------------------
 // Structs
@@ -125,7 +127,7 @@ class LiaisonOfficer {
 	  int airline;		// Airline the liaison will assign to the passenger
 	  int number;		// Number of the liaison (which line they control)
 	  int passengerCount;		// Number of passengers the liaison has helped
-  std::vector<int>baggageCount;		// Vector keeping track of baggage count for each passenger
+	  std::vector<int>baggageCount;		// Vector keeping track of baggage count for each passenger
 	} info; 
 };
 
@@ -141,6 +143,7 @@ class CheckInOfficer{
 	  void DoWork();
 	  int getAirline();		// Returns airline CheckIn Officer is working for
 	  int getNumber();		// Returns number of officer (which line they control)
+	  std::vector<Baggage> totalBags;
 	
 	private:
 	  struct CheckIn{
@@ -183,12 +186,19 @@ class AirportManager{
 		~AirportManager();
 		void DoWork();
 		void AddCargoHandler(CargoHandler *ch);
+		void AddLiaisonOfficer(LiaisonOfficer *lo);
+		void AddCheckInOfficer(CheckInOfficer *cio);
 		void EndOfDay();
+		std::vector<CargoHandler*> cargoHandlers;
+		std::vector<CheckInOfficer*> checkInOfficers;
+		std::vector<LiaisonOfficer*> liaisonOfficers;
 		
 	private:
-		std::vector<CargoHandler*> cargoHandlers;
 		int CargoHandlerTotalWeight;
 		int CargoHandlerTotalCount;
+		int CIOTotalCount;
+		int CIOTotalWeight;
+		int LiaisonTotalCount;
 		
 };
 //----------------------------------------------------------------------
