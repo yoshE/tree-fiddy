@@ -40,7 +40,7 @@ Lock *CheckInLock;		// Lock to get into CheckIn Line
 Lock *ScreenLines;		// Lock to get into Screening Line
 Lock *CargoHandlerLock;		// Lock for Cargo Handlers for taking baggage off conveyor
 Condition *CargoHandlerCV;		// Condition Variable for Cargo Handlers
-bool seats[50*AIRLINE_COUNT] = {true}; // Contains seat numbers for all planes
+bool seats[50*AIRLINE_COUNT]; // Contains seat numbers for all planes
 Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
 Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
@@ -139,12 +139,12 @@ class CheckInOfficer{
 	public:
 	  CheckInOfficer(int i);
 	  ~CheckInOfficer();
-	  void setBreak();		// Go on Break
-	  bool getBreak();		// For managers to see who is on break
+	  bool getBreak(){return OnBreak;}		// For managers to see who is on break
 	  void DoWork();
 	  int getAirline();		// Returns airline CheckIn Officer is working for
 	  int getNumber();		// Returns number of officer (which line they control)
 	  std::vector<Baggage> totalBags;
+	  bool OnBreak;
 	
 	private:
 	  struct CheckIn{
