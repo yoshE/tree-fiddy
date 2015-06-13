@@ -1183,8 +1183,6 @@ void createPassengers(int quantity) {
 	for(int i = 0; i < quantity; i++) {
 		simPassengers.push_back(new Passenger(i));
 		printf("Debug: Created Passenger %d\n", i);
-		Passenger *p = new Passenger(i);
-		simPassengers.push_back(p);
 	}
 }
 
@@ -1247,6 +1245,20 @@ void createSecurityAndScreen(int quantity) {
 		simScreeningOfficers.push_back(Screen[i]);
 		simSecurityOfficers.push_back(Security[i]);
 	}
+	
+	for (int i = 0; i < quantity;i++){
+		SecurityAvailability[i] = true;
+	}
+	
+	ScreenLineCV[0] = new Condition("Screen Line CV");
+}
+
+void createCargoHandlers(int quantity) {
+	for(int i = 0; i < quantity; i++) {
+		CargoHandler *c = new CargoHandler(i);
+		simCargoHandlers.push_back(c);
+		printf("Debug: Created Cargo Handler %d\n", i);
+	}
 }
 
 void testPassenger(int i) {
@@ -1257,19 +1269,29 @@ void testLiaison(int i){
 	simLiaisons.at(i)->DoWork();
 }
 
-void testCheckIn(int checkinIndex){
-	CheckInOfficer *c = new CheckInOfficer(checkinIndex);
-	c->DoWork();
+void testCheckIn(int i){
+	simCIOs.at(i)->DoWork();
 }
 
-void testCargo(int CHIndex){
-	CargoHandler *c = new CargoHandler(CHIndex);
-	c->DoWork();
+void testCargo(int i){
+	simCargoHandlers.at(i)->DoWork();
 }
 
 void testAM(int AMIndex){
 	AirportManager *a = new AirportManager();
 	a->DoWork();
+}
+
+void setupBaggageAndCargo(int airlineCount) {
+	for (int i = 0; i < airlineCount; i++){
+		AirlineBaggage[i] = new Lock("Airline Baggage Lock");
+	}
+	CargoHandlerLock = new Lock("Cargo Handler Lock");
+	CargoHandlerCV = new Condition("Cargo Handler CV ");
+	
+	for (int i = 0; i < airlineCount * AIRLINE_SEAT; i++){
+		seats[i] = true;
+	}
 }
 
 /*void ForkCH(int x){
@@ -1319,27 +1341,8 @@ void setup(){
 	createCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 	createLiaisons(LIAISONLINE_COUNT);
 	createSecurityAndScreen(SCREEN_COUNT);
-	
-	
-	for (int i = 0; i < SCREEN_COUNT;i++){
-		SecurityAvailability[i] = true;
-	}
-	
-	char *name = "Screen Line CV";
-	Condition *tempCondition7 = new Condition(name);
-	ScreenLineCV[0] = tempCondition7;	
-	
-// -----------------------------------[ Setting Up Baggage Conveyor ]--------------------------
-
-	for (int i = 0; i < AIRLINE_COUNT; i++){
-		AirlineBaggage[i] = new Lock("Airline Baggage Lock");
-	}
-	CargoHandlerLock = new Lock("Cargo Handler Lock");
-	CargoHandlerCV = new Condition("Cargo Handler CV ");
-	
-	for (int i = 0; i < AIRLINE_COUNT*AIRLINE_SEAT; i++){
-		seats[i] = true;
-	}
+	setupBaggageAndCargo(AIRLINE_COUNT);
+	//createCargoHandlers(6);
 }
 
 void RunSim() {
@@ -1367,6 +1370,8 @@ void RunSim() {
 	setupExecutiveCIOs(simNumOfAirlines, simNumOfCIOs);
 	createCIOs(simNumOfAirlines, simNumOfCIOs);
 	createSecurityAndScreen(simNumOfScreeningOfficers);
+	setupBaggageAndCargo(simNumOfAirlines);
+	//createCargoHandlers(simNumOfCargoHandlers);
 	
 	printf("Setup print statements:\n");
 	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
