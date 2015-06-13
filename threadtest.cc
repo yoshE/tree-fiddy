@@ -23,6 +23,7 @@ LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];		// Array of Liaison Officer
 CheckInOfficer *CheckIn[CHECKIN_COUNT*AIRLINE_COUNT];		// Array of CheckIn Officers
 SecurityOfficer *Security[SCREEN_COUNT];		// Array of Security Officers
 ScreeningOfficer *Screen[SCREEN_COUNT];		// Array of Screening Officers
+vector<CargoHandler*> cargoHandlers;				//Vector of Cargo Handlers
 LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[LIAISONLINE_COUNT];		// Array of Structs that contain info from passenger to Liaison
 CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Array of Structs that contain info from pasenger to CheckIn
 ScreenPassengerInfo * SPInfo = new ScreenPassengerInfo[SCREEN_COUNT+1];		// Array of Structs that contain info from screening to passenger
@@ -35,7 +36,7 @@ int aircraftBaggageWeight[AIRLINE_COUNT];		// Weight of baggage on a single airl
 
 int boardingLounges[AIRLINE_COUNT];
 int totalPassengersOfAirline[AIRLINE_COUNT];
-AirportManager* am = new AirportManager(); //for testing purposes
+// AirportManager* am = new AirportManager(); //for testing purposes
 int totalBaggage[AIRLINE_COUNT];
 int totalWeight[AIRLINE_COUNT];
 
@@ -111,7 +112,6 @@ ThreadTest()
 	}
 	
 	printf("Setting up stuff!\n");
-	//TODO: set up Passenger here
 
 	// Sets up various Locks used
 	char* lockName = "Liaison Line Lock";
@@ -220,7 +220,6 @@ ThreadTest()
 	Condition *tempCondition7 = new Condition(name);
 	ScreenLineCV[0] = tempCondition7;			// Condition Variables for the Screening Line
 	
-	//TODO: set up Cargo Handler
 	lockName = "Cargo Handler Lock";
 	CargoHandlerLock = new Lock(lockName);
 	char* cvName = "Cargo Handler CV ";
@@ -558,6 +557,7 @@ void CheckInOfficer::DoWork(){
 			info.bags[i].airlineCode = info.airline;		// Add airline code to baggage
 			BaggageLock->Acquire();			// Acquire lock for putting baggage on conveyor
 			conveyor.push_back(info.bags[i]);		// Place baggage onto conveyor belt for Cargo Handlers
+			cout << "ADDED TO CONVEYOR" << endl;
 			BaggageLock->Release();		// Release baggage lock
 			totalBags.push_back(info.bags[i]);
 		}
@@ -598,7 +598,9 @@ void CheckInOfficer::DoWork(){
 //----------------------------------------------------------------------
 CargoHandler::CargoHandler(int n){
 	name = n;
-	am->AddCargoHandler(this);
+	// am->AddCargoHandler(this);
+	// cargoHandlers.push_back(this);
+	// cout << "BEEPBOOP" << this << endl;
 }
 
 CargoHandler::~CargoHandler(){}
@@ -636,6 +638,7 @@ void CargoHandler::DoWork(){
 //----------------------------------------------------------------------
 
 AirportManager::AirportManager(){
+	cout << "GOLIATH ONLINE" << endl;
 	for(int i =0; i < AIRLINE_COUNT; i++){
 		CIOTotalCount[i] = 0;
 		CIOTotalWeight[i] = 0;
@@ -650,13 +653,22 @@ AirportManager::~AirportManager(){}
 void AirportManager::DoWork(){
 	while(true){
 		//if the conveyor belt is not empty and cargo people are on break, wake them up
-		if(!conveyor.empty() && cargoHandlers[0]->getBreak()){
+		cout << "cargo: " << cargoHandlers.size() << " conveyor: " << conveyor.size() << endl;
+		if(!conveyor.empty() && !cargoHandlers.empty()){
 			CargoHandlerLock->Acquire();
-			cout << "Airport manager calls back all the cargo handlers from break" << endl;
-			CargoHandlerCV->Broadcast(CargoHandlerLock);
+			int breakCount = 0;
+			for(int i = 0; i < (signed)cargoHandlers.size(); i++){
+				if(cargoHandlers[i]->getBreak()){
+					breakCount++;
+					cout << breakCount << " lazy fucks" << endl;
+				}
+			}
+			if(breakCount == (signed)cargoHandlers.size()){
+				cout << "Airport manager calls back all the cargo handlers from break" << endl;
+				CargoHandlerCV->Broadcast(CargoHandlerLock);
+			}
 			CargoHandlerLock->Release();
 		}
-		
 		int planeCount = 0;
 		// if all passengers and bags have been processed in an airline, release the kraken (plane)
 		for(int i = 0; i < AIRLINE_COUNT; i++){
@@ -700,15 +712,15 @@ void AirportManager::EndOfDay(){
 		cout << "From setup: Baggage count of airline " << i << " = " << totalBaggage[i] << endl;//OFFICIAL
 		cout << "From airport liaison: Baggage count of airline " << i << " = " << LiaisonTotalCount[i] << endl; //OFFICIAL
 		cout << "From cargo handlers: Baggage count of airline " << i << " = " << CargoHandlerTotalCount[i] << endl; //OFFICIAL
-		// From setup: Baggage weight of airline [code] = [weight]
-		// From airline check-in staff: Baggage weight of airline [code] = [weight]
-		// From cargo handlers: Baggage weight of airline [code] = [weight]
+		cout << "From setup: Baggage weight of airline " << i << " = " << totalWeight[i] << endl; // OFFICIAL
+		cout << "From airline check-in staff: Baggage weight of airline " << i << " = " << CIOTotalWeight[i] << endl; //OFFICIAL
+		cout << "From cargo handlers: Baggage weight of airline " << i << " = " << CargoHandlerTotalWeight[i] << endl; //OFFICIAL
 	}
 }
 
-void AirportManager::AddCargoHandler(CargoHandler *ch){
-	cargoHandlers.push_back(ch);
-}
+// void AirportManager::AddCargoHandler(CargoHandler *ch){
+	// cargoHandlers.push_back(ch);
+// }
 
 void AirportManager::AddLiaisonOfficer(LiaisonOfficer *lo){
 	liaisonOfficers.push_back(lo);
@@ -1268,6 +1280,8 @@ void testCheckIn(int checkinIndex){
 
 void testCargo(int CHIndex){
 	CargoHandler *c = new CargoHandler(CHIndex);
+	cargoHandlers.push_back(c);
+	cout << "CARGOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO " << cargoHandlers.size() << endl;
 	c->DoWork();
 }
 
@@ -1275,23 +1289,6 @@ void testAM(int AMIndex){
 	AirportManager *a = new AirportManager();
 	a->DoWork();
 }
-
-/*void ForkCH(int x){
-	if(x == 0){
-		am->DoWork();
-	}
-	CargoHandler *c = new CargoHandler(x);
-	c->DoWork();
-}
-
-void testAM(){
-	t = new Thread("");
-	t->Fork((VoidFunctionPtr))
-	for(int i = 0; i < 6; i++){
-		t = new Thread("");
-		t->Fork((VoidFunctionPtr)ForkCH, i);
-	}
-}*/
 
 void testScreen(int screenIndex){
 	ScreeningOfficer *s = new ScreeningOfficer(screenIndex);
@@ -1318,10 +1315,10 @@ void setup(){
 	
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		LiaisonSeat[i] = AIRLINE_SEAT;
-		Lock *tempLock = new Lock("Gate Locks");
-		gateLocks[i] = tempLock;
-		Condition *tempCondition = new Condition("Gate Lock CV");
-		gateLocksCV[i] = tempCondition;	
+		//Lock *tempLock = new Lock("Gate Locks");
+		gateLocks[i] = new Lock("Gate Locks");;
+		// Condition *tempCondition = new Condition("Gate Lock CV");
+		gateLocksCV[i] = new Condition("Gate Lock CV");;	
 	}
 	
 	for (int i = 0; i < AIRLINE_COUNT*AIRLINE_SEAT; i++){
@@ -1452,9 +1449,6 @@ void AirportTests() {
 	setup();	// Sets up CVs and Locks
 	Thread *t;
 	
-	//t = new Thread("Airport Manager");
-	//t->Fork((VoidFunctionPtr)testAM, 0);
-	
 	for(int i = 0; i < AIRLINE_COUNT; i++) {
 		for(int j = 0; j < CHECKIN_COUNT; j++) {
 			t = new Thread("CheckIn Officer");
@@ -1474,10 +1468,13 @@ void AirportTests() {
 		t->Fork((VoidFunctionPtr)testSecurity, i);
 	}
 	
-	// for(int i = 0; i < 0; i++) {
-		// t = new Thread("Cargo Handler");
-		// t->Fork((VoidFunctionPtr)testCargo, i);
-	// }
+	for(int i = 0; i < 6; i++) {
+		t = new Thread("Cargo Handler");
+		t->Fork((VoidFunctionPtr)testCargo, i);
+	}
+	
+	t = new Thread("Airport Manager");
+	t->Fork((VoidFunctionPtr)testAM, 0);
 	
 	for(int i = 0; i < 8; i++) {
 		t = new Thread("Passenger");

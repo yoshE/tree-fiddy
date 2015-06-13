@@ -194,11 +194,9 @@ class AirportManager{
 		AirportManager();
 		~AirportManager();
 		void DoWork();
-		void AddCargoHandler(CargoHandler *ch);
 		void AddLiaisonOfficer(LiaisonOfficer *lo);
 		void AddCheckInOfficer(CheckInOfficer *cio);
 		void EndOfDay();
-		std::vector<CargoHandler*> cargoHandlers;
 		std::vector<CheckInOfficer*> checkInOfficers;
 		std::vector<LiaisonOfficer*> liaisonOfficers;
 		
