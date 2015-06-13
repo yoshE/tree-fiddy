@@ -135,11 +135,7 @@ class LiaisonOfficer {
 	  int airline;		// Airline the liaison will assign to the passenger
 	  int number;		// Number of the liaison (which line they control)
 	  int passengerCount;		// Number of passengers the liaison has helped
-<<<<<<< HEAD
-	  int baggageCount[AIRLINE_COUNT];		// Vector keeping track of baggage count for each passenger
-=======
 	  int airlineBaggageCount[AIRLINE_COUNT];		// Array keeping track of baggage count for each passenger
->>>>>>> origin/BoolBug
 	} info; 
 };
 

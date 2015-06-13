@@ -427,14 +427,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 
 		SecurityLines->Acquire();		// Lock for waiting in Line
 		if (SecurityLine[myLine] == 0){
-<<<<<<< HEAD
-			SecurityAvail->Acquire();
-			Security[myLine]->setBusy();
-			cout << "Added to SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS LENGHT" << endl;
-=======
->>>>>>> origin/BoolBug
 			SecurityLine[myLine] += 1;		// Add yourself to line length
-			SecurityAvail->Release();
 			SecurityLocks[myLine]->Acquire();
 			SecurityLines->Release();
 			SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);
@@ -472,20 +465,13 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 //----------------------------------------------------------------------
 LiaisonOfficer::LiaisonOfficer(int i){		// Constructor
 	info.passengerCount = 0;
-<<<<<<< HEAD
-	//info.baggageCount.clear();
-=======
 	for (int g = 0; g < AIRLINE_COUNT; g++){
 		info.airlineBaggageCount[g] = 0;
 	}
->>>>>>> origin/BoolBug
 	info.number = i;
 }
 LiaisonOfficer::~LiaisonOfficer(){}
 int LiaisonOfficer::getPassengerCount() {return info.passengerCount;} // For manager to get passenger headcount
-<<<<<<< HEAD
-//int LiaisonOfficer::getPassengerBaggageCount(int n) {return info.baggageCount.at(n);} // For manager to get passenger bag count
-=======
 int LiaisonOfficer::getPassengerBaggageCount(int n) {
 	return 0;
 } // For manager to get passenger bag count
@@ -493,7 +479,6 @@ int LiaisonOfficer::getPassengerBaggageCount(int n) {
 int LiaisonOfficer::getAirlineBaggageCount(int n){ // For manager to get passenger bag count
 	return info.airlineBaggageCount[n];
 }
->>>>>>> origin/BoolBug
 
 void LiaisonOfficer::DoWork(){
 	while(true){		// Always be running, never go on break
@@ -520,11 +505,7 @@ void LiaisonOfficer::DoWork(){
 		info.airlineBaggageCount[info.airline] += LPInfo[info.number].baggageCount;
 		LiaisonSeats->Release();
 		LPInfo[info.number].airline = info.airline;		// Put airline number in shared struct for passenger
-<<<<<<< HEAD
-		//info.baggageCount[LPInfo[info.number].airline);		// Track baggage Count
-=======
 		liaisonBaggageCount[info.airline] += LPInfo[info.number].baggageCount;
->>>>>>> origin/BoolBug
 		liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
 		liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Waits for Passenger to say they are leaving
 		printf("Airport Liaison %d directed passenger %d of airline %d\n", info.number, info.passengerCount-1, info.airline);		// OFFICIAL OUTPUT STATEMENT
@@ -711,13 +692,17 @@ void AirportManager::EndOfDay(){
 		}
 	}
 	for(int i = 0; i < LIAISONLINE_COUNT; i++){
-		for(int j = 0; j < liaisonOfficers[i]->getPassengerCount(); j++){
-			//LiaisonTotalCount[] += liaisonOfficers[i]->totalBags[;
+		for(int j = 0; j < AIRLINE_COUNT; j++){
+			LiaisonTotalCount[j] += liaisonOfficers[i]->getAirlineBaggageCount(j);
 		}
 	}
 	for(int i = 0; i < AIRLINE_COUNT; i++){
 		cout << "From setup: Baggage count of airline " << i << " = " << totalBaggage[i] << endl;//OFFICIAL
-		cout << "From airport liaison: Baggage count of airline " << i << " = " << endl;
+		cout << "From airport liaison: Baggage count of airline " << i << " = " << LiaisonTotalCount[i] << endl; //OFFICIAL
+		cout << "From cargo handlers: Baggage count of airline " << i << " = " << CargoHandlerTotalCount[i] << endl; //OFFICIAL
+		// From setup: Baggage weight of airline [code] = [weight]
+		// From airline check-in staff: Baggage weight of airline [code] = [weight]
+		// From cargo handlers: Baggage weight of airline [code] = [weight]
 	}
 }
 
@@ -770,15 +755,9 @@ void ScreeningOfficer::DoWork(){
 		
 		while(!y){		// Wait for Security Officer to become available
 			for (int i = 0; i < SCREEN_COUNT; i++){		// Iterate through all security officers
-<<<<<<< HEAD
-				y = Security[i]->available;		// See if they are busy
-				//cout << "Screening: SECURITY " << i << " AVAIL: "  << y << " " << SecurityLine[i] << endl;
-=======
 				SecurityAvail->Acquire();
 				y = SecurityAvailability[i];		// See if they are busy
->>>>>>> origin/BoolBug
 				if (y){			// If a security officer is not busy, obtain his number and inform passenger
-					cout << "SO I AM DOING SHIT" << endl;
 					SPInfo[number].SecurityOfficer = i;
 					SecurityAvailability[i] = false;
 					break;
@@ -815,26 +794,12 @@ void SecurityOfficer::DoWork(){
 		SecurityLines->Acquire();
 		SecurityLocks[number]->Acquire();
 		if (SecurityLine[number] > 0){		// Always see if Officer has a line of returning passengers from questioning
-<<<<<<< HEAD
-			cout << SecurityLine[number] << "\t\t\t\t FUCK? " << endl;
-			available = false;
-			SecurityLineCV[number]->Signal(SecurityLines);
-		} else {
-			cout << "\tSecurity: SECURITY " << number << " AVAIL" << " size of SecurityLine: " << SecurityLine[number] << endl;
-			Security[number]->setFree();
-		}
-		cout << "Getting Acquire SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSs" << endl;
-		SecurityLocks[number]->Acquire();
-		cout << "Got Acquire SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSs" << endl;
-		SecurityAvail->Release();
-=======
 			SecurityLineCV[number]->Signal(SecurityLocks[number]);
 		} else {
 			//SecurityAvail->Acquire();
 			SecurityAvailability[number] = true;
 			//SecurityAvail->Release();
 		}
->>>>>>> origin/BoolBug
 		SecurityLines->Release();
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
 		SecurityOfficerCV[number]->Signal(SecurityLocks[number]);
