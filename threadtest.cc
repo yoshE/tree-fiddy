@@ -15,13 +15,6 @@
 #include <stdlib.h>
 #include <iostream>
 
-#define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
-#define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
-#define AIRLINE_COUNT 1 		// Number of airlines
-#define CHECKIN_COUNT 1		// Number of CheckIn Officers
-#define PASSENGER_COUNT 150
-#define AIRLINE_SEAT 50
-
 using namespace std;
 int gates[AIRLINE_COUNT];		// Tracks gate numbers for each airline
 int LiaisonSeat[AIRLINE_COUNT];
@@ -1145,6 +1138,17 @@ void createPassengers(int quantity) {
 	}
 }
 
+void createLiaisons(int quantity) {
+	for(int i = 0; i < quantity; i++) {
+		liaisonLine[i] = 0;
+		liaisonLineCV[i] = new Condition("Liaison Line CV " + i);
+		liaisonOfficerCV[i] = new Condition("Liaison Officer CV " + 1);
+		liaisonLineLocks[i] = new Lock("Liaison Line Lock " + i);
+		liaisonOfficers[i] = new LiaisonOfficer(i);
+		printf("Debug: Created Liaison Officer %d\n", i);
+	}
+}
+
 void testPassenger(int i) {
 	simPassengers.at(i)->ChooseLiaisonLine();
 }
@@ -1275,20 +1279,7 @@ void setup(){
 	}
 
 // -----------------------------------[ Setting Up Liaison ]--------------------------
-	for(int i = 0; i < LIAISONLINE_COUNT; i++){
-		liaisonLine[i] = 0;
-		char* name4 = "Liaison Line CV " + i;
-		Condition *tempCondition5 = new Condition(name4);
-		liaisonLineCV[i] = tempCondition5;
-		char* name5 = "Liaison Officer CV " + 1;
-		Condition *tempCondition6 = new Condition(name5);
-		liaisonOfficerCV[i] = tempCondition6;
-		char* name6 = "Liaison Line Lock " + i;
-		Lock *tempLock3 = new Lock(name6);
-		liaisonLineLocks[i] = tempLock3;
-		LiaisonOfficer *tempLiaison = new LiaisonOfficer(i);
-		liaisonOfficers[i] = tempLiaison;
-	}
+	createLiaisons(LIAISONLINE_COUNT);
 	
 // -----------------------------------[ Setting Up Security and Screening ]--------------------------
 	for (int i = 0; i < SCREEN_COUNT; i++){
@@ -1357,6 +1348,7 @@ void RunSim() {
 	}
 	*/
 	createPassengers(simNumOfPassengers);
+	createLiaisons(simNumOfLiaisons);
 	
 	printf("Setup print statements:\n");
 	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
