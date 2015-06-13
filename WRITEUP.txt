@@ -1,0 +1,107 @@
+ Title:  Writeup for Project 1, Summer 2015
+ Date:  06/11/15
+ Group:	Name	Email	SS#
+		George Li			ligeorge@usc.edu			9910019263
+		Vance Lindholm		vlindhol@usc.edu			
+		Yoshua Lo			yoshualo@usc.edu			
+ 
+I. Requirements:
+1. Implement lock and condition variable functionality.
+2. Verify that these structures pass the tests provided.
+3. Create an airport simulation which makes use of the lock and condition variable structures to prevent race conditions between its agents.
+4. Write tests for the airport simulation to verify that its agents are working as intended.
+5. Comment the new and modified code and fill out this writeup document.
+
+II. Assumptions:
+1. Airplanes can fit up to 50 passengers each.
+
+III. Design:
+- This section is to cover your logic and ideas as to how  you are going to solve the problem presented.  This should include a description of classes, algorithms, etc.
+
+IV. Implementation:
+	+ Files Modified
+	sync.h - lock/CV code
+	sync.cc - lock/CV code
+	threadtest.h - part 1 tests/part 2 tests/simulation code
+	threadtest.cc - part 1 tests/part 2 tests/simulation code
+	main.cc - test-running capability code
+	
+	+ Files added
+	No new code files were added.
+	
+	+ Data Structures added, and the file they were added to.
+	1. Lock
+	class Lock					-- in files sync.h/sync.cc
+	{
+		char* name;
+		bool available;
+		Thread* owner;
+		List* waitingThreads;
+	}
+	2. Condition
+	class Condition				-- in files sync.h/sync.cc
+	{
+		char* name;
+		Lock* waitingLock;
+		List* waitingCV;
+	}
+	
+	+ Data Structures modified, and the file they were added to.
+
+	+ Functions added and in which file.
+	1. void Passenger::Passenger(int n)								-- in files threadtest.h/threadtest.cc
+	2. void Passenger::ChooseLiaisonLine()							-- in files threadtest.h/threadtest.cc
+	3. void LiaisonOfficer::LiaisonOfficer(int i)					-- in files threadtest.h/threadtest.cc
+	4. void LiaisonOfficer::~LiaisonOfficer()						-- in files threadtest.h/threadtest.cc
+	5. void LiaisonOfficer::DoWork()								-- in files threadtest.h/threadtest.cc
+	6. void CheckInOfficer::CheckInOfficer(int i)					-- in files threadtest.h/threadtest.cc
+	7. void CheckInOfficer::~CheckInOfficer()						-- in files threadtest.h/threadtest.cc
+	8. void CheckInOfficer::DoWork()								-- in files threadtest.h/threadtest.cc
+	9. void CargoHandler::CargoHandler(int n)						-- in files threadtest.h/threadtest.cc
+	10. void CargoHandler::~CargoHandler()							-- in files threadtest.h/threadtest.cc
+	11. void CardoHandler::DoWork()									-- in files threadtest.h/threadtest.cc
+	12. void AirportManager::AiportManager()						-- in files threadtest.h/threadtest.cc
+	13. void AirportManager::~AirportManager()						-- in files threadtest.h/threadtest.cc
+	14. void AirportManager::EndOfDay()								-- in files threadtest.h/threadtest.cc
+	15. void AirportManager::AddCargoHandler(CargoHandler *ch)		-- in files threadtest.h/threadtest.cc
+	16. void ScreeningOfficer::ScreeningOfficer(int i)				-- in files threadtest.h/threadtest.cc
+	17. void ScreeningOfficer::~ScreeningOfficer()					-- in files threadtest.h/threadtest.cc
+	18. void ScreeningOfficer::DoWork()								-- in files threadtest.h/threadtest.cc
+	19. void SecurityOfficer::SecurityOfficer(int i)				-- in files threadtest.h/threadtest.cc
+	20.	void SecurityOfficer::~SecurityOfficer()					-- in files threadtest.h/threadtest.cc
+	21. void SecurityOfficer::DoWork()								-- in files threadtest.h/threadtest.cc
+	22. void t1_t1()												-- in files threadtest.h/threadtest.cc
+	23. void t1_t2()												-- in files threadtest.h/threadtest.cc
+	24. void t1_t3()												-- in files threadtest.h/threadtest.cc
+	25. void t2_t1()												-- in files threadtest.h/threadtest.cc
+	26. void t2_t2()												-- in files threadtest.h/threadtest.cc
+	27. void t3_waiter()											-- in files threadtest.h/threadtest.cc
+	28. void t3_signaller()											-- in files threadtest.h/threadtest.cc
+	29. void t4_waiter()											-- in files threadtest.h/threadtest.cc
+	30. void t4_signaller()											-- in files threadtest.h/threadtest.cc
+	31. void t5_t1()												-- in files threadtest.h/threadtest.cc
+	32. void t5_t2()												-- in files threadtest.h/threadtest.cc
+	33. void TestSuit()												-- in files threadtest.h/threadtest.cc
+	34. void AirportTests()											-- in files threadtest.h/threadtest.cc
+	35. void testPassenger(int i)									-- in files threadtest.h/threadtest.cc
+	36. void testCH(int CHIndex)									-- in files threadtest.h/threadtest.cc
+	37. testLiaison(int liaisonIndex)								-- in files threadtest.h/threadtest.cc
+	38. testCIO(int i)												-- in files threadtest.h/threadtest.cc
+
+	+ Functions modified and in which file.
+	
+
+V. Testing:  (For each test case, you must show)
+	+ How to test
+	Use the 'T' flag when running nachos, like so: 'nachos -T'
+	+ Test Output
+- Describe the testing output. You don't have to dump all the output info. Just make sure your description can exactly reflect your output.
+
+VI. Discussion:
+	+ Experiment expectation.  (What you hope will happen.)
+	+ Experiment result.  (What actually happens.)
+	+ Explanation
+		- Explain your experiment result.
+
+VIII. Miscellaneous:
+- Whatever else you want the grader know about your development.  You can create your own subsections headings here.
