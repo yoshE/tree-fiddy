@@ -57,7 +57,7 @@
 // External functions used by this file
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
-extern void TestSuite(void), AirportTests(void);
+extern void TestSuite(void), AirportTests(void), RunSim(void);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
@@ -96,7 +96,10 @@ main(int argc, char **argv)
 		if (!strcmp(*argv, "-T")) {
 			//TestSuite();			// part 1 tests
 			AirportTests();			// part 2 tests
+		} else if(!strcmp(*argv, "-R")) {
+			RunSim();
 		}
+		
 #ifdef USER_PROGRAM
         if (!strcmp(*argv, "-x")) {        	// run a user program
 	    ASSERT(argc > 1);
