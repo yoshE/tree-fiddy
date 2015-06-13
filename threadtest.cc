@@ -1196,7 +1196,27 @@ void TestSuite() {
 }
 
 
-
+void setupAirlines(int airlineCount) {
+	for (int i = 0; i < airlineCount; i++){
+		gates[i] = i;
+		boardingLounges[i] = 0;
+		totalPassengersOfAirline[i] = AIRLINE_SEAT;
+		aircraftBaggageCount[i] = 0;		// Number of baggage on a single airline
+		aircraftBaggageWeight[i] = 0;		// Weight of baggage on a single airline
+	}
+	
+	for (int i = 0; i < airlineCount; i++){
+		LiaisonSeat[i] = AIRLINE_SEAT;
+		Lock *tempLock = new Lock("Gate Locks");
+		gateLocks[i] = tempLock;
+		Condition *tempCondition = new Condition("Gate Lock CV");
+		gateLocksCV[i] = tempCondition;	
+	}
+	
+	for (int i = 0; i < airlineCount * AIRLINE_SEAT; i++){
+		ScreeningResult[i] = true;
+	}
+}
 
 void createPassengers(int quantity) {
 	for(int i = 0; i < quantity; i++) {
@@ -1303,32 +1323,7 @@ void testSecurity(int securityIndex){
 	sec->DoWork();
 }
 
-void setup(){
-	srand (time(NULL));
-	
-	createPassengers(8);
-	
-	for (int i = 0; i < AIRLINE_COUNT; i++){
-		gates[i] = i;
-		boardingLounges[i] = 0;
-		totalPassengersOfAirline[i] = AIRLINE_SEAT;
-		aircraftBaggageCount[i] = 0;		// Number of baggage on a single airline
-		aircraftBaggageWeight[i] = 0;		// Weight of baggage on a single airline
-	}
-	
-	for (int i = 0; i < AIRLINE_COUNT; i++){
-		LiaisonSeat[i] = AIRLINE_SEAT;
-		Lock *tempLock = new Lock("Gate Locks");
-		gateLocks[i] = tempLock;
-		Condition *tempCondition = new Condition("Gate Lock CV");
-		gateLocksCV[i] = tempCondition;	
-	}
-	
-	for (int i = 0; i < AIRLINE_COUNT*AIRLINE_SEAT; i++){
-		ScreeningResult[i] = true;
-	}
-	
-// -----------------------------------[ Setting Up Singular Locks ]--------------------------
+void setupSingularLocks() {
 	liaisonLineLock = new Lock("Liaison Line Lock");
 	CheckInLock = new Lock("CheckIn Line Lock");
 	ScreenLines = new Lock("Screen Line Lock");
@@ -1337,18 +1332,19 @@ void setup(){
 	BaggageLock = new Lock("Baggage Lock");
 	SecurityAvail = new Lock("Security Availability lock");
 	SecurityLines = new Lock("Security Line Lock");
+}
+
+void setup(){
+	srand (time(NULL));
 	
-// -----------------------------------[ Setting Up Check In Officer Locks and CVs ]--------------------------
-	
+	createPassengers(8);
+	setupAirlines(AIRLINE_COUNT);
+	setupSingularLocks();
 	setupEconomyCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 	setupExecutiveCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 	createCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
-
-// -----------------------------------[ Setting Up Liaison ]--------------------------
-
 	createLiaisons(LIAISONLINE_COUNT);
-	
-// -----------------------------------[ Setting Up Security and Screening ]--------------------------
+
 	for (int i = 0; i < SCREEN_COUNT; i++){
 		SecurityLine[i] = 0;
 		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
@@ -1409,12 +1405,8 @@ void RunSim() {
 	
 	Thread *t;
 	
-	/*
-	for(int i = 0; i < simNumOfPassengers; i++) {
-		Passenger *p = new Passenger(i);
-		simPassengers.push_back(p);
-	}
-	*/
+	setupAirlines(simNumOfAirlines);
+	setupSingularLocks();
 	createPassengers(simNumOfPassengers);
 	createLiaisons(simNumOfLiaisons);
 	setupEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
