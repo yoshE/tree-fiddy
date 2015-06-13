@@ -52,6 +52,7 @@ int simNumOfLiaisons;
 int simNumOfCIOs;
 int simNumOfCargoHandlers;
 int simNumOfScreeningOfficers;
+std::vector<Passenger *> simPassengers;
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -107,7 +108,6 @@ ThreadTest()
 	}
 	
 	printf("Setting up stuff!\n");
-	srand (time(NULL));
 	//TODO: set up Passenger here
 
 	// Sets up various Locks used
@@ -247,7 +247,7 @@ Passenger::Passenger(int n){		// Constructor
 		bags.push_back(Baggage());
 		bags[i].weight = rand() % 31 + BAGGAGE_WEIGHT;		// Baggage will weigh from 30 to 60 lb
 	}
-	ChooseLiaisonLine();
+	//ChooseLiaisonLine();
 }
 
 Passenger::~Passenger(){
@@ -1190,6 +1190,8 @@ void testSecurity(int securityIndex){
 }
 
 void setup(){
+	srand (time(NULL));
+	
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		gates[i] = i;
 		boardingLounges[i] = 0;
@@ -1337,6 +1339,30 @@ void RunSim() {
 	std::cin >> simNumOfScreeningOfficers;
 	printf("\n");
 	
+	Thread *t;
+	
+	for(int i = 0; i < simNumOfPassengers; i++) {
+		Passenger *p = new Passenger(i);
+		simPassengers.push_back(p);
+	}
+	
+	printf("Setup print statements:\n");
+	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
+	printf("Number of airlines = %d\n", simNumOfAirlines);
+	printf("Number of check-in staff = %d\n", simNumOfCIOs);
+	printf("Number of cargo handlers = %d\n", simNumOfCargoHandlers);
+	printf("Number of screening officers = %d\n", simNumOfScreeningOfficers);
+	printf("Number of passengers = %d\n", simNumOfPassengers);
+	for(int i = 0; i < simNumOfPassengers; i++) {
+		printf("Passenger %d: Number of bags = %d\n", i, simPassengers.at(i)->getBaggageCount());
+		printf("Passenger %d: Weight of bags = ", i);
+		int numberOfBags = simPassengers.at(i)->getBags().size();
+		for(int j = 0; j < numberOfBags; j++) {
+			printf("%d", simPassengers.at(i)->getBags().at(j).weight);
+			if(j < numberOfBags - 1) printf(", ");
+			else printf("\n");
+		}
+	}
 }
 
 void AirportTests() {

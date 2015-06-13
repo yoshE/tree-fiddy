@@ -99,6 +99,7 @@ class Passenger {
 		bool getClass() {return economy;}		// Gets Economy or Executive Class
 		void ChooseLiaisonLine();
 		int getBaggageCount() {return baggageCount;}		// Returns number of baggage
+		std::vector<Baggage> getBags() {return bags;}
 	  
   private:
 	  bool NotTerrorist;
