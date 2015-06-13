@@ -48,6 +48,10 @@ int simNumOfCIOs;
 int simNumOfCargoHandlers;
 int simNumOfScreeningOfficers;
 std::vector<Passenger *> simPassengers;
+std::vector<LiaisonOfficer *> simLiaisons;
+std::vector<CheckInOfficer *> simCIOs;
+std::vector<CargoHandler *> simCargoHandlers;
+std::vector<ScreeningOfficer *> simScreeningOfficers;
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -1231,6 +1235,7 @@ void TestSuite() {
 
 void createPassengers(int quantity) {
 	for(int i = 0; i < quantity; i++) {
+		simPassengers.push_back(new Passenger(i));
 		printf("Debug: Created Passenger %d\n", i);
 		Passenger *p = new Passenger(i);
 		simPassengers.push_back(p);
@@ -1244,11 +1249,12 @@ void createLiaisons(int quantity) {
 		liaisonOfficerCV[i] = new Condition("Liaison Officer CV " + 1);
 		liaisonLineLocks[i] = new Lock("Liaison Line Lock " + i);
 		liaisonOfficers[i] = new LiaisonOfficer(i);
+		simLiaisons.push_back(liaisonOfficers[i]);
 		printf("Debug: Created Liaison Officer %d\n", i);
 	}
 }
 
-void createEconomyCIOs(int airlineCount, int quantity) {
+void setupEconomyCIOs(int airlineCount, int quantity) {
 	for (int i = 0; i < airlineCount; i++){
 		for (int y = 0; y < quantity; y++){
 			int x = (y + i) + (airlineCount + 1) * i;
@@ -1262,7 +1268,7 @@ void createEconomyCIOs(int airlineCount, int quantity) {
 	}
 }
 
-void createExecutiveCIOs(int airlineCount, int quantity) {
+void setupExecutiveCIOs(int airlineCount, int quantity) {
 	for (int i = 0; i < airlineCount; i++){
 		int x = airlineCount * quantity + i;
 		CheckInLine[x] = 0;
@@ -1272,13 +1278,22 @@ void createExecutiveCIOs(int airlineCount, int quantity) {
 	}
 }
 
+void createCIOs(int airlineCount, int quantity) {
+	for(int i = 0; i < airlineCount; i++) {
+		for(int j = 0; j < quantity; j++) {
+			int x = j + i + (airlineCount + 1) * i;
+			simCIOs.push_back(new CheckInOfficer(x));
+			printf("Debug: Created Check In Officer %d\n", x);
+		}
+	}
+}
+
 void testPassenger(int i) {
 	simPassengers.at(i)->ChooseLiaisonLine();
 }
 
-void testLiaison(int liaisonIndex){
-	LiaisonOfficer *l = new LiaisonOfficer(liaisonIndex);
-	l->DoWork();
+void testLiaison(int i){
+	simLiaisons.at(i)->DoWork();
 }
 
 void testCheckIn(int checkinIndex){
@@ -1360,9 +1375,9 @@ void setup(){
 	
 // -----------------------------------[ Setting Up Check In Officer Locks and CVs ]--------------------------
 	
-	createEconomyCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
-	
-	createExecutiveCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
+	setupEconomyCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
+	setupExecutiveCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
+	createCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 
 // -----------------------------------[ Setting Up Liaison ]--------------------------
 
@@ -1437,8 +1452,9 @@ void RunSim() {
 	*/
 	createPassengers(simNumOfPassengers);
 	createLiaisons(simNumOfLiaisons);
-	createEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
-	createExecutiveCIOs(simNumOfAirlines, simNumOfCIOs);
+	setupEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
+	setupExecutiveCIOs(simNumOfAirlines, simNumOfCIOs);
+	createCIOs(simNumOfAirlines, simNumOfCIOs);
 	
 	printf("Setup print statements:\n");
 	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
