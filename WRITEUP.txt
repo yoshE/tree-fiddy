@@ -13,10 +13,27 @@ I. Requirements:
 5. Comment the new and modified code and fill out this writeup document.
 
 II. Assumptions:
-1. Airplanes can fit up to 50 passengers each.
+1. Airplanes can fit up to 50 passengers each
+2. There is only 1 line for Screening Officers
 
 III. Design:
-- This section is to cover your logic and ideas as to how  you are going to solve the problem presented.  This should include a description of classes, algorithms, etc.
+The part 1 design was based upon what the professor talked about in class. We used his pseudo code to design the locks and condition variables such that they would
+complete the given tests with no worries.
+
+For part 2, we based our code on the professor's pseudo code as well as our own intuition. Using the professor's code as a base, we added on features to allow it to
+achieve all the stated requirements. For the passenger, we ensured that it would have an identifier (used to communicate stats) and would have bags of which it would
+give to the Check In Officer. We designed each interaction based upon the requirements for that thread as well as prior interactions. The liaison officer interaction
+was coded such because we wanted the passenger to find a line, wait in that line, then talk to the office to move ahead. The other interactions where based upon this 
+one because each interaction is relatively similar. 
+
+For the Screening Officer, we only included 1 line, because we wanted to design it similar to an actual airport. In most real airports, there is only 1 line for screening
+and security purposes. Additionally, we wanted the screening officer to loop infinitely while searching for an available security officer because they can't assign a 
+passenger to a security officer if that officer is not available.
+
+For the security officer, we decided to make a line for passengers both new and returning because this would streamline the coding process. Instead of only having a line
+for returning passengers, we decided that having an overall line so that new passengers would go wait and returning passengers would just join the line. Since the security
+officer shouldn't take new passengers before talking to the returning passengers, having a line would prevent that from occuring. The old passenger would join the line and 
+if any passenger would slip in, it would be after the old passenger has already been allow to board.
 
 IV. Implementation:
 	+ Files Modified
@@ -46,7 +63,115 @@ IV. Implementation:
 		List* waitingCV;
 	}
 	
-	+ Data Structures modified, and the file they were added to.
+	ALL THE BELOW ARE FROM THREADTEST.H
+	
+	struct Baggage{	
+		int airlineCode;		
+		int weight;
+	};
+
+	struct LiaisonPassengerInfo{
+		int baggageCount;
+		int airline;
+	};
+
+	struct CheckInPassengerInfo{	
+		int baggageCount;
+		int passenger;
+		bool IsEconomy;
+		int seat;
+		int gate;
+		int line;
+		std::vector<Baggage> bag;		
+	};
+
+	struct ScreenPassengerInfo{		
+		int passenger;
+		int SecurityOfficer;
+	};
+
+	struct SecurityScreenInfo{		
+		int ScreenLine;
+	};
+
+	struct SecurityPassengerInfo{		
+		bool PassedSecurity;
+		bool questioning;
+		int passenger;
+	};
+	
+	struct Liaison{		
+	  char* name;
+	  int airline;		
+	  int number;		
+	  int passengerCount;		
+	  int airlineBaggageCount[AIRLINE_COUNT];		
+	} info; 
+	
+	bool SecurityAvailability[SCREEN_COUNT];	
+	int liaisonLine[LIAISONLINE_COUNT];		
+	int CheckInLine[CHECKIN_COUNT * AIRLINE_COUNT];		
+	int SecurityLine[SCREEN_COUNT];		
+	int ScreenLine[1];		
+	Condition *ScreenLineCV[1];			
+	Condition *ScreenOfficerCV[SCREEN_COUNT];		
+	Condition *SecurityOfficerCV[SCREEN_COUNT];
+	Condition *SecurityLineCV[SCREEN_COUNT];		
+	Condition *liaisonLineCV[LIAISONLINE_COUNT];		
+	Condition *liaisonOfficerCV[LIAISONLINE_COUNT];		
+	Condition *CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];	
+	Condition *CheckInOfficerCV[CHECKIN_COUNT*AIRLINE_COUNT];		
+	Condition *CheckInBreakCV[CHECKIN_COUNT*AIRLINE_COUNT];	
+	Lock *liaisonLineLock;		
+	Lock *liaisonLineLocks[LIAISONLINE_COUNT];	
+	Lock *CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT];	
+	Lock *ScreenLocks[SCREEN_COUNT];		
+	Lock *SecurityLocks[SCREEN_COUNT];		
+	Lock *AirlineBaggage[AIRLINE_COUNT]; 	
+	Lock *CheckInLock;		
+	Lock *ScreenLines;		
+	Lock *CargoHandlerLock;		
+	Condition *CargoHandlerCV;		
+	bool seats[50*AIRLINE_COUNT]; 
+	Lock *airlineSeatLock;	
+	Lock *BaggageLock;	
+	Lock *SecurityAvail;		
+	Lock *SecurityLines;			
+	Lock *gateLocks[AIRLINE_COUNT];				
+	Condition *gateLocksCV[AIRLINE_COUNT];		
+	Lock *LiaisonSeats;			
+	std::vector<Baggage> bags;
+	std::vector<CargoHandler*> cargoHandlers;
+	std::vector<CheckInOfficer*> checkInOfficers;
+	std::vector<LiaisonOfficer*> liaisonOfficers;
+	std::vector<Baggage> bags;		
+	
+	THE FOLLOWING ARE ALL FROM THREADTEST.CC
+	
+	int gates[AIRLINE_COUNT];	
+	int LiaisonSeat[AIRLINE_COUNT];
+	bool ScreeningResult[PASSENGER_COUNT];
+	LiaisonOfficer *liaisonOfficers[LIAISONLINE_COUNT];		
+	CheckInOfficer *CheckIn[CHECKIN_COUNT*AIRLINE_COUNT];		
+	SecurityOfficer *Security[SCREEN_COUNT];	
+	ScreeningOfficer *Screen[SCREEN_COUNT];	
+	LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[LIAISONLINE_COUNT];		
+	CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		
+	ScreenPassengerInfo * SPInfo = new ScreenPassengerInfo[SCREEN_COUNT+1];	
+	SecurityScreenInfo * SSInfo = new SecurityScreenInfo[SCREEN_COUNT];		
+	SecurityPassengerInfo * SecPInfo = new SecurityPassengerInfo[SCREEN_COUNT];		
+
+	deque<Baggage> conveyor;		// Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers
+	int aircraftBaggageCount[AIRLINE_COUNT];		// Number of baggage on a single airline
+	int aircraftBaggageWeight[AIRLINE_COUNT];		// Weight of baggage on a single airline
+
+	int boardingLounges[AIRLINE_COUNT];		// Array of count of people waiting in airport lounge for airline to leave
+	int totalPassengersOfAirline[AIRLINE_COUNT];		// Total passengers that should be on an airline
+	AirportManager* am = new AirportManager(); //for testing purposes
+
+	int liaisonBaggageCount[AIRLINE_COUNT];			// baggage count from liaison's perspective, per each airline
+	std::vector<Passenger *> simPassengers;
+	
 
 	+ Functions added and in which file.
 	1. void Passenger::Passenger(int n)								-- in files threadtest.h/threadtest.cc
@@ -87,21 +212,46 @@ IV. Implementation:
 	36. void testCH(int CHIndex)									-- in files threadtest.h/threadtest.cc
 	37. testLiaison(int liaisonIndex)								-- in files threadtest.h/threadtest.cc
 	38. testCIO(int i)												-- in files threadtest.h/threadtest.cc
-
+	39. Passenger::~Passenger()										-- in files threadtest.h/threadtest.cc
+	40. char Passenger::getName()									-- in files threadtest.h/threadtest.cc
+	41. int Passenger::getAirline()									-- in files threadtest.h/threadtest.cc
+	42. bool Passenger::getClass()									-- in files threadtest.h/threadtest.cc
+	43. int Passenger::getBaggageCount()							-- in files threadtest.h/threadtest.cc
+	44. Passenger::getBags()										-- in files threadtest.h/threadtest.cc
+	45. int LiaisonOfficer::getPassengerCount()						-- in files threadtest.h/threadtest.cc
+	46. int LiaisonOfficer::getPassengerBaggageCount(int n)			-- in files threadtest.h/threadtest.cc
+	47. int LiaisonOfficer::getAirlineBaggageCount(int n)			-- in files threadtest.h/threadtest.cc
+	48. void CheckInOfficer::setOffBreak()							-- in files threadtest.h/threadtest.cc
+	49. bool CheckInOfficer::getOnBreak()							-- in files threadtest.h/threadtest.cc
+	50. int CheckInOfficer::getAirline()							-- in files threadtest.h/threadtest.cc
+	51. int CheckInOfficer::getNumber()								-- in files threadtest.h/threadtest.cc
+	52. char CargoHandler::getName()								-- in files threadtest.h/threadtest.cc
+	53. bool CargoHandler::getBreak()								-- in files threadtest.h/threadtest.cc
+	54. int CargoHandler::getWeight()								-- in files threadtest.h/threadtest.cc
+	55. int CargoHandler::getCount()								-- in files threadtest.h/threadtest.cc
+	56. bool ScreeningOfficer::getBusy()							-- in files threadtest.h/threadtest.cc
+	57. void ScreeningOfficer::setBusy()							-- in files threadtest.h/threadtest.cc
+	
 	+ Functions modified and in which file.
 	
 
 V. Testing:  (For each test case, you must show)
-	+ How to test
-	Use the 'T' flag when running nachos, like so: 'nachos -T'
-	+ Test Output
-- Describe the testing output. You don't have to dump all the output info. Just make sure your description can exactly reflect your output.
+Since the professor allowed up to use a large singular function within Passenger, we ended up creating a test case that covers all the singular tests. By heading to the bottom
+of threadtest.cc, you can modify how many of each thread are created. For example, by modifying the value of the for loop, you can create 10 passengers versus only 5. Once you
+have modified the for loops, you can run the overall test by using nachos -T. The outputs that are required for the complete grade will print and you will be able to see whether
+each section was successful. 
+
+The output should look like a long set of strings that contain information on what each thread is doing and whom they are interacting with. By following the set of strings, you
+can get a good understanding of what our code is doing.
 
 VI. Discussion:
-	+ Experiment expectation.  (What you hope will happen.)
-	+ Experiment result.  (What actually happens.)
-	+ Explanation
-		- Explain your experiment result.
+We expect our experiment to fully complete and for each passenger to successfully board the plane. This means that each plane is filled to capacity and no capacity is lost or left
+behind because of race condition.
+
+Obviously, this didn't happen, but we got extremely close. Our passengers still manage to successfully reach the boarding area and prepare for airline boarding procedures. All
+baggage is successfully placed onto the correct planes, and each officer does their job correctly. No thread is lost through race conditions and while it may have a mishap or two, 
+the overarching case is pretty good. There are a few errors where while loops may cause hang or infinite loops (there is no time for the officer to change state so the loop runs
+forever) but these are extremely rare. The AM has a few issues with closing up shop for the day but it does its day job just fine.
 
 VIII. Miscellaneous:
 - Whatever else you want the grader know about your development.  You can create your own subsections headings here.

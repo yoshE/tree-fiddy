@@ -1401,7 +1401,7 @@ void AirportTests() {
 		t->Fork((VoidFunctionPtr)testSecurity, i);
 	}
 	
-	for(int i = 0; i < 0; i++) {
+	for(int i = 0; i < 2; i++) {
 		t = new Thread("Cargo Handler");
 		t->Fork((VoidFunctionPtr)testCargo, i);
 	}
