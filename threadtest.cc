@@ -1134,12 +1134,19 @@ void TestSuite() {
 
 }
 
-// Test A1
-// Passenger & Airport Liaison Interaction
 
-void testPassenger(int passengerIndex) {
-	Passenger *p = new Passenger(passengerIndex);
-	p->ChooseLiaisonLine();
+
+
+void createPassengers(int quantity) {
+	for(int i = 0; i < quantity; i++) {
+		printf("Debug: Created Passenger %d\n", i);
+		Passenger *p = new Passenger(i);
+		simPassengers.push_back(p);
+	}
+}
+
+void testPassenger(int i) {
+	simPassengers.at(i)->ChooseLiaisonLine();
 }
 
 void testLiaison(int liaisonIndex){
@@ -1191,6 +1198,8 @@ void testSecurity(int securityIndex){
 
 void setup(){
 	srand (time(NULL));
+	
+	createPassengers(8);
 	
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		gates[i] = i;
@@ -1341,10 +1350,13 @@ void RunSim() {
 	
 	Thread *t;
 	
+	/*
 	for(int i = 0; i < simNumOfPassengers; i++) {
 		Passenger *p = new Passenger(i);
 		simPassengers.push_back(p);
 	}
+	*/
+	createPassengers(simNumOfPassengers);
 	
 	printf("Setup print statements:\n");
 	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
