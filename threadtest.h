@@ -9,8 +9,8 @@
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
 #define AIRLINE_COUNT 1 		// Number of airlines
 #define CHECKIN_COUNT 1		// Number of CheckIn Officers
-#define PASSENGER_COUNT 150
-#define AIRLINE_SEAT 50
+#define PASSENGER_COUNT 150	// Total number of passengers
+#define AIRLINE_SEAT 50		// Number of seats per Airline
 #define LIAISONLINE_COUNT 1 // Number of Liaison Officers
 #define SCREEN_COUNT 1		// Number of Screening and Security Officers
 
@@ -51,7 +51,7 @@ Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
 Lock *SecurityLines;			// Lock for returning passengers from Security
 Lock *gateLocks[AIRLINE_COUNT];				//Locks for waiting at the gate
 Condition *gateLocksCV[AIRLINE_COUNT];		//CVs for waiting at the gate
-Lock *LiaisonSeats;
+Lock *LiaisonSeats;			// Lock for assigned airline seats in the Liaison
 
 //----------------------------------------------------------------------
 // Structs
@@ -103,7 +103,7 @@ class Passenger {
 		bool getClass() {return economy;}		// Gets Economy or Executive Class
 		void ChooseLiaisonLine();
 		int getBaggageCount() {return baggageCount;}		// Returns number of baggage
-		std::vector<Baggage> getBags() {return bags;}
+		std::vector<Baggage> getBags() {return bags;}		// Vector of bag structs
 	  
   private:
 	  bool NotTerrorist;
@@ -127,7 +127,7 @@ class LiaisonOfficer {
 	void DoWork();
 	int getPassengerCount(); // For manager to get passenger headcount
 	int getPassengerBaggageCount(int n); // For manager to get passenger bag count
-	int getAirlineBaggageCount(int n);
+	int getAirlineBaggageCount(int n);		// Returns baggage count per airline
   
   private:
 	struct Liaison{		// Struct containing all important info
@@ -206,7 +206,6 @@ class AirportManager{
 		int CIOTotalCount[AIRLINE_COUNT];
 		int CIOTotalWeight[AIRLINE_COUNT];
 		int LiaisonTotalCount[AIRLINE_COUNT];
-		
 };
 //----------------------------------------------------------------------
 // Screening Officer
@@ -216,12 +215,12 @@ class ScreeningOfficer{
 		ScreeningOfficer(int i);
 		~ScreeningOfficer();
 		void DoWork();
-		bool getBusy() {return IsBusy;}
-		void setBusy() {IsBusy = true;}
+		bool getBusy() {return IsBusy;}		// Sets available
+		void setBusy() {IsBusy = true;}		// Returns available
 	
 	private:
 		char* name;
-		bool IsBusy;
+		bool IsBusy;		// bool controlling whether the screening officer is busy or not
 		bool ScreenPass;		// If the current Passenger Passed Screening, Given to Security Officer
 		int number;
 };
