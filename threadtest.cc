@@ -1149,6 +1149,30 @@ void createLiaisons(int quantity) {
 	}
 }
 
+void createEconomyCIOs(int airlineCount, int quantity) {
+	for (int i = 0; i < airlineCount; i++){
+		for (int y = 0; y < quantity; y++){
+			int x = (y + i) + (airlineCount + 1) * i;
+			CheckInLine[x] = 0;
+			CheckIn[x] = new CheckInOfficer(x);
+			CheckInLocks[x] = new Lock("CheckIn Officer Lock");
+			CheckInBreakCV[x] = new Condition("CheckIn Break Time CV");
+			CheckInCV[x] = new Condition("CheckIn Line CV");
+			CheckInOfficerCV[x] = new Condition("CheckIn Officer CV");
+		}
+	}
+}
+
+void createExecutiveCIOs(int airlineCount, int quantity) {
+	for (int i = 0; i < airlineCount; i++){
+		int x = airlineCount * quantity + i;
+		CheckInLine[x] = 0;
+		CheckIn[x] = new CheckInOfficer(x);
+		CheckInLocks[x] = new Lock("CheckIn Officer Lock");
+		CheckInCV[x] = new Condition("CheckIn Line CV");
+	}
+}
+
 void testPassenger(int i) {
 	simPassengers.at(i)->ChooseLiaisonLine();
 }
@@ -1226,59 +1250,23 @@ void setup(){
 	}
 	
 // -----------------------------------[ Setting Up Singular Locks ]--------------------------
-	char* lockName = "Liaison Line Lock";
-	liaisonLineLock = new Lock(lockName);
-	char *lockName2 = "CheckIn Line Lock";
-	CheckInLock = new Lock(lockName2);
-	char *lockName3 = "Screen Line Lock";
-	ScreenLines = new Lock(lockName3);
-	char *lockName4 = "Airline Seat Lock";
-	airlineSeatLock = new Lock(lockName4);
-	lockName = "Liaison Seat Lock";
-	LiaisonSeats = new Lock(lockName);
-	char *lockName5 = "Baggage Lock";
-	BaggageLock = new Lock(lockName5);
-	char *lockName6 = "Security Availability lock";
-	SecurityAvail = new Lock(lockName6);
-	char *lockName7 = "Security Line Lock";
-	SecurityLines = new Lock(lockName7);
+	liaisonLineLock = new Lock("Liaison Line Lock");
+	CheckInLock = new Lock("CheckIn Line Lock");
+	ScreenLines = new Lock("Screen Line Lock");
+	airlineSeatLock = new Lock("Airline Seat Lock");
+	LiaisonSeats = new Lock("Liaison Seat Lock");
+	BaggageLock = new Lock("Baggage Lock");
+	SecurityAvail = new Lock("Security Availability lock");
+	SecurityLines = new Lock("Security Line Lock");
 	
 // -----------------------------------[ Setting Up Check In Officer Locks and CVs ]--------------------------
-	for (int i = 0; i < AIRLINE_COUNT; i++){
-		for (int y = 0; y < CHECKIN_COUNT; y++){
-			int x = (y+i)+(AIRLINE_COUNT+1)*i;
-			CheckInLine[x] = 0;
-			CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
-			CheckIn[(y+i)+(AIRLINE_COUNT+1)*i] = tempCheckIn;
-			char *lockName8 = "CheckIn Officer Lock";
-			Lock *tempLock = new Lock(lockName8);
-			CheckInLocks[(y+i)+(AIRLINE_COUNT+1)*i] = tempLock;
-			Condition *tempCondition = new Condition("CheckIn Break Time CV");
-			CheckInBreakCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition;
-			char *name = "CheckIn Line CV";
-			Condition *tempCondition2 = new Condition(name);
-			CheckInCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition2;
-			char *name2 = "CheckIn Officer CV";
-			Condition *tempCondition3 = new Condition(name2);
-			CheckInOfficerCV[(y+i)+(AIRLINE_COUNT+1)*i] = tempCondition3;
-		}
-	}
 	
-	//For Exec Line
-	for (int i = 0; i<AIRLINE_COUNT; i++){
-		int x = AIRLINE_COUNT*CHECKIN_COUNT + i;
-		CheckInLine[x] = 0;
-		CheckInOfficer *tempCheckIn = new CheckInOfficer(x);
-		CheckIn[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCheckIn;
-		char *lockName9 = "CheckIn Officer Lock";
-		Lock *tempLock2 = new Lock(lockName9);
-		CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempLock2;
-		char *name3 = "CheckIn Line CV";
-		Condition *tempCondition4 = new Condition(name3);
-		CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT + i] = tempCondition4;
-	}
+	createEconomyCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
+	
+	createExecutiveCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 
 // -----------------------------------[ Setting Up Liaison ]--------------------------
+
 	createLiaisons(LIAISONLINE_COUNT);
 	
 // -----------------------------------[ Setting Up Security and Screening ]--------------------------
@@ -1311,13 +1299,10 @@ void setup(){
 // -----------------------------------[ Setting Up Baggage Conveyor ]--------------------------
 
 	for (int i = 0; i < AIRLINE_COUNT; i++){
-		lockName = "Airline Baggage Lock";
-		AirlineBaggage[i] = new Lock(lockName);
+		AirlineBaggage[i] = new Lock("Airline Baggage Lock");
 	}
-	lockName = "Cargo Handler Lock";
-	CargoHandlerLock = new Lock(lockName);
-	char* cvName = "Cargo Handler CV ";
-	CargoHandlerCV = new Condition(cvName);
+	CargoHandlerLock = new Lock("Cargo Handler Lock");
+	CargoHandlerCV = new Condition("Cargo Handler CV ");
 	
 	for (int i = 0; i < AIRLINE_COUNT*AIRLINE_SEAT; i++){
 		seats[i] = true;
@@ -1349,6 +1334,8 @@ void RunSim() {
 	*/
 	createPassengers(simNumOfPassengers);
 	createLiaisons(simNumOfLiaisons);
+	createEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
+	createExecutiveCIOs(simNumOfAirlines, simNumOfCIOs);
 	
 	printf("Setup print statements:\n");
 	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
