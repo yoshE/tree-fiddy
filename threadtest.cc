@@ -386,7 +386,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 
 		SecurityLines->Acquire();		// Lock for waiting in Line
 		if (SecurityLine[myLine] == 0){
-			printf("Security Line length is less than 1!\n");
 			SecurityAvail->Acquire();
 			Security[myLine]->setBusy();
 			SecurityAvail->Release();
@@ -1340,7 +1339,7 @@ void AirportTests() {
 	t = new Thread("");
 	t->Fork((VoidFunctionPtr)testAM, 0);
 	
-	for(int i = 0; i < 2; i++) {
+	for(int i = 0; i < 8; i++) {
 		t = new Thread("Passenger");
 		t->Fork((VoidFunctionPtr)testPassenger, i);
 	}
