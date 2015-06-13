@@ -52,6 +52,7 @@ std::vector<LiaisonOfficer *> simLiaisons;
 std::vector<CheckInOfficer *> simCIOs;
 std::vector<CargoHandler *> simCargoHandlers;
 std::vector<ScreeningOfficer *> simScreeningOfficers;
+std::vector<SecurityOfficer *> simSecurityOfficers;
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -1273,6 +1274,21 @@ void createCIOs(int airlineCount, int quantity) {
 	}
 }
 
+void createSecurityAndScreen(int quantity) {
+	for (int i = 0; i < quantity; i++){
+		SecurityLine[i] = 0;
+		Security[i] = new SecurityOfficer(i);
+		Screen[i] = new ScreeningOfficer(i);
+		ScreenOfficerCV[i] = new Condition("Screen Officer CV");
+		SecurityOfficerCV[i] = new Condition("Security Officer CV");
+		ScreenLocks[i] = new Lock("Screen Lock");
+		SecurityLocks[i] = new Lock("Security Lock");
+		SecurityLineCV[i] = new Condition("Security line CV");
+		simScreeningOfficers.push_back(Screen[i]);
+		simSecurityOfficers.push_back(Security[i]);
+	}
+}
+
 void testPassenger(int i) {
 	simPassengers.at(i)->ChooseLiaisonLine();
 }
@@ -1313,14 +1329,12 @@ void testAM(){
 	}
 }*/
 
-void testScreen(int screenIndex){
-	ScreeningOfficer *s = new ScreeningOfficer(screenIndex);
-	s->DoWork();
+void testScreen(int i){
+	simScreeningOfficers.at(i)->DoWork();
 }
 
-void testSecurity(int securityIndex){
-	SecurityOfficer *sec = new SecurityOfficer(securityIndex);
-	sec->DoWork();
+void testSecurity(int i){
+	simSecurityOfficers.at(i)->DoWork();
 }
 
 void setupSingularLocks() {
@@ -1344,28 +1358,8 @@ void setup(){
 	setupExecutiveCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 	createCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
 	createLiaisons(LIAISONLINE_COUNT);
-
-	for (int i = 0; i < SCREEN_COUNT; i++){
-		SecurityLine[i] = 0;
-		SecurityOfficer *tempSecurity = new SecurityOfficer(i);
-		Security[i] = tempSecurity;
-		ScreeningOfficer *tempScreen = new ScreeningOfficer(i);
-		Screen[i] = tempScreen;
-		char *name = "Screen Officer CV";
-		Condition *tempCondition5 = new Condition(name);
-		ScreenOfficerCV[i] = tempCondition5;
-		name = "Security Officer CV";
-		Condition *tempCondition6 = new Condition(name);
-		SecurityOfficerCV[i] = tempCondition6;
-		name = "Screen Lock";
-		Lock *tempLock3 = new Lock(name);
-		ScreenLocks[i] = tempLock3;
-		name = "Security Lock";
-		Lock *tempLock4 = new Lock(name);
-		SecurityLocks[i] = tempLock4;
-		Condition *tempCondition8 = new Condition("Security line CV");
-		SecurityLineCV[i] = tempCondition8;
-	}
+	createSecurityAndScreen(SCREEN_COUNT);
+	
 	
 	for (int i = 0; i < SCREEN_COUNT;i++){
 		SecurityAvailability[i] = true;
@@ -1412,6 +1406,7 @@ void RunSim() {
 	setupEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
 	setupExecutiveCIOs(simNumOfAirlines, simNumOfCIOs);
 	createCIOs(simNumOfAirlines, simNumOfCIOs);
+	createSecurityAndScreen(simNumOfScreeningOfficers);
 	
 	printf("Setup print statements:\n");
 	printf("Number of airport liaisons = %d\n", simNumOfLiaisons);
