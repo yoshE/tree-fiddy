@@ -76,6 +76,7 @@ ThreadTest()
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		gates[i] = i;
 		totalPassengersOfAirline[i] = AIRLINE_SEAT;
+		boardingLounges[i] = 0;
 	}
 	
 	for (int i = 0; i < AIRLINE_COUNT*50; i++){
@@ -316,7 +317,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	
 	bool test = true;
 	if (ScreenLine[0] == 0){
-		printf("Passenger skips waiting in Screening Line\n");
 		ScreenLine[0] += 1;
 		ScreenLines->Release();
 		while (test){
@@ -324,7 +324,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 			for (int i = 0; i < SCREEN_COUNT; i++){
 				if(!(Screen[i]->getBusy())){
 					test = Screen[i]->getBusy();
-					printf("Found available screening officer\n");
 					myLine = i;
 				}
 			}
@@ -333,7 +332,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 		}
 		ScreenLines->Acquire();
 	} else {
-		printf("Passenger is waiting in Screening Line\n");
 		ScreenLine[0] += 1;
 		ScreenLineCV[0]->Wait(ScreenLines);
 	}
@@ -341,7 +339,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 		for (int i = 0; i < SCREEN_COUNT; i++){
 			if(!(Screen[i]->getBusy())){
 				test = Screen[i]->getBusy();
-				printf("Found available screening officer\n");
 				myLine = i;
 			}
 		}
@@ -382,7 +379,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 		SecurityLocks[myLine]->Release();		// Go To Questioning
 		
 		printf("Passenger %d goes for further questioning\n", name);		// OFFICIAL OUTPUT STATEMENT
-		int r = rand() % 4 + 2;		// Random length of questioning
+		int r = rand() % 2 + 1;		// Random length of questioning
 		for (int i = 0; i < r; i++){
 			currentThread->Yield();
 		}
@@ -674,14 +671,12 @@ void ScreeningOfficer::DoWork(){
 		ScreenLines -> Acquire();
 		if (IsBusy) IsBusy = false;
 		if (ScreenLine[0] > 0){		// Checks if the screening line has passengers
-			printf("Screening Line has passengers\n");
 			ScreenLineCV[0]->Signal(ScreenLines);
 		}
 		ScreenLocks[number]->Acquire();
 		ScreenLines->Release();
 		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);		// Wait for Passenger to start conversation
 
-		printf("PASSENGER PASSED THROUGH SCREENING\n");
 		int z = SPInfo[number].passenger;
 		int x = rand() % 5;		// Generate random value for pass/fail
 		ScreenPass = true;		// Default is pass
@@ -695,16 +690,14 @@ void ScreeningOfficer::DoWork(){
 		
 		bool y = false;
 		while(!y){		// Wait for Security Officer to become available
-			//printf("Passenger %d is waiting for security officer to open up\n", z);
 			SecurityAvail->Acquire();
 			for (int i = 0; i < SCREEN_COUNT; i++){		// Iterate through all security officers
 				y = Security[i]->available;		// See if they are busy
 				if (y){			// If a security officer is not busy, obtain his number and inform passenger
 					SPInfo[number].SecurityOfficer = i;
-					printf("FOUND SECURITY OFFICER\n");
+					Security[i]->setBusy();
 				}
 			}
-			Security[SPInfo[number].SecurityOfficer]->setBusy();
 			SecurityAvail->Release();
 			currentThread->Yield();
 		}
@@ -729,13 +722,10 @@ void SecurityOfficer::DoWork(){
 		SecurityLines->Acquire();
 		SecurityAvail->Acquire();
 		if (SecurityLine[number] > 0){		// Always see if Officer has a line of returning passengers from questioning
-			printf("Passenger has returned from questioning so line length is > 0 \n");
 			available = false;
 			SecurityLineCV[number]->Signal(SecurityLines);
 		} else {
-			printf("Security Officer is becoming available\n");
 			Security[number]->setFree();
-			printf("%d %d\n", available, Security[number]->available);
 		}
 		SecurityLocks[number]->Acquire();
 		SecurityAvail->Release();
@@ -1185,6 +1175,8 @@ void testSecurity(int securityIndex){
 void setup(){
 	for (int i = 0; i < AIRLINE_COUNT; i++){
 		gates[i] = i;
+		boardingLounges[i] = 0;
+		totalPassengersOfAirline[i] = 0;
 	}
 	
 	for (int i = 0; i < AIRLINE_COUNT; i++){
@@ -1313,7 +1305,7 @@ void setup(){
 		cout << conveyor[i].airlineCode << " " << conveyor[i].weight << endl;
 	}
 	
-	for (int i = 0; i < AIRLINE_COUNT*50; i++){
+	for (int i = 0; i < AIRLINE_COUNT*AIRLINE_SEAT; i++){
 		seats[i] = true;
 	}
 }
