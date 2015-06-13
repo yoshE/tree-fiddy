@@ -44,6 +44,15 @@ int boardingLounges[AIRLINE_COUNT];
 int totalPassengersOfAirline[AIRLINE_COUNT];
 AirportManager* am = new AirportManager(); //for testing purposes
 
+int liaisonBaggageCount[AIRLINE_COUNT];			// baggage count from liaison's perspective, per each airline
+
+int simNumOfPassengers;
+int simNumOfAirlines;
+int simNumOfLiaisons;
+int simNumOfCIOs;
+int simNumOfCargoHandlers;
+int simNumOfScreeningOfficers;
+
 //----------------------------------------------------------------------
 // SimpleThread
 // 	Loop 5 times, yielding the CPU to another ready thread 
@@ -461,6 +470,7 @@ void LiaisonOfficer::DoWork(){
 		}
 		LiaisonSeats->Release();
 		LPInfo[info.number].airline = info.airline;		// Put airline number in shared struct for passenger
+		liaisonBaggageCount[info.airline] += LPInfo[info.number].baggageCount;
 		liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
 		liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Waits for Passenger to say they are leaving
 		printf("Airport Liaison %d directed passenger %d of airline %d\n", info.number, info.passengerCount-1, info.airline);		// OFFICIAL OUTPUT STATEMENT
@@ -488,7 +498,8 @@ void CheckInOfficer::DoWork(){
 		int x = AIRLINE_COUNT*CHECKIN_COUNT + info.airline;		// Check Executive Line for your airline first
 		if (OnBreak) OnBreak = false;
 		printf("CheckInOfficer: Check In Line 1 length %d \n", CheckInLine[x]);
-		if(CheckInLine[x] > 0){
+		//if(CheckInLine[x] > 0){
+		if(false) {
 			CPInfo[x].line = info.number;
 			CheckInCV[x]->Signal(CheckInLock);
 			printf("Airline check-in staff %d of airline %d serves an executive class passenger and economy class line length = %d\n", info.number, info.airline, CheckInLine[info.number]);		// OFFICIAL OUTPUT STATEMENT
@@ -1311,10 +1322,31 @@ void setup(){
 	}
 }
 
+void RunSim() {
+	printf("Enter the number of passengers: ");
+	std::cin >> simNumOfPassengers;
+	printf("Enter the number of airlines: ");
+	std::cin >> simNumOfAirlines;
+	printf("Enter the number of liaisons: ");
+	std::cin >> simNumOfLiaisons;
+	printf("Enter the number of check in staff: ");
+	std::cin >> simNumOfCIOs;
+	printf("Enter the number of cargo handlers: ");
+	std::cin >> simNumOfCargoHandlers;
+	printf("Enter the number of screening officers: ");
+	std::cin >> simNumOfScreeningOfficers;
+	printf("\n");
+	
+}
+
 void AirportTests() {
 	printf("================\n");
 	printf("TESTING PART 2\n");
 	printf("================\n");
+	
+	for(int i = 0; i < AIRLINE_COUNT; ++i) {
+		liaisonBaggageCount[i] = 0;
+	}
 	
 	setup();	// Sets up CVs and Locks
 	Thread *t;
