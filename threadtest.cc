@@ -307,7 +307,6 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 		ScreenLine[0] += 1;		// Increment line length....
 		ScreenLines->Release();
 		while (test){		// Look for a Screening Officer that isn't busy... (and keep going till you find one)
-			printf ("PASSENGER SCREENING\n");
 			ScreenLines->Acquire();
 			for (int i = 0; i < SCREEN_COUNT; i++){
 				if(!(Screen[i]->getBusy())){		// This checks if that officer is busy
