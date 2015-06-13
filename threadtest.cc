@@ -53,6 +53,7 @@ std::vector<CheckInOfficer *> simCIOs;
 std::vector<CargoHandler *> simCargoHandlers;
 std::vector<ScreeningOfficer *> simScreeningOfficers;
 std::vector<SecurityOfficer *> simSecurityOfficers;
+AirportManager *simAirportManager;
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -1233,6 +1234,10 @@ void createCIOs(int airlineCount, int quantity) {
 	}
 }
 
+void createAirportManager() {
+	simAirportManager = new AirportManager();
+}
+
 void createSecurityAndScreen(int quantity) {
 	for (int i = 0; i < quantity; i++){
 		SecurityLine[i] = 0;
@@ -1278,9 +1283,8 @@ void testCargo(int i){
 	simCargoHandlers.at(i)->DoWork();
 }
 
-void testAM(int AMIndex){
-	AirportManager *a = new AirportManager();
-	a->DoWork();
+void testAirportManager() {
+	simAirportManager->DoWork();
 }
 
 void setupBaggageAndCargo(int airlineCount) {
@@ -1335,6 +1339,7 @@ void setup(){
 	srand (time(NULL));
 	
 	createPassengers(8);
+	createAirportManager();
 	setupAirlines(AIRLINE_COUNT);
 	setupSingularLocks();
 	setupEconomyCIOs(AIRLINE_COUNT, CHECKIN_COUNT);
@@ -1365,6 +1370,7 @@ void RunSim() {
 	
 	setupAirlines(simNumOfAirlines);
 	setupSingularLocks();
+	createAirportManager();
 	createPassengers(simNumOfPassengers);
 	createLiaisons(simNumOfLiaisons);
 	setupEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
@@ -1404,6 +1410,8 @@ void AirportTests() {
 	
 	setup();	// Sets up CVs and Locks
 	Thread *t;
+	
+	createAirportManager();
 	
 	//t = new Thread("Airport Manager");
 	//t->Fork((VoidFunctionPtr)testAM, 0);
