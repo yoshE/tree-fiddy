@@ -1184,8 +1184,6 @@ void createPassengers(int quantity) {
 	for(int i = 0; i < quantity; i++) {
 		simPassengers.push_back(new Passenger(i));
 		printf("Debug: Created Passenger %d\n", i);
-		Passenger *p = new Passenger(i);
-		simPassengers.push_back(p);
 	}
 }
 
