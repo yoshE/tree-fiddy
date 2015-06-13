@@ -140,7 +140,8 @@ class CheckInOfficer{
 	public:
 	  CheckInOfficer(int i);
 	  ~CheckInOfficer();
-	  bool getBreak(){return OnBreak;}		// For managers to see who is on break
+	  void setOffBreak();
+	  bool getOnBreak();		// For managers to see who is on break
 	  void DoWork();
 	  int getAirline();		// Returns airline CheckIn Officer is working for
 	  int getNumber();		// Returns number of officer (which line they control)
