@@ -176,14 +176,14 @@ class CargoHandler{
 		char getName(){return name;}
 		bool getBreak(){return onBreak;}
 		void DoWork();
-		int getWeight(){return weight;}
-		int getCount(){return count;}
+		int getWeight(int n){return weight[n];}
+		int getCount(int n){return count[n];}
 		
 	private:
 		int name;
-		bool onBreak;		// Bool of whether the Cargo Handler is on break
-		int weight;		// Weight of all baggage handled
-		int count;		// Count of all baggage handled
+		bool onBreak;
+		int weight[AIRLINE_COUNT];
+		int count[AIRLINE_COUNT];
 };
 
 //----------------------------------------------------------------------
@@ -203,12 +203,11 @@ class AirportManager{
 		std::vector<LiaisonOfficer*> liaisonOfficers;
 		
 	private:
-		int CargoHandlerTotalWeight;		// Total Weight of all baggage all Cargo Handlers Handled
-		int CargoHandlerTotalCount;		// Total Count of all baggage
-		int CIOTotalCount;
-		int CIOTotalWeight;
-		int LiaisonTotalCount;
-		
+		int CargoHandlerTotalWeight[AIRLINE_COUNT];
+		int CargoHandlerTotalCount[AIRLINE_COUNT];
+		int CIOTotalCount[AIRLINE_COUNT];
+		int CIOTotalWeight[AIRLINE_COUNT];
+		int LiaisonTotalCount[AIRLINE_COUNT];
 };
 //----------------------------------------------------------------------
 // Screening Officer
