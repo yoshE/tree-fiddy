@@ -6,8 +6,8 @@
 #include <deque>
 
 
-#define LIAISONLINE_COUNT 1 // Number of Liaison Officers
-#define CHECKIN_COUNT 1  // Number of CheckIn Officers
+#define LIAISONLINE_COUNT 2 // Number of Liaison Officers
+#define CHECKIN_COUNT 2  // Number of CheckIn Officers
 #define AIRLINE_COUNT 1  // Number of Airlines
 #define SCREEN_COUNT 1		// Number of Screening and Security Officers
 
@@ -17,6 +17,7 @@ void ThreadTest();
 //----------------------------------------------------------------------
 // Arrays, Lists, and Vectors
 //----------------------------------------------------------------------
+bool SecurityAvailability[SCREEN_COUNT];		// Array of Bools for availability of each security officer
 int liaisonLine[LIAISONLINE_COUNT];		// Array of line sizes for each Liaison Officer
 int CheckInLine[CHECKIN_COUNT * AIRLINE_COUNT];		// Array of line sizes for each CheckIn Officer
 int SecurityLine[SCREEN_COUNT];		// Array of line sizes for return passengers from security questioning
@@ -122,6 +123,7 @@ class LiaisonOfficer {
 	void DoWork();
 	int getPassengerCount(); // For manager to get passenger headcount
 	int getPassengerBaggageCount(int n); // For manager to get passenger bag count
+	int getAirlineBaggageCount(int n);
   
   private:
 	struct Liaison{		// Struct containing all important info
@@ -129,7 +131,7 @@ class LiaisonOfficer {
 	  int airline;		// Airline the liaison will assign to the passenger
 	  int number;		// Number of the liaison (which line they control)
 	  int passengerCount;		// Number of passengers the liaison has helped
-	  std::vector<int>baggageCount;		// Vector keeping track of baggage count for each passenger
+	  int airlineBaggageCount[AIRLINE_COUNT];		// Array keeping track of baggage count for each passenger
 	} info; 
 };
 
@@ -230,9 +232,6 @@ class SecurityOfficer{
 		SecurityOfficer(int i);
 		~SecurityOfficer();
 		void DoWork();
-		void setFree(){available = true;}
-		void setBusy(){available = false;}
-		bool available;
 		
 	private:
 		int PassedPassengers;		// Number of passengers that passed security
