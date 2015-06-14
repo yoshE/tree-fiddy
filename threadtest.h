@@ -7,7 +7,7 @@
 
 #define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
-#define AIRLINE_COUNT 2 		// Number of airlines
+#define AIRLINE_COUNT 1 		// Number of airlines
 #define CHECKIN_COUNT 4		// Number of CheckIn Officers
 #define PASSENGER_COUNT 150	// Total number of passengers
 #define AIRLINE_SEAT 50		// Number of seats per Airline

@@ -294,7 +294,8 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	CheckInOfficerCV[myLine]->Wait(CheckInLocks[myLine]);
 	seat = CPInfo[myLine].seat;		// Get seat number from shared struct
 	gate = CPInfo[myLine].gate;		// Get gate number from shared struct
-	if (CheckInLine[oldLine] > 0) CheckInLine[oldLine] -= 1; //Passenger left the line
+	// if (CheckInLine[oldLine] > 0) CheckInLine[oldLine] -= 1; //Passenger left the line
+	if (CheckInLine[myLine] > 0) CheckInLine[myLine] -= 1; //Passenger left the line
 	CheckInOfficerCV[myLine]->Signal(CheckInLocks[myLine]); // Wakes up CheckIn Officer to say I'm leaving
 	printf("Passenger %d of Airline %d was informed to board at gate %d\n", name, this->getAirline(), gate);		//OFFICIAL OUTPUT STATEMENT
 	CheckInLocks[myLine]->Release(); // Passenger is now leaving to go to screening
@@ -504,6 +505,8 @@ void CheckInOfficer::DoWork(){
 			CPInfo[x].line = info.number;
 			CheckInCV[x]->Signal(CheckInLock);
 			printf("Airline check-in staff %d of airline %d serves an executive class passenger and economy class line length = %d\n", info.number, info.airline, CheckInLine[info.number]);		// OFFICIAL OUTPUT STATEMENT
+			CheckInLine[x]--;
+			CheckInLine[info.number]++;
 		} else if (CheckInLine[info.number] > 0){		// If no executive, then check your normal line
 			CheckInCV[info.number]->Signal(CheckInLock);
 			printf("Airline check-in staff %d of airline %d serves an economy class passenger and executive class line length = %d\n", info.number, info.airline, CheckInLine[x]);		// OFFICIAL OUTPUT STATEMENT
@@ -641,6 +644,9 @@ void AirportManager::DoWork(){
 		}
 		int planeCount = 0;
 		// if all passengers and bags have been processed in an airline, release the kraken (plane)
+		// for(int i = 0; i < simNumOfAirlines; i++){
+			// cout << "AIRLINE: " << i << " BL: " << boardingLounges[i] << "  TPA: " << totalPassengersOfAirline[i] << " ABC " << aircraftBaggageCount[i] << " TB " << totalBaggage[i] << endl;
+		// }
 		for(int i = 0; i < simNumOfAirlines; i++){
 			if(boardingLounges[i] == totalPassengersOfAirline[i] && totalBaggage[i] == aircraftBaggageCount[i]){
 				gateLocks[i]->Acquire();
@@ -682,7 +688,7 @@ void AirportManager::EndOfDay(){
 		liaisonPassengerCount += liaisonOfficers[i]->getPassengerCount();
 	}
 	
-	for(int i = 0; i < SCREEN_COUNT; i++){
+	for(int i = 0; i < simNumOfScreeningOfficers; i++){
 		securityPassengerCount += Security[i]->getPassengers();
 	}
 	
@@ -690,7 +696,6 @@ void AirportManager::EndOfDay(){
 		cout << "Passenger count reported by airport liaison = " << liaisonPassengerCount << endl; //OFFICIAL
 		cout << "Passenger count reported by airline check-in staff = " << checkInPassengerCount << endl; //OFFICIAL
 		cout << "Passenger count reported by security inspector = " << securityPassengerCount << endl; //OFFICIAL
-		cout << "From setup: Baggage count of airline " << i << " = " << totalBaggage[i] << endl; //OFFICIAL
 		cout << "From setup: Baggage count of airline " << i << " = " << totalBaggage[i] << endl;//OFFICIAL
 		cout << "From airport liaison: Baggage count of airline " << i << " = " << LiaisonTotalCount[i] << endl; //OFFICIAL
 		cout << "From cargo handlers: Baggage count of airline " << i << " = " << CargoHandlerTotalCount[i] << endl; //OFFICIAL
@@ -777,8 +782,10 @@ void SecurityOfficer::DoWork(){
 		SecurityLocks[number]->Acquire();
 		if (SecurityLine[number] > 0){		// Always see if Officer has a line of returning passengers from questioning
 			SecurityLineCV[number]->Signal(SecurityLocks[number]);
+			// cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
 		} else {
 			//SecurityAvail->Acquire();
+			// cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
 			SecurityAvailability[number] = true;		// Set itself to available
 			//SecurityAvail->Release();
 		}
@@ -1182,7 +1189,7 @@ void setupAirlines(int airlineCount) {
 	for (int i = 0; i < airlineCount; i++){
 		gates[i] = i;
 		boardingLounges[i] = 0;
-		totalPassengersOfAirline[i] = 8;
+		totalPassengersOfAirline[i] = simNumOfPassengers/simNumOfAirlines;
 		aircraftBaggageCount[i] = 0;		// Number of baggage on a single airline
 		aircraftBaggageWeight[i] = 0;		// Weight of baggage on a single airline
 	}
@@ -1343,7 +1350,7 @@ void setup(){
 	srand (time(NULL));
 	
 	createPassengers(simNumOfPassengers);
-	// createAirportManager();
+	createAirportManager();
 	setupAirlines(simNumOfAirlines);
 	setupSingularLocks();
 	setupEconomyCIOs(simNumOfAirlines, simNumOfCIOs);
@@ -1452,7 +1459,7 @@ void AirportTests() {
 	
 	setup();	// Sets up CVs and Locks
 
-	createAirportManager();
+	// createAirportManager();
 	Thread *t;
 
 	t = new Thread("Airport Manager");
