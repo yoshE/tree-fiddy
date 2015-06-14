@@ -273,4 +273,4 @@ the overarching case is pretty good. There are a few errors where while loops ma
 forever) but these are extremely rare.
 
 VIII. Miscellaneous:
-- Whatever else you want the grader know about your development.  You can create your own subsections headings here.
+1. Bug: Sometimes the security officer doesn't properly read the length of the line. This bug occurs often when the number of airlines > 1, but rarely when the number of airlines = 1.
