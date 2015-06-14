@@ -7,12 +7,19 @@
 
 #define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
-#define AIRLINE_COUNT 1 		// Number of airlines
-#define CHECKIN_COUNT 1		// Number of CheckIn Officers
+#define AIRLINE_COUNT 2 		// Number of airlines
+#define CHECKIN_COUNT 4		// Number of CheckIn Officers
 #define PASSENGER_COUNT 150	// Total number of passengers
 #define AIRLINE_SEAT 50		// Number of seats per Airline
 #define LIAISONLINE_COUNT 1 // Number of Liaison Officers
 #define SCREEN_COUNT 1		// Number of Screening and Security Officers
+// Max agent consts
+#define MAX_PASSENGERS			1000
+#define MAX_AIRLINES			5
+#define MAX_LIAISONS			7
+#define MAX_CIOS				5
+#define MAX_CARGOHANDLERS		10
+#define MAX_SCREEN				5
 
 void SimpleThread(int which);
 void ThreadTest();

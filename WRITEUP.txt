@@ -15,16 +15,21 @@ I. Requirements:
 II. Assumptions:
 1. Airplanes can fit up to 50 passengers each
 2. There is only 1 line for Screening Officers
+3. There is a line for Security Officers (Returning passengers add themselves to that line)
 
 III. Design:
 The part 1 design was based upon what the professor talked about in class. We used his pseudo code to design the locks and condition variables such that they would
 complete the given tests with no worries.
 
 For part 2, we based our code on the professor's pseudo code as well as our own intuition. Using the professor's code as a base, we added on features to allow it to
-achieve all the stated requirements. For the passenger, we ensured that it would have an identifier (used to communicate stats) and would have bags of which it would
+achieve all the stated requirements. For the passenger, we ensured that it would have an identifier (used to communicate statistics) and would have bags of which it would
 give to the Check In Officer. We designed each interaction based upon the requirements for that thread as well as prior interactions. The liaison officer interaction
-was coded such because we wanted the passenger to find a line, wait in that line, then talk to the office to move ahead. The other interactions where based upon this 
-one because each interaction is relatively similar. 
+was coded such because we wanted the passenger to find a line, wait in that line, then talk to the office to move ahead. We used a struct to transfer information between
+the the passenger and the liaison officer because that provided the simplest way to transfer data. The passenger would add data to the struct and then wake up the liaison
+officer. The officer would then look at that struct and pull all relevant information. This cycle would contain until the officer completed his task and the passenger would
+move forward. The liaison officer was based on a while true loop since they never close up shop and will continue to do their job until the simulation is ended. The while loop
+ensures that once a passenger leaves, the liaison officer will wake up and look at the size of their line. Depending on that line size, they would either signal the next passenger
+or wait for a new passenger to arrive. The other interactions are based upon this one because each interaction is relatively similar. 
 
 For the Screening Officer, we only included 1 line, because we wanted to design it similar to an actual airport. In most real airports, there is only 1 line for screening
 and security purposes. Additionally, we wanted the screening officer to loop infinitely while searching for an available security officer because they can't assign a 
@@ -34,6 +39,14 @@ For the security officer, we decided to make a line for passengers both new and 
 for returning passengers, we decided that having an overall line so that new passengers would go wait and returning passengers would just join the line. Since the security
 officer shouldn't take new passengers before talking to the returning passengers, having a line would prevent that from occuring. The old passenger would join the line and 
 if any passenger would slip in, it would be after the old passenger has already been allow to board.
+
+We used a lot of locks and condition variables because we wanted to reduce the risk of running into race conditions. Every time we have critical code, we surrounded that section
+with a lock (consistent throughout) to ensure that multiple threads can't access that code at the same time. For example, lining up for the liaison would have a specific lock 
+that would control how many people can line up at the same time (1). This means that only one passenger can be reading and incrementing line length at a time. We didn't want to
+have a situation where a passenger would read the line length and before they lined up, another passenger would increment that length. Such a race condition would throw our entire
+simulation off track.
+
+YOSHI ADD STUFF HERE
 
 IV. Implementation:
 	+ Files Modified
