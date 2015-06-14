@@ -3,7 +3,7 @@
  Group:	Name	Email	SS#
 		George Li			ligeorge@usc.edu			9910019263
 		Vance Lindholm		vlindhol@usc.edu			
-		Yoshua Lo			yoshualo@usc.edu			
+		Yoshua Lo			yoshualo@usc.edu			3425221391
  
 I. Requirements:
 1. Implement lock and condition variable functionality.
@@ -46,7 +46,11 @@ that would control how many people can line up at the same time (1). This means 
 have a situation where a passenger would read the line length and before they lined up, another passenger would increment that length. Such a race condition would throw our entire
 simulation off track.
 
-YOSHI ADD STUFF HERE
+For the Airport Manager, we have a reference to the Check In Officers, Liaison Officers, Cargo Handlers, and Security Inspectors.  When there are bags on the conveyor and the Airport
+Manager walks by, he will check to see if the Cargo Handlers are on break.  If they are on break, the manager will acquire the lock the handlers are waiting on, and will call Broadcast.
+The manager constantly checks to see if all passengers for an airline are at the gate and if all baggage for an airline are on the plane.  Once these two conditions are satisfied, the
+Airport Manager will acquire the gate lock that the passengers are waiting on and will call a Broadcast.  Once all the planes have taken off, the manager prints the passenger and baggage
+information such as number and weight.
 
 IV. Implementation:
 	+ Files Modified
@@ -264,7 +268,7 @@ behind because of race condition.
 Obviously, this didn't happen, but we got extremely close. Our passengers still manage to successfully reach the boarding area and prepare for airline boarding procedures. All
 baggage is successfully placed onto the correct planes, and each officer does their job correctly. No thread is lost through race conditions and while it may have a mishap or two, 
 the overarching case is pretty good. There are a few errors where while loops may cause hang or infinite loops (there is no time for the officer to change state so the loop runs
-forever) but these are extremely rare. The AM has a few issues with closing up shop for the day but it does its day job just fine.
+forever) but these are extremely rare.
 
 VIII. Miscellaneous:
 - Whatever else you want the grader know about your development.  You can create your own subsections headings here.
