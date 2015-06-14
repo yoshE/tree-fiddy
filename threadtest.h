@@ -153,6 +153,7 @@ class CheckInOfficer{
 	  int getNumber();		// Returns number of officer (which line they control)
 	  std::vector<Baggage> totalBags;
 	  bool OnBreak;
+	  int getPassengerCount(){return info.passengerCount;}
 	
 	private:
 	  struct CheckIn{
@@ -194,11 +195,7 @@ class AirportManager{
 		AirportManager();
 		~AirportManager();
 		void DoWork();
-		void AddLiaisonOfficer(LiaisonOfficer *lo);
-		void AddCheckInOfficer(CheckInOfficer *cio);
 		void EndOfDay();
-		std::vector<CheckInOfficer*> checkInOfficers;
-		std::vector<LiaisonOfficer*> liaisonOfficers;
 		
 	private:
 		int CargoHandlerTotalWeight[AIRLINE_COUNT];
@@ -206,6 +203,9 @@ class AirportManager{
 		int CIOTotalCount[AIRLINE_COUNT];
 		int CIOTotalWeight[AIRLINE_COUNT];
 		int LiaisonTotalCount[AIRLINE_COUNT];
+		int liaisonPassengerCount;
+		int checkInPassengerCount;
+		int securityPassengerCount;
 };
 //----------------------------------------------------------------------
 // Screening Officer
@@ -233,6 +233,7 @@ class SecurityOfficer{
 		SecurityOfficer(int i);
 		~SecurityOfficer();
 		void DoWork();
+		int getPassengers(){return PassedPassengers;}
 		
 	private:
 		int PassedPassengers;		// Number of passengers that passed security
