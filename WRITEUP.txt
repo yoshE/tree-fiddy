@@ -16,6 +16,8 @@ II. Assumptions:
 1. Airplanes can fit up to 50 passengers each
 2. There is only 1 line for Screening Officers
 3. There is a line for Security Officers (Returning passengers add themselves to that line)
+4. One large method for passenger (Professor says its ok to have 1 large function in passenger. However this means that our test is just one test that runs through each
+of the test scenarios.)
 
 III. Design:
 The part 1 design was based upon what the professor talked about in class. We used his pseudo code to design the locks and condition variables such that they would
