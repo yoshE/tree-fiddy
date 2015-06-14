@@ -46,6 +46,8 @@ that would control how many people can line up at the same time (1). This means 
 have a situation where a passenger would read the line length and before they lined up, another passenger would increment that length. Such a race condition would throw our entire
 simulation off track.
 
+YOSHI ADD STUFF HERE
+
 IV. Implementation:
 	+ Files Modified
 	sync.h - lock/CV code
