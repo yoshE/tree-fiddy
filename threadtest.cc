@@ -780,12 +780,12 @@ void SecurityOfficer::DoWork(){
 	while(true){
 		SecurityLines->Acquire();
 		SecurityLocks[number]->Acquire();
-		if (SecurityLine[number] > 0){		// Always see if Officer has a line of returning passengers from questioning
+		if (SecurityLine[number] != 0){		// Always see if Officer has a line of returning passengers from questioning
 			SecurityLineCV[number]->Signal(SecurityLocks[number]);
-			// cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
+			cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
 		} else {
 			//SecurityAvail->Acquire();
-			// cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
+			cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
 			SecurityAvailability[number] = true;		// Set itself to available
 			//SecurityAvail->Release();
 		}
@@ -802,7 +802,7 @@ void SecurityOfficer::DoWork(){
 		if (x == 0) SecurityPass = false;		// 20% of failure
 		
 		if (SecPInfo[number].questioning){		// Passenger has just returned from questioning
-			TotalPass = true;		// Allow returned passenger to contiarea
+			TotalPass = true;		// Allow returned passenger to continue to the boarding area
 			PassedPassengers += 1;
 			SecurityOfficerCV[number]->Signal(SecurityLocks[number]);		// Signal passenger to move onwards
 			printf("Security inspector %d permits returning passenger %d to board\n", number, z);		// OFFICIAL OUTPUT STATEMENT
