@@ -749,11 +749,11 @@ void ScreeningOfficer::DoWork(){
 					break;
 				}
 				SecurityAvail->Release();
-			}
-			for (int i = 0; i < 10; i++){		// Wait for a while so Officer can change availability status
-				currentThread->Yield();
-				currentThread->Yield();
-				currentThread->Yield();
+				for (int i = 0; i < 10; i++){		// Wait for a while so Officer can change availability status
+					currentThread->Yield();
+					currentThread->Yield();
+					currentThread->Yield();
+				}
 			}
 		}
 		
