@@ -271,9 +271,19 @@ void ExceptionHandler(ExceptionType which) {
 			DEBUG('a', "Exit Program.\n");
 			currentThread->Finish();		// EDIT THIS LATER AFTER FORK and EXEC
 			break;
-		case SC_Yield:			// THIS IS SC_YIELD FOR PART 1
+		case SC_Yield:						// Causes the current Thread to yield
 			DEBUG('a', "Yield Thread.\n");
 			currentThread->Yield();
+			break;
+		case SC_Acquire:
+			break;
+		case SC_Release:
+			break;
+		case SC_Wait:
+			break;
+		case SC_Signal:
+			break;
+		case SC_Broadcast:
 			break;
 	}
 

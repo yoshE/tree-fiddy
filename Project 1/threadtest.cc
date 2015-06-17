@@ -784,10 +784,10 @@ void SecurityOfficer::DoWork(){
 			SecurityLineCV[number]->Signal(SecurityLocks[number]);
 			cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
 		} else {
-			//SecurityAvail->Acquire();
+			SecurityAvail->Acquire();
 			cout << "SECURITY LINE LENGTH: " << SecurityLine[number] << endl;
 			SecurityAvailability[number] = true;		// Set itself to available
-			//SecurityAvail->Release();
+			SecurityAvail->Release();
 		}
 		SecurityLines->Release();
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
