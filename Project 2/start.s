@@ -129,6 +129,11 @@ Yield:
 	syscall
 	j	$31
 	.end Yield
+Acquire:
+	addiu $2,$0,SC_Acquire
+	syscall
+	j $31
+	.end Acquire
 
 /* dummy function to keep gcc happy */
         .globl  __main
