@@ -482,7 +482,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_CreateLock:
 			DEBUG('a', "Create Lock Syscall.\n");
-			CreateLock_Syscall(machine->ReadRegister(4));
+			rv = CreateLock_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_DestroyLock:
 			DEBUG('a', "Destroy Lock Syscall.\n");
@@ -490,7 +490,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_CreateCV:
 			DEBUG('a', "Create CV Syscall.\n");
-			CreateCV_Syscall(machine->ReadRegister(4));
+			rv = CreateCV_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_DestroyCV:
 			DEBUG('a', "Destroy CV Syscall.\n");
