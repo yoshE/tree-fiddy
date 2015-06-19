@@ -310,7 +310,9 @@ void Wait_Syscall(int cv, int lock){
 	LockTable[lock].Lock->Release(lock); // FREE up the lock
 	CVTable[cv].CV->waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
 	currentThread->Sleep();
+	LockTableLock->Acquire();
 	LockTable[lock].Lock->Acquire(lock); // BUSY the lock
+	LockTableLock->Release();
 	CVTableLock->Release();
 	interrupt->SetLevel(inter);
 	return;
@@ -365,7 +367,51 @@ void Broadcast_Syscall(int cv, int lock){
 	}
 }
 
-int 
+int CreateLock_Syscall(){
+	LockTableLock->Acquire();
+	Lock* Lock = new Lock("");
+	LockTable.push_back(Lock);
+	int x = LockTable.size() - 1;
+	LockTableLock->Release();
+	return x;
+}
+
+void DestroyLock_Syscall(int n){
+	LockTableLock->Acquire();
+	
+	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Lock == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid Lock Table Number.\n");
+		LockTableLock->Release();
+		return;
+	}
+	
+	LockTable[n].IsDeleted = true;
+	LockTable[n].Lock = NULL;
+	LockTableLock->Release();
+}
+
+int CreateCV_Syscall(){
+	CVTableLock->Acquire();
+	Condition* cv = new Condition("");
+	CVTable.push_back(cv);
+	int x = CVTable.size() - 1;
+	CVTableLock->Release();
+	return x;
+}
+
+void DestroyCV_Syscall(int n){
+	CVTableLock->Acquire();
+	
+	if (n == NULL || CVTable[n].IsDeleted || CVTable[n].CV == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid CV Table Number.\n");
+		CVTableLock->Release();
+		return;
+	}
+	
+	CVTable[n].IsDeleted = true;
+	CVTable[n].Condition = NULL;
+	CVTableLock->Release();
+}
 
 void ExceptionHandler(ExceptionType which) {
     int type = machine->ReadRegister(2); // Which syscall?
