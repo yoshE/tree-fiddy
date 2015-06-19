@@ -135,7 +135,7 @@ void Yield();
 
 void Acquire(int n);
 void Release(int n);
-void Wait(int n); 	// these are the 3 operations on condition variables; releasing the lock and going to sleep are *atomic* in Wait()
+void Wait(int cv, int lock); 	// these are the 3 operations on condition variables; releasing the lock and going to sleep are *atomic* in Wait()
 void Signal(int n);   // conditionLock must be held by
 void Broadcast(int n);// the currentThread for all of these operations
 

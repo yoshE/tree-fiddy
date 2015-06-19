@@ -232,26 +232,26 @@ void Close_Syscall(int fd) {
 }
 
 void Acquire_Syscall(int n){
-	
 	LockTableLock->Acquire();
-	if (n == NULL || KernelLock[n].IsDeleted || KernelLock[n].Lock == NULL){		// Check if data exists for entered value
+	IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
+	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Lock == NULL){		// Check if data exists for entered value
 		printf("%s", "Invalid Lock Table Number.\n");
 		LockTableLock->Release();
-		return;
-	}
-	IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
-
-	if (KernelLock[n].Owner = currentThread){ // See if thread already owns this Lock
 		interrupt->SetLevel(inter);
-		LockTableLock->Release();
 		return;
 	}
-	if (KernelLock[n].Lock->available){ // If Lock is FREE
-		KernelLock[n].Lock->available = false; // Make Lock BUSY and...
-		KernelLock[n].Owner = currentThread; // Assign this thread as the owner!
+
+	if (LockTable[n].Owner = currentThread){ // See if thread already owns this Lock
+		LockTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	if (LockTable[n].Lock->available){ // If Lock is FREE
+		LockTable[n].Lock->available = false; // Make Lock BUSY and...
+		LockTable[n].Owner = currentThread; // Assign this thread as the owner!
 		LockTableLock->Release();
 	}else{
-		KernelLock[n].Lock->waitingThreads-> Append((void *)currentThread); // Add Thread to waiting List
+		LockTable[n].Lock->waitingThreads-> Append((void *)currentThread); // Add Thread to waiting List
 		LockTableLock->Release();
 		currentThread->Sleep(); // Put thread to sleep while it waits for Lock to FREE up
 	}
@@ -261,29 +261,59 @@ void Acquire_Syscall(int n){
 void Release_Syscall(int n){
 	LockTableLock->Acquire();
 	
-	if (n == NULL || KernelLock[n].IsDeleted || KernelLock[n].Lock == NULL){		// Check if data exists for entered value
+	IntStatus inter = interrupt->SetLevel(IntOff);
+	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Lock == NULL){		// Check if data exists for entered value
 		printf("%s", "Invalid Lock Table Number.\n");
 		LockTableLock->Release();
+		interrupt->SetLevel(inter);
 		return;
 	}
 	
 	Thread *thread;
-	IntStatus inter = interrupt->SetLevel(IntOff);
-	if(KernelLock[n].Owner != currentThread){ // Do you own this lock?
+	if(LockTable[n].Owner != currentThread){ // Do you own this lock?
 		printf("%s", "You don't own this lock!\n");
-		interrupt->SetLevel(inter);
 		LockTableLock->Release();
+		interrupt->SetLevel(inter);
 		return;
 	}
-	if(!KernelLock[n].Lock->waitingThreads->IsEmpty()){ // If waiting List is not empty
-		thread = (Thread *)KernelLock[n].Lock->waitingThreads->Remove(); // Remove first thread and...
+	if(!LockTable[n].Lock->waitingThreads->IsEmpty()){ // If waiting List is not empty
+		thread = (Thread *)LockTable[n].Lock->waitingThreads->Remove(); // Remove first thread and...
 		if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up!
-		KernelLock[n].Owner = thread; // Then make that thread this thread's owner
+		LockTable[n].Owner = thread; // Then make that thread this thread's owner
 	}else{ // If the waiting is empty, then FREE up!
 		available = true;
 		owner = NULL;
 	}
 	LockTableLock->Release();
+}
+
+void Wait_Syscall(int cv, int lock){
+	CVTableLock->Acquire();
+	
+	IntStatus inter = interrupt->SetLevel(IntOff);
+	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Lock == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
+		CVTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	
+	if(CVTable[cv].CV->waitingLock == NULL){ // If this CV's lock hasn't been set yet
+		CVTable[cv].CV->waitingLock = LockTable[lock].Lock; // Set the input lock as the CV lock
+	}
+	if(LockTable[lock].Lock != CVTable[cv].CV->waitingLock){
+		printf("%s", "Wrong Lock!\n");
+		CVTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	LockTable[lock].Lock->Release(lock); // FREE up the lock
+	CVTable[cv].CV->waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
+	currentThread->Sleep();
+	LockTable[lock].Lock->Acquire(lock); // BUSY the lock
+	CVTableLock->Release();
+	interrupt->SetLevel(inter);
+	return;
 }
 
 void ExceptionHandler(ExceptionType which) {
@@ -331,23 +361,24 @@ void ExceptionHandler(ExceptionType which) {
 			currentThread->Yield();
 			break;
 		case SC_Acquire:
-			DEBUG('a', "Acquire Lock.\n");
+			DEBUG('a', "Acquire Lock Syscall.\n");
 			Acquire_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Release:
-			DEBUG('a', "Release Lock.\n");
+			DEBUG('a', "Release Lock Syscall.\n");
 			Release_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Wait:
-			DEBUG('a', "Wait for CV.\n");
-			Wait_Syscall(machine->ReadRegister(4));
+			DEBUG('a', "Wait for CV Syscall.\n");
+			Wait_Syscall(machine->ReadRegister(4),
+						 machine->ReadRegister(5));
 			break;
 		case SC_Signal:
-			DEBUG('a', "Signal for CV.\n");
+			DEBUG('a', "Signal for CV Syscall.\n");
 			Signal_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Broadcast:
-			DEBUG('a', "Broadcast for CV.\n");
+			DEBUG('a', "Broadcast for CV Syscall.\n");
 			Broadcast_Syscall(machine->ReadRegister(4));
 			break;
 	}
