@@ -16,8 +16,12 @@ Thread *threadToBeDestroyed;  		// the thread that just finished
 Scheduler *scheduler;			// the ready list
 Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
-Timer *timer;				// the hardware timer device,
-					// for invoking context switches
+Timer *timer;				// the hardware timer device for invoking context switches
+
+std::vector<KernelLock>LockTable;
+std::vector<KernelCV>CVTable;
+Lock* LockTableLock;
+Lock* CVTableLock;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -137,6 +141,9 @@ Initialize(int argc, char **argv)
 	timer = new Timer(TimerInterruptHandler, 0, randomYield);
 
     threadToBeDestroyed = NULL;
+	
+	LockTableLock = new Lock("Lock for LockTable");
+	CVTableLock = new Lock("Lock for CVTable");
 
     // We didn't explicitly allocate the current thread we are running in.
     // But if it ever tries to give up the CPU, we better have a Thread

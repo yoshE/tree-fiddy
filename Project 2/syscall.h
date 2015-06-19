@@ -133,8 +133,8 @@ void Yield();
 
 // Syscall statements for Locks and Condition Variables
 
-void Acquire();
-void Release();
+void Acquire(int n);
+void Release(int n);
 void Wait(Lock *conditionLock); 	// these are the 3 operations on condition variables; releasing the lock and going to sleep are *atomic* in Wait()
 void Signal(Lock *conditionLock);   // conditionLock must be held by
 void Broadcast(Lock *conditionLock);// the currentThread for all of these operations

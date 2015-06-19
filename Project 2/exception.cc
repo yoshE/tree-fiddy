@@ -231,6 +231,61 @@ void Close_Syscall(int fd) {
     }
 }
 
+void Acquire_Syscall(int n){
+	
+	LockTableLock->Acquire();
+	if (n == NULL || KernelLock[n].IsDeleted || KernelLock[n].Lock == NULL){		// Check if data exists for entered value
+		printf("%s", "Invalid Lock Table Number.\n");
+		LockTableLock->Release();
+		return;
+	}
+	IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
+
+	if (KernelLock[n].Owner = currentThread){ // See if thread already owns this Lock
+		interrupt->SetLevel(inter);
+		LockTableLock->Release();
+		return;
+	}
+	if (KernelLock[n].Lock->available){ // If Lock is FREE
+		KernelLock[n].Lock->available = false; // Make Lock BUSY and...
+		KernelLock[n].Owner = currentThread; // Assign this thread as the owner!
+		LockTableLock->Release();
+	}else{
+		KernelLock[n].Lock->waitingThreads-> Append((void *)currentThread); // Add Thread to waiting List
+		LockTableLock->Release();
+		currentThread->Sleep(); // Put thread to sleep while it waits for Lock to FREE up
+	}
+	interrupt->SetLevel(inter);
+}
+
+void Release_Syscall(int n){
+	LockTableLock->Acquire();
+	
+	if (n == NULL || KernelLock[n].IsDeleted || KernelLock[n].Lock == NULL){		// Check if data exists for entered value
+		printf("%s", "Invalid Lock Table Number.\n");
+		LockTableLock->Release();
+		return;
+	}
+	
+	Thread *thread;
+	IntStatus inter = interrupt->SetLevel(IntOff);
+	if(KernelLock[n].Owner != currentThread){ // Do you own this lock?
+		printf("%s", "You don't own this lock!\n");
+		interrupt->SetLevel(inter);
+		LockTableLock->Release();
+		return;
+	}
+	if(!KernelLock[n].Lock->waitingThreads->IsEmpty()){ // If waiting List is not empty
+		thread = (Thread *)KernelLock[n].Lock->waitingThreads->Remove(); // Remove first thread and...
+		if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up!
+		KernelLock[n].Owner = thread; // Then make that thread this thread's owner
+	}else{ // If the waiting is empty, then FREE up!
+		available = true;
+		owner = NULL;
+	}
+	LockTableLock->Release();
+}
+
 void ExceptionHandler(ExceptionType which) {
     int type = machine->ReadRegister(2); // Which syscall?
     int rv=0; 	// the return value from a syscall
@@ -276,8 +331,12 @@ void ExceptionHandler(ExceptionType which) {
 			currentThread->Yield();
 			break;
 		case SC_Acquire:
+			DEBUG('a', "Acquire Lock.\n");
+			Acquire_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Release:
+			DEBUG('a', "Release Lock.\n");
+			Release_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Wait:
 			break;
