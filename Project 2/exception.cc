@@ -339,10 +339,16 @@ void ExceptionHandler(ExceptionType which) {
 			Release_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Wait:
+			DEBUG('a', "Wait for CV.\n");
+			Wait_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Signal:
+			DEBUG('a', "Signal for CV.\n");
+			Signal_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Broadcast:
+			DEBUG('a', "Broadcast for CV.\n");
+			Broadcast_Syscall(machine->ReadRegister(4));
 			break;
 	}
 
