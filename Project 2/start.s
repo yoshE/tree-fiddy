@@ -172,6 +172,38 @@ Broadcast:
 	syscall
 	j $31
 	.end Broadcast
+	
+	.globl CreateLock
+	.ent	CreateLock
+CreateLock:
+	addiu $2,$0,SC_CreateLock
+	syscall
+	j $31
+	.end CreateLock
+	
+	.globl DestroyLock
+	.ent	DestroyLock
+DestroyLock:
+	addiu $2,$0,SC_DestroyLock
+	syscall
+	j $31
+	.end DestroyLock
+	
+	.globl CreateCV
+	.ent	CreateCV
+CreateCV:
+	addiu $2,$0,SC_CreateCV
+	syscall
+	j $31
+	.end CreateCV
+	
+	.globl DestroyCV
+	.ent	DestroyCV
+DestroyCV:
+	addiu $2,$0,SC_DestroyCV
+	syscall
+	j $31
+	.end DestroyCV
 
 /* dummy function to keep gcc happy */
         .globl  __main

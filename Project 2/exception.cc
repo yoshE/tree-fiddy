@@ -316,6 +316,57 @@ void Wait_Syscall(int cv, int lock){
 	return;
 }
 
+void Signal_Syscall(int cv, int lock){
+	CVTableLock->Acquire();
+	
+	IntStatus inter = interrupt->SetLevel(IntOff);
+	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Lock == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
+		CVTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	
+	Thread *thread;
+	if(CVTable[cv].CV->waitingCV->IsEmpty()){ // If waiting list is empty, then end sequence
+		CVTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	if(TableLock[lock].Lock != CVTable[cv].CV->waitingLock){
+		printf("%s", "Wrong Lock.\n");
+		CVTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	thread = (Thread *)CVTable[cv].CV->waitingCV->Remove(); // Otherwise remove a thread
+	if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up
+	if (CVTable[cv].CV->waitingCV->IsEmpty()){
+		CVTable[cv].CV->waitingLock = NULL; // If list is empty FREE up lock
+	}
+	CVTableLock->Release();
+	interrupt->SetLevel(inter);
+}
+
+void Broadcast_Syscall(int cv, int lock){
+	CVTableLock->Acquire();
+	
+	IntStatus inter = interrupt->SetLevel(IntOff);
+	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Lock == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
+		CVTableLock->Release();
+		interrupt->SetLevel(inter);
+		return;
+	}
+	
+	CVTableLock->Release();
+	while(!(CVTable[cv].CV->waitingCV->IsEmpty())){ // Cycle through and wake up all threads waiting one by one
+		Signal(LockTable[lock].Lock);
+	}
+}
+
+int 
+
 void ExceptionHandler(ExceptionType which) {
     int type = machine->ReadRegister(2); // Which syscall?
     int rv=0; 	// the return value from a syscall
@@ -375,11 +426,29 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_Signal:
 			DEBUG('a', "Signal for CV Syscall.\n");
-			Signal_Syscall(machine->ReadRegister(4));
+			Signal_Syscall(machine->ReadRegister(4),
+						   machine->ReadRegister(5));
 			break;
 		case SC_Broadcast:
 			DEBUG('a', "Broadcast for CV Syscall.\n");
-			Broadcast_Syscall(machine->ReadRegister(4));
+			Broadcast_Syscall(machine->ReadRegister(4),
+							  machine->ReadRegister(5));
+			break;
+		case SC_CreateLock:
+			DEBUG('a', "Create Lock Syscall.\n");
+			CreateLock_Syscall(machine->ReadRegister(4));
+			break;
+		case SC_DestroyLock:
+			DEBUG('a', "Destroy Lock Syscall.\n");
+			DestroyLock_Syscall(machine->ReadRegister(4));
+			break;
+		case SC_CreateCV:
+			DEBUG('a', "Create CV Syscall.\n");
+			CreateCV_Syscall(machine->ReadRegister(4));
+			break;
+		case SC_DestroyCV:
+			DEBUG('a', "Destroy CV Syscall.\n");
+			DestroyCV_Syscall(machine->ReadRegister(4));
 			break;
 	}
 
