@@ -1,4 +1,7 @@
 #include "system.h"
+#include "synch.h"
+#include "synch.h"
+#include <vector>
 #include <list>
 #include <deque>
 
