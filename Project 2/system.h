@@ -29,22 +29,6 @@ extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
 
-extern struct KernelLock{
-	Lock* Lock;
-	Addrspace* Owner;
-	bool IsDeleted;
-}
-
-extern struct KernelCV{
-	Condition* CV;
-	bool IsDeleted;
-}
-
-extern std::vector<KernelLock>LockTable;
-extern std::vector<KernelCV>CVTable;
-extern Lock* LockTableLock;
-extern Lock* CVTableLock;
-
 #ifdef USER_PROGRAM
 #include "machine.h"
 extern Machine* machine;	// user program memory and registers

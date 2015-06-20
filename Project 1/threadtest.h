@@ -1,8 +1,5 @@
-#include "copyright.h"
 #include "system.h"
-#include "synch.h"
 #include <list>
-#include <vector>
 #include <deque>
 
 #define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
