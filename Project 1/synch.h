@@ -77,6 +77,7 @@ class Lock {
 					// checking in Release, and in
 					// Condition variable ops below.
 
+					
   private:
     char* name;				// for debugging
     bool available;

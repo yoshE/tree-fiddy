@@ -31,21 +31,10 @@
 
 using namespace std;
 
-struct KernelLock{
-	Lock *Kernel_Lock;
-	Thread *Owner;
-	bool IsDeleted;
-};
-
-struct KernelCV{
-	Condition *CV;
-	bool IsDeleted;
-};
-
 std::vector<KernelLock>LockTable;
 std::vector<KernelCV>CVTable;
-Lock* LockTableLock;
-Lock* CVTableLock;
+Lock* LockTableLock = new Lock("");
+Lock* CVTableLock = new Lock("");
 
 int copyin(unsigned int vaddr, int len, char *buf) {
     // Copy len bytes from the current thread's virtual address vaddr.
@@ -251,144 +240,75 @@ void Close_Syscall(int fd) {
 
 void Acquire_Syscall(int n){
 	LockTableLock->Acquire();
-	IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
 	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
 		printf("%s", "InvalidKernel_Lock Table Number.\n");
 		LockTableLock->Release();
-		interrupt->SetLevel(inter);
 		return;
 	}
-
-	if (LockTable[n].Owner = currentThread){ // See if thread already owns thisKernel_Lock
-		LockTableLock->Release();
-		interrupt->SetLevel(inter);
-		return;
-	}
-	if (LockTable[n].Kernel_Lock->available){ // IfKernel_Lock is FREE
-		LockTable[n].Kernel_Lock->available = false; // MakeKernel_Lock BUSY and...
-		LockTable[n].Owner = currentThread; // Assign this thread as the owner!
-		LockTableLock->Release();
-	}else{
-		LockTable[n].Kernel_Lock->waitingThreads-> Append((void *)currentThread); // Add Thread to waiting List
-		LockTableLock->Release();
-		currentThread->Sleep(); // Put thread to sleep while it waits forKernel_Lock to FREE up
-	}
-	interrupt->SetLevel(inter);
+	LockTable[n].Kernel_Lock->Acquire();
+	LockTableLock->Release();
 }
 
 void Release_Syscall(int n){
 	LockTableLock->Acquire();
 	
-	IntStatus inter = interrupt->SetLevel(IntOff);
-	if (n == NULL ||Kernel_LockTable[n].IsDeleted ||Kernel_LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
+	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
 		printf("%s", "InvalidKernel_Lock Table Number.\n");
 		LockTableLock->Release();
-		interrupt->SetLevel(inter);
 		return;
 	}
-	
-	Thread *thread;
-	if(LockTable[n].Owner != currentThread){ // Do you own thisKernel_Lock?
-		printf("%s", "You don't own thisKernel_Lock!\n");
-		LockTableLock->Release();
-		interrupt->SetLevel(inter);
-		return;
-	}
-	if(!LockTable[n].Kernel_Lock->waitingThreads->IsEmpty()){ // If waiting List is not empty
-		thread = (Thread *)LockTable[n].Kernel_Lock->waitingThreads->Remove(); // Remove first thread and...
-		if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up!
-		LockTable[n].Owner = thread; // Then make that thread this thread's owner
-	}else{ // If the waiting is empty, then FREE up!
-		available = true;
-		owner = NULL;
-	}
+	LockTable[n].Kernel_Lock->Release();
 	LockTableLock->Release();
 }
 
 void Wait_Syscall(int cv, int lock){
 	CVTableLock->Acquire();
 	
-	IntStatus inter = interrupt->SetLevel(IntOff);
 	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
-		printf("%s", "Invalid CV Table Number and/or InvalidKernel_Lock Table Number.\n");
+		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
-		interrupt->SetLevel(inter);
 		return;
 	}
 	
-	if(CVTable[cv].CV->waitingLock == NULL){ // If this CV'sKernel_Lock hasn't been set yet
-		CVTable[cv].CV->waitingLock = LockTable[lock].Kernel_Lock; // Set the inputKernel_Lock as the CVKernel_Lock
-	}
-	if(LockTable[lock].Kernel_Lock != CVTable[cv].CV->waitingLock){
-		printf("%s", "WrongKernel_Lock!\n");
-		CVTableLock->Release();
-		interrupt->SetLevel(inter);
-		return;
-	}
-	LockTable[lock].Kernel_Lock->Release(lock); // FREE up theKernel_Lock
-	CVTable[cv].CV->waitingCV-> Append((void *)currentThread); // Add a thread to waiting List
-	currentThread->Sleep();
-	LockTableLock->Acquire();
-	LockTable[lock].Kernel_Lock->Acquire(lock); // BUSY theKernel_Lock
-	LockTableLock->Release();
+	CVTable[cv].CV->Wait(LockTable[lock].Kernel_Lock);
 	CVTableLock->Release();
-	interrupt->SetLevel(inter);
-	return;
 }
 
 void Signal_Syscall(int cv, int lock){
 	CVTableLock->Acquire();
 	
-	IntStatus inter = interrupt->SetLevel(IntOff);
 	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || Lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
-		printf("%s", "Invalid CV Table Number and/or InvalidKernel_Lock Table Number.\n");
+		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
-		interrupt->SetLevel(inter);
 		return;
 	}
 	
-	Thread *thread;
-	if(CVTable[cv].CV->waitingCV->IsEmpty()){ // If waiting list is empty, then end sequence
-		CVTableLock->Release();
-		interrupt->SetLevel(inter);
-		return;
-	}
-	if(LockTable[lock].Kernel_Lock != CVTable[cv].CV->waitingLock){
-		printf("%s", "WrongKernel_Lock.\n");
-		CVTableLock->Release();
-		interrupt->SetLevel(inter);
-		return;
-	}
-	thread = (Thread *)CVTable[cv].CV->waitingCV->Remove(); // Otherwise remove a thread
-	if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up
-	if (CVTable[cv].CV->waitingCV->IsEmpty()){
-		CVTable[cv].CV->waitingLock = NULL; // If list is empty FREE upKernel_Lock
-	}
+	CVTable[cv].CV->Signal(LockTable[lock].Kernel_Lock);
 	CVTableLock->Release();
-	interrupt->SetLevel(inter);
 }
 
 void Broadcast_Syscall(int cv, int lock){
 	CVTableLock->Acquire();
 	
-	IntStatus inter = interrupt->SetLevel(IntOff);
 	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || Lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or InvalidKernel_Lock Table Number.\n");
 		CVTableLock->Release();
-		interrupt->SetLevel(inter);
 		return;
 	}
 	
+	CVTable[cv].CV->Broadcast(LockTable[lock].Kernel_Lock);
 	CVTableLock->Release();
-	while(!(CVTable[cv].CV->waitingCV->IsEmpty())){ // Cycle through and wake up all threads waiting one by one
-		Signal(LockTable[lock].Lock);
-	}
 }
 
 int CreateLock_Syscall(){
 	LockTableLock->Acquire();
-	Lock* Kernel_Lock = new Lock("");
-	LockTable.push_back(Lock);
+	KernelLock new_Lock;
+	Lock* tempLock = new Lock("");
+	new_Lock.Kernel_Lock = tempLock;
+	
+	new_Lock.Owner = NULL;
+	new_Lock.IsDeleted = false;
+	LockTable.push_back(new_Lock);
 	int x = LockTable.size() - 1;
 	LockTableLock->Release();
 	return x;
@@ -410,8 +330,12 @@ void DestroyLock_Syscall(int n){
 
 int CreateCV_Syscall(){
 	CVTableLock->Acquire();
+	KernelCV new_cv;
 	Condition* cv = new Condition("");
-	CVTable.push_back(cv);
+	new_cv.CV = cv;
+	new_cv.IsDeleted = false;
+	
+	CVTable.push_back(new_cv);
 	int x = CVTable.size() - 1;
 	CVTableLock->Release();
 	return x;
@@ -427,7 +351,7 @@ void DestroyCV_Syscall(int n){
 	}
 	
 	CVTable[n].IsDeleted = true;
-	CVTable[n].Condition = NULL;
+	CVTable[n].CV = NULL;
 	CVTableLock->Release();
 }
 
@@ -489,6 +413,7 @@ void ExceptionHandler(ExceptionType which) {
 						 machine->ReadRegister(5));
 			break;
 		case SC_Signal:
+		
 			DEBUG('a', "Signal for CV Syscall.\n");
 			Signal_Syscall(machine->ReadRegister(4),
 						   machine->ReadRegister(5));
@@ -500,7 +425,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_CreateLock:
 			DEBUG('a', "CreateKernel_Lock Syscall.\n");
-			rv = CreateLock_Syscall(machine->ReadRegister(4));
+			rv = CreateLock_Syscall();
 			break;
 		case SC_DestroyLock:
 			DEBUG('a', "DestroyKernel_Lock Syscall.\n");
@@ -508,7 +433,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_CreateCV:
 			DEBUG('a', "Create CV Syscall.\n");
-			rv = CreateCV_Syscall(machine->ReadRegister(4));
+			rv = CreateCV_Syscall();
 			break;
 		case SC_DestroyCV:
 			DEBUG('a', "Destroy CV Syscall.\n");
