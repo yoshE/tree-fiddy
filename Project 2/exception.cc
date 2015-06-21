@@ -261,42 +261,42 @@ void Release_Syscall(int n){
 	LockTableLock->Release();
 }
 
-void Wait_Syscall(int cv, int lock){
+void Wait_Syscall(int x, int lock){
 	CVTableLock->Acquire();
 	
-	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (x == NULL || CVTable[x].IsDeleted || CVTable[x].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		return;
 	}
 	
-	CVTable[cv].CV->Wait(LockTable[lock].Kernel_Lock);
+	CVTable[x].CV->Wait(LockTable[lock].Kernel_Lock);
 	CVTableLock->Release();
 }
 
-void Signal_Syscall(int cv, int lock){
+void Signal_Syscall(int y, int a){
 	CVTableLock->Acquire();
 	
-	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || Lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (y == NULL || CVTable[y].IsDeleted || CVTable[y].CV == NULL || a == NULL || LockTable[a].IsDeleted || LockTable[a].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		return;
 	}
 	
-	CVTable[cv].CV->Signal(LockTable[lock].Kernel_Lock);
+	CVTable[y].CV->Signal(LockTable[a].Kernel_Lock);
 	CVTableLock->Release();
 }
 
-void Broadcast_Syscall(int cv, int lock){
+void Broadcast_Syscall(int z, int b){
 	CVTableLock->Acquire();
 	
-	if (cv == NULL || CVTable[cv].IsDeleted || CVTable[cv].CV == NULL || Lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
-		printf("%s", "Invalid CV Table Number and/or InvalidKernel_Lock Table Number.\n");
+	if (z == NULL || CVTable[z].IsDeleted || CVTable[z].CV == NULL || b == NULL || LockTable[b].IsDeleted || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		return;
 	}
 	
-	CVTable[cv].CV->Broadcast(LockTable[lock].Kernel_Lock);
+	CVTable[z].CV->Broadcast(LockTable[b].Kernel_Lock);
 	CVTableLock->Release();
 }
 

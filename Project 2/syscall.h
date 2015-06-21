@@ -135,18 +135,20 @@ void Fork(void (*func)());
  */
 void Yield();		
 
-// Syscall statements for Locks and Condition Variables
-
-void Acquire(int n);
-void Release(int n);
-void Wait(int cv, int lock); 	// these are the 3 operations on condition variables; releasing the lock and going to sleep are *atomic* in Wait()
-void Signal(int cv, int lock);   // conditionLock must be held by
-void Broadcast(int cv, int lock);// the currentThread for all of these operations
+/* Syscall statements for Locks and Condition Variables
+ *
+ */
+ 
+void Acquire(int a);
+void Release(int b);
+void Wait(int c, int d);		/* these are the 3 operations on condition variables; releasing the lock and going to sleep are *atomic* in Wait()*/
+void Signal(int e, int f);		/* conditionLock must be held by*/
+void Broadcast(int g, int h);		/* the currentThread for all of these operations*/
 
 int CreateLock();
-void DestroyLock(int n);
+void DestroyLock(int i);
 int CreateCV();
-void DestroyCV(int n);
+void DestroyCV(int j);
 
 #endif /* IN_ASM */
 
