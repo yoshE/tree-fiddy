@@ -514,6 +514,11 @@ cout << "LIAI doin work" << endl;
 		}
 		else {
 			liaisonLineLock->Release(); //if there are no passengers in line, release
+			currentThread->Yield();
+			currentThread->Yield();
+			if(planeCount == simNumOfAirlines){
+				break;
+			}
 		}
 	}
 }
@@ -703,7 +708,7 @@ cout << "AM doin work " << endl;
 			}
 		}
 		if(planeCount == simNumOfAirlines){
-			cout << "END OF DAY" << endl;
+			// cout << "END OF DAY" << endl;
 			EndOfDay();
 			break;
 		}
@@ -766,8 +771,8 @@ cout << "Screening doin work " << number;
 	while(true){
 		ScreenLines -> Acquire();
 		if (IsBusy) IsBusy = false;		// If busy, should no longer be busy 
-		if (ScreenLine[number] > 0){		// Checks if the screening line has passengers
-			ScreenLineCV[number]->Signal(ScreenLines);		// Wake them if there are
+		if (ScreenLine[0] > 0){		// Checks if the screening line has passengers
+			ScreenLineCV[0]->Signal(ScreenLines);		// Wake them if there are
 		}
 		ScreenLocks[number]->Acquire();
 		ScreenLines->Release();
@@ -797,13 +802,13 @@ cout << "Screening doin work " << number;
 				SecurityAvail->Release();
 			}
 			if(!alreadyPrinted){
-				// cout << "sec availity " << SecurityAvailability[0] << endl;  //debugging
+				// cout << "sec availability " << SecurityAvailability[0] << endl;  //debugging
 			}
 			alreadyPrinted = true;
 			for (int i = 0; i < 10; i++){		// Wait for a while so Officer can change availability status
 				currentThread->Yield();
-				currentThread->Yield();
-				currentThread->Yield();
+				// currentThread->Yield();
+				// currentThread->Yield();
 			}
 		}
 		
