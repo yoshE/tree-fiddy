@@ -240,7 +240,6 @@ Passenger::~Passenger(){
 }
 
 void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Officer, gets airline
-cout << "PASSENGER CHOOSING LINE" << endl;
 	liaisonLineLock->Acquire();		// Acquire lock to find shortest line
 	myLine = 0;		
 	for(int i = 1; i < simNumOfLiaisons; i++){		// Find shortest line
@@ -261,20 +260,15 @@ cout << "PASSENGER CHOOSING LINE" << endl;
 	LPInfo->passengerName = name;
 	LPInfo->baggageCount = baggageCount; // Adds baggage Count to shared struct array
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer
-	cout << name << " WAITING TO KNOW WHAT AIRLINE" << endl;
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]); // Goes to sleep until Liaison finishes assigning airline
 	airline = LPInfo->airline;		// Gets airline info from Liaison Officer shared struct
-	cout << name << " GOT AIRLINE " << endl;
 	totalBaggage[airline] += baggageCount;
 	for(int i = 0; i < baggageCount; i++){			// Add baggage and their weight to Passenger Baggage Vector
 		totalWeight[airline] += bags[i].weight;
 	}
-	cout << name << " SENT BAGGAGE INFO" << endl;
 	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
-	cout << "Waiting for Liaison to direct me " << name << endl;
 	liaisonOfficerCV[myLine]->Wait(liaisonLineLocks[myLine]);	//wait for Liaison to direct me
-	cout<< "Liaison directed me " << name << endl;
 	liaisonLineLocks[myLine]->Release(); // Passenger is now leaving to go to airline checking	
 
 	printf("Passenger %d of Airline %d is directed to the check-in counter\n", name, this->getAirline());		// OFFICIAL OUTPUT STATEMENT
@@ -297,7 +291,7 @@ cout << "PASSENGER CHOOSING LINE" << endl;
 	CheckInLine[myLine] += 1;		// Increment line when I enter line
 	if (economy && CheckInLine[myLine] == 1){		// If first person in line for economy passages, message the officer (they may be on break)
 		CheckInBreakCV[myLine]->Signal(CheckInLock);
-		// cout << "SIGNALED CIO " << myLine  << "LINE SIZE: " << CheckInLine[myLine] << endl;
+		cout << "SIGNALED CIO " << myLine  << "LINE SIZE: " << CheckInLine[myLine] << endl;
 	} else if (!economy && CheckInLine[myLine] == 1){		// If first person in line for executive passengers
 		for (int i = airline*simNumOfCIOs; i < airline*simNumOfCIOs+simNumOfCIOs; i++){
 			if (CheckInLine[i] == 0){
@@ -306,8 +300,9 @@ cout << "PASSENGER CHOOSING LINE" << endl;
 			}
 		}
 	}
+	cout << "PASS: " << name << " WAITING myLine " << myLine << endl;
 	CheckInCV[myLine]->Wait(CheckInLock);		// Wait for CheckIn Officer to signal
-	// cout << "PASS: " << name << " WOKEN UP myLine = " << myLine << endl;
+	cout << "PASS: " << name << " WOKEN UP myLine = " << myLine << endl;
 	// int oldLine = myLine;		// Save old line to decrement it later when you leave
 	if(!economy){
 		myLine = CPInfo[myLine].line;		// Sets its line to that of the Officer if it was in the executive line
@@ -397,14 +392,14 @@ cout << "PASSENGER CHOOSING LINE" << endl;
 	SecurityLocks[myLine]->Acquire();
 	SecurityLines->Release();
 	SecurityOfficerCV[myLine]->Wait(SecurityLocks[myLine]);
-	
+	cout << "PASS " << name << " GIVING INFO to security myLine " << myLine << endl;
 	SecPInfo[myLine].passenger = name;		// Tell officer passenger name
 	SecPInfo[myLine].questioning = false;		// Tell officer that passenger hasn't been told to do extra questioning
 	SecurityOfficerCV[myLine]->Signal(SecurityLocks[myLine]);		// Tell Security that you have arrived
+	cout << "PASS " << name << " SIGNALED SECURITY TO SEE IF I PASS" << endl;
 	SecurityOfficerCV[myLine]->Wait(SecurityLocks[myLine]);
-
 	NotTerrorist = SecPInfo[myLine].PassedSecurity;		// Boolean of whether the passenger has passed all security
-
+cout << "GOT INFO ABOUT WHETHER I PASSED OR NOT PASSENGER " << name << endl;
 	
 	SecurityLines->Acquire();
 	if(SecurityLine[myLine] > 0)  SecurityLine[myLine] -= 1;		// Decrement Line Size 
@@ -445,11 +440,10 @@ cout << "PASSENGER CHOOSING LINE" << endl;
 	
 	gateLocks[airline]->Acquire();		// Lock to control passenger flow to boarding lounge
 	printf("Passenger %d of Airline %d reached the gate %d\n", name, airline, gate);		// OFFICIAL OUTPUT STATEMENT
-	cout << "airline: " << airline << " gate: " << gate << endl;
 	boardingLounges[airline]++;
-	// for(int i = 0; i < simNumOfAirlines; i++){
-		// cout << "AIRLINE: " << i << " BL: " << boardingLounges[i] << "  TPA: " << totalPassengersOfAirline[i] << " ABC " << aircraftBaggageCount[i] << " TB " << totalBaggage[i] << " Conveyor: " << conveyor.size() << endl;
-	// }
+	for(int i = 0; i < simNumOfAirlines; i++){
+		cout << "AIRLINE: " << i << " BL: " << boardingLounges[i] << "  TPA: " << totalPassengersOfAirline[i] << " ABC " << aircraftBaggageCount[i] << " TB " << totalBaggage[i] << " Conveyor: " << conveyor.size() << endl;
+	}
 	cout << "boarding lounges[airline]: " << boardingLounges[airline] << endl;
 	cout << "totalPassengers[airline]: " << totalPassengersOfAirline[airline] << endl;
 	gateLocksCV[airline]->Wait(gateLocks[airline]);		// Airline can only leave when all passengers have arrived
@@ -478,7 +472,6 @@ int LiaisonOfficer::getAirlineBaggageCount(int n){ // For manager to get passeng
 }
 
 void LiaisonOfficer::DoWork(){
-cout << "LIAI doin work" << endl;
 	while(true){		// Always be running, never go on break
 		liaisonLineLock->Acquire();		// Acquire lock for lining up in order to see if there is someone waiting in your line
 		if (liaisonLine[info.number] > 0){		// Check if passengers are in your line
@@ -486,7 +479,7 @@ cout << "LIAI doin work" << endl;
 			liaisonLineLocks[info.number]->Acquire();		
 			liaisonLineLock->Release();
 			liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]);		// Wait for passenger to give you baggage info
-			// cout << "LIAISON GOT PASSENGER " << LPInfo[info.number].passengerName << " BAGGAGE INFO" << endl;
+			cout << "LIAISON GOT PASSENGER " << LPInfo[info.number].passengerName << " BAGGAGE INFO" << endl;
 			
 			// Passenger has given bag Count info and woken up the Liaison Officer
 			info.passengerCount += 1;		// Increment internal passenger counter
@@ -503,20 +496,19 @@ cout << "LIAI doin work" << endl;
 			seatLock->Release();
 			LPInfo[info.number].airline = info.airline;		// Put airline number in shared struct for passenger
 			liaisonBaggageCount[info.airline] += LPInfo[info.number].baggageCount;
-			// cout << "LIAISON TOLD PASSENGER " << LPInfo[info.number].passengerName << " WHAT AIRLINE" << endl;
+			cout << "LIAISON TOLD PASSENGER " << LPInfo[info.number].passengerName << " WHAT AIRLINE" << endl;
 			liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]); // Wakes up passenger
-			// cout << "WAITING FOR PASSENGER " << LPInfo[info.number].passengerName << " TO SAY THEYRE LEAVING LIAISON" << endl;
+			cout << "WAITING FOR PASSENGER " << LPInfo[info.number].passengerName << " TO SAY THEYRE LEAVING LIAISON" << endl;
 			liaisonOfficerCV[info.number]->Wait(liaisonLineLocks[info.number]); // Waits for Passenger to say they are leaving
 			printf("Airport Liaison %d directed passenger %d of airline %d\n", info.number, LPInfo[info.number].passengerName, info.airline);		// OFFICIAL OUTPUT STATEMENT
 			liaisonOfficerCV[info.number]->Signal(liaisonLineLocks[info.number]);	//Let the passenger leave
-			cout << "SIGNALED" << endl;
 			liaisonLineLocks[info.number]->Release();
 		}
 		else {
 			liaisonLineLock->Release(); //if there are no passengers in line, release
 			currentThread->Yield();
-			currentThread->Yield();
 			if(planeCount == simNumOfAirlines){
+				cout << "Liaison Officer Closed Down" << endl;
 				break;
 			}
 		}
@@ -541,7 +533,6 @@ bool CheckInOfficer::getOnBreak() {return OnBreak;}
 void CheckInOfficer::setOffBreak() {OnBreak = false;}
 
 void CheckInOfficer::DoWork(){
-cout << "CIO " << info.number << " Doin work" << endl;
 	while(info.work){		// While there are still passengers who haven't checked in
 		CheckInLock->Acquire();		// Acquire line lock to see if there are passengers in line
 		int x = simNumOfAirlines*simNumOfCIOs + info.airline;		// Check Executive Line for your airline first
@@ -558,7 +549,7 @@ cout << "CIO " << info.number << " Doin work" << endl;
 			printf("Airline check-in staff %d of airline %d serves an economy class passenger and executive class line length = %d\n", info.number, info.airline, CheckInLine[x]);		// OFFICIAL OUTPUT STATEMENT
 		}else {		// Else, there are no passengers waiting and you can go on break
 			OnBreak = true;
-			// cout << "CIO " << info.number << " ON BREAK YO " << CheckInLine[info.number] << endl;
+			// cout << "CIO " << info.number << " ON BREAK YO LINE Size " << CheckInLine[info.number] << endl;
 			CheckInBreakCV[info.number]->Wait(CheckInLock);
 			// cout << "WOKE UP YO " << info.number << " LINE Size is: " << CheckInLine[info.number] << endl;
 			CheckInLock->Release();
@@ -581,23 +572,8 @@ cout << "CIO " << info.number << " Doin work" << endl;
 		}
 		printf("Airline check-in staff %d of airline %d dropped bags to the conveyor system\n", info.number, info.airline);		// OFFICIAL OUTPUT STATEMENT
 		airlineSeatLock->Acquire();
-		// int seat = -1;		// Default plane seat is -1
-		// int c = (simNumOfAirlines-1)*simSeatsPerPlane;
-		// int d = (simNumOfAirlines)*simSeatsPerPlane;
-		// for (int i = c; i < d; i++ ){		// Airline 1 is 0-49, Airline 2 is 50-99, Airline 3 is 100-149
-			// if (seats[i]){		// First available seat index is used
-				// seat = i;
-			// }
-		// }
-		// if (seat == -1){		// No Spots are left on the airline
-			// std::cout<<"No spots left on airline!\n";
-			// return;
-		// } else {
-			// seats[seat] = false;
-		// }
 		airlineSeatLock->Release();
 		int z = CPInfo[info.number].passenger;
-		// CPInfo[info.number].seat = seat;		// Tell Passenger Seat number
 		CPInfo[info.number].gate = gates[info.airline];		// Tell Passenger Gate Number
 		if (!CPInfo[info.number].IsEconomy){
 			printf("Airline check-in staff %d of airline %d informs executive class passenger %d to board at gate %d\n", info.number, info.airline, z, gates[info.airline]);		// OFFICIAL OUTPUT STATEMENT
@@ -627,7 +603,6 @@ CargoHandler::CargoHandler(int n){
 CargoHandler::~CargoHandler(){}
 
 void CargoHandler::DoWork(){
-cout << "CH doin work " << name << endl;
 	while (true){
 		onBreak = false;
 		CargoHandlerLock->Acquire();
@@ -675,7 +650,6 @@ AirportManager::AirportManager(){
 AirportManager::~AirportManager(){}
 
 void AirportManager::DoWork(){
-cout << "AM doin work " << endl;
 	while(true){
 		//if the conveyor belt is not empty and cargo people are on break, wake them up
 		// cout << "cargo: " << cargoHandlers.size() << " conveyor: " << conveyor.size() << endl;
@@ -688,7 +662,7 @@ cout << "AM doin work " << endl;
 				}
 			}
 			if(breakCount == (signed)cargoHandlers.size()){
-				cout << "Airport manager calls back all the cargo handlers from break" << endl;
+				cout << "Airport manager calls back all the cargo handlers from break" << endl; //OFFICIAL
 				CargoHandlerCV->Broadcast(CargoHandlerLock);
 			}
 			CargoHandlerLock->Release();
@@ -712,7 +686,7 @@ cout << "AM doin work " << endl;
 			EndOfDay();
 			break;
 		}
-		for (int i = 0; i < 10; i++){
+		for (int i = 0; i < 2; i++){
 			currentThread->Yield();
 		}
 	}
@@ -767,7 +741,6 @@ ScreeningOfficer::ScreeningOfficer(int i){
 ScreeningOfficer::~ScreeningOfficer(){}
 
 void ScreeningOfficer::DoWork(){
-cout << "Screening doin work " << number;
 	while(true){
 		ScreenLines -> Acquire();
 		if (IsBusy) IsBusy = false;		// If busy, should no longer be busy 
@@ -783,16 +756,20 @@ cout << "Screening doin work " << number;
 		ScreenPass = true;		// Default is pass
 		if (x == 0) ScreenPass = false;		// 20% of failure
 		ScreeningResult[z] = ScreenPass;
+		cout << "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS" << endl;
 		if (ScreenPass){		// If passenger passed test
 			printf("Screening officer %d is not suspicious of the hand luggage of passenger %d\n", number, z);		// OFFICIAL OUTPUT STATEMENT
 		}else {
 			printf("Screening officer %d is suspicious of the hand luggage of passenger %d\n", number, z);		// OFFICIAL OUTPUT STATEMENT
 		}
 		bool alreadyPrinted = false;
-		bool y = false;
-		while(!y){		// Wait for Security Officer to become available
+		while(true){		// Wait for Security Officer to become available
+			bool  y = false;
 			for (int i = 0; i < simNumOfScreeningOfficers; i++){		// Iterate through all security officers
 				SecurityAvail->Acquire();
+				if(!alreadyPrinted){
+					cout << "sec availabilityyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy " << SecurityAvailability[0] << endl;  //debugging
+				}
 				y = SecurityAvailability[i];		// See if they are busy
 				if (y){			// If a security officer is not busy, obtain his number and inform passenger
 					SPInfo[number].SecurityOfficer = i;
@@ -801,17 +778,17 @@ cout << "Screening doin work " << number;
 				}
 				SecurityAvail->Release();
 			}
-			if(!alreadyPrinted){
-				// cout << "sec availability " << SecurityAvailability[0] << endl;  //debugging
+			if(y){
+				break;
 			}
 			alreadyPrinted = true;
-			for (int i = 0; i < 10; i++){		// Wait for a while so Officer can change availability status
+			for (int i = 0; i < 2; i++){		// Wait for a while so Officer can change availability status
 				currentThread->Yield();
-				// currentThread->Yield();
-				// currentThread->Yield();
+				// cout << "STUCKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK INNNNNNNNNNNNNNNNNNNNNNNNN" << endl;
+				currentThread->Yield();
+				// cout << "LLLLLLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << endl;
 			}
 		}
-		
 		printf("Screening officer %d directs passenger %d to security inspector %d\n", number, z, SPInfo[number].SecurityOfficer);		// OFFICIAL OUTPUT STATEMENT
 		ScreenOfficerCV[number]->Signal(ScreenLocks[number]);		// Signal Passenger that they should move on
 		ScreenOfficerCV[number]->Wait(ScreenLocks[number]);
@@ -832,25 +809,25 @@ SecurityOfficer::SecurityOfficer(int i){
 SecurityOfficer::~SecurityOfficer(){}
 
 void SecurityOfficer::DoWork(){
-cout << "Security doin work " << number << endl;
 	while(true){
 		SecurityLines->Acquire();
 		SecurityLocks[number]->Acquire();
-		if (SecurityLine[number] != 0){		// Always see if Officer has a line of returning passengers from questioning
-			SecurityLineCV[number]->Signal(SecurityLocks[number]);
-			// cout << "SECURITY LINE LENGTH FALSE: " << SecurityLine[number] << endl;
+		if (SecurityLine[0] > 0){		// Always see if Officer has a line of returning passengers from questioning
+			SecurityLineCV[0]->Signal(SecurityLocks[number]);
+			cout << "SECURITY LINE LENGTH SHOULD BE > 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000: " << SecurityLine[number] << endl;
 		} else {
 			//SecurityAvail->Acquire();
-			// cout << "SECURITY LINE LENGTH TRUE " << SecurityAvailability << " : " << SecurityLine[number] << endl;
+			cout << "I AM FREE NOWWWWWWWWWWWWWW SECURITY LINE LENGTH SHOULD BE 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 " << SecurityAvailability << " : " << SecurityLine[number] << endl;
 			SecurityAvailability[number] = true;		// Set itself to available
 			//SecurityAvail->Release();
 		}
 		SecurityLines->Release();
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
+		cout << "FIRST WOKEN UPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP " << endl;
 		SecurityOfficerCV[number]->Signal(SecurityLocks[number]);
-		// cout << "Is this where I get stuck?" << endl;
+		cout << "SIGNALED PASSENGERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR" << endl;
 		SecurityOfficerCV[number]->Wait(SecurityLocks[number]);
-		// cout << "NOPE" << endl;
+		cout << "SECOND WOKEN UP " << endl;
 		int z = SecPInfo[number].passenger;		// Get passenger name from passenger
 		didPassScreening = ScreeningResult[z];		// get result of passenger screening test from screening officer
 		
@@ -1264,6 +1241,10 @@ void setupAirlines(int airlineCount) {
 		aircraftBaggageWeight[i] = 0;		// Weight of baggage on a single airline
 	}
 	
+	if(simNumOfPassengers%simNumOfAirlines > 0){
+		totalPassengersOfAirline[0] += simNumOfPassengers%simNumOfAirlines;
+	}
+	
 	for (int i = 0; i < airlineCount; i++){
 		// LiaisonSeat[i] = AIRLINE_SEAT;
 		Lock *tempLock = new Lock("Gate Locks");
@@ -1297,37 +1278,30 @@ void createLiaisons(int quantity) {
 }
 
 void setupEconomyCIOs(int airlineCount, int quantity) {
-	for (int i = 0; i < airlineCount; i++){
-		for (int y = 0; y < quantity; y++){
-			int x = (y + i) + (airlineCount + 1) * i;
-			CheckInLine[x] = 0;
-			CheckIn[x] = new CheckInOfficer(x);
-			CheckInLocks[x] = new Lock("CheckIn Officer Lock");
-			CheckInBreakCV[x] = new Condition("CheckIn Break Time CV");
-			CheckInCV[x] = new Condition("CheckIn Line CV");
-			CheckInOfficerCV[x] = new Condition("CheckIn Officer CV");
-		}
+	for (int i = 0; i < simNumOfAirlines*simNumOfCIOs; i++){
+		CheckInLine[i] = 0;
+		CheckIn[i] = new CheckInOfficer(i);
+		CheckInLocks[i] = new Lock("CheckIn Officer Lock");
+		CheckInBreakCV[i] = new Condition("CheckIn Break Time CV");
+		CheckInCV[i] = new Condition("CheckIn Line CV");
+		CheckInOfficerCV[i] = new Condition("CheckIn Officer CV");
 	}
 }
 
 void setupExecutiveCIOs(int airlineCount, int quantity) {
-	for (int i = 0; i < airlineCount; i++){
-		int x = airlineCount * quantity + i;
-		CheckInLine[x] = 0;
-		CheckIn[x] = new CheckInOfficer(x);
-		CheckInLocks[x] = new Lock("CheckIn Officer Lock");
-		CheckInCV[x] = new Condition("CheckIn Line CV");
+	for(int i = simNumOfAirlines*simNumOfCIOs; i < simNumOfAirlines*simNumOfCIOs + simNumOfAirlines; i++) {
+		CheckInLine[i] = 0;
+		CheckIn[i] = new CheckInOfficer(i);
+		CheckInLocks[i] = new Lock("CheckIn Officer Lock");
+		CheckInCV[i] = new Condition("CheckIn Line CV");
 	}
 }
 
 void createCIOs(int airlineCount, int quantity) {
-	for(int i = 0; i < airlineCount; i++) {
-		for(int j = 0; j < quantity; j++) {
-			int x = j + i + (airlineCount + 1) * i;
-			simCIOs.push_back(new CheckInOfficer(x));
-			CheckIn[x] = simCIOs.back();
-			printf("Debug: Created Check In Officer %d\n", x);
-		}
+	for(int i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
+		simCIOs.push_back(new CheckInOfficer(i));
+		CheckIn[i] = simCIOs.back();
+		printf("Debug: Created Check In Officer %d\n", i);
 	}
 }
 
@@ -1368,27 +1342,27 @@ void createCargoHandlers(int quantity) {
 }
 
 void testPassenger(int i) {
-	cout << "SIM PASS " << i << endl;
+	// cout << "SIM PASS " << i << endl;
 	simPassengers.at(i)->ChooseLiaisonLine();
 }
 
 void testLiaison(int i){
-	cout << "SIM LIAI " << i << endl;
+	// cout << "SIM LIAI " << i << endl;
 	simLiaisons.at(i)->DoWork();
 }
 
 void testCheckIn(int i){
-	cout << "SIM CIO " << i << endl;
+	// cout << "SIM CIO " << i << " SIM SIZE " << simCIOs.size() << endl;
 	simCIOs.at(i)->DoWork();
 }
 
 void testCargo(int i){
-	cout << "SIM CARGO " << i << endl;
+	// cout << "SIM CARGO " << i << endl;
 	simCargoHandlers.at(i)->DoWork();
 }
 
 void testAirportManager() {
-	cout << "SIM AM " << endl;
+	// cout << "SIM AM " << endl;
 	simAirportManager->DoWork();
 }
 
@@ -1405,12 +1379,12 @@ void setupBaggageAndCargo(int airlineCount) {
 }
 
 void testScreen(int i){
-	cout << "SIM Screening " << i << endl;
+	// cout << "SIM Screening " << i << endl;
 	simScreeningOfficers.at(i)->DoWork();
 }
 
 void testSecurity(int i){
-	cout << "SIM Security " << i << endl;
+	// cout << "SIM Security " << i << endl;
 	simSecurityOfficers.at(i)->DoWork();
 }
 
@@ -1491,11 +1465,9 @@ void RunSim() {
 	
 	createAirportManager();
 	
-	for(int i = 0; i < simNumOfAirlines; i++) {
-		for(int j = 0; j < simNumOfCIOs; j++) {
-			t = new Thread("CheckIn Officer");
-			t->Fork((VoidFunctionPtr)testCheckIn, j + i + (simNumOfAirlines+1)*i);
-		}
+	for(int i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
+		t = new Thread("CheckIn Officer");
+		t->Fork((VoidFunctionPtr)testCheckIn, i);
 	}
 	
 	for(int i = 0; i < simNumOfLiaisons; i++) {
@@ -1546,11 +1518,11 @@ void AirportTests() {
 
 	t = new Thread("Airport Manager");
 	t->Fork((VoidFunctionPtr)testAirportManager, 0);	
-	for(int i = 0; i < simNumOfAirlines; i++) {
-		for(int j = 0; j < simNumOfCIOs; j++) {
-			t = new Thread("CheckIn Officer");
-			t->Fork((VoidFunctionPtr)testCheckIn, j + i + (simNumOfAirlines+1)*i);
-		}
+	
+	for(int i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
+		t = new Thread("CheckIn Officer");
+		t->Fork((VoidFunctionPtr)testCheckIn, i);
+		// cout << "I IS " << i << endl;
 	}
 	
 	for(int i = 0; i < simNumOfLiaisons; i++) {
@@ -1559,25 +1531,25 @@ void AirportTests() {
 	}
 	
 	for(int i = 0; i < simNumOfScreeningOfficers; i++) {
-		cout << "SIZE OF SCREEN " << simScreeningOfficers.size() << " SIZE OF SEC " << simSecurityOfficers.size() << endl;
+		// cout << "SIZE OF SCREEN " << simScreeningOfficers.size() << " SIZE OF SEC " << simSecurityOfficers.size() << endl;
 		t = new Thread("Screening Officer");
 		t->Fork((VoidFunctionPtr)testScreen, i);
 		t = new Thread("Security Officer");
 		t->Fork((VoidFunctionPtr)testSecurity, i);
-		cout << "TSA " << i << endl;
+		// cout << "TSA " << i << endl;
 	}
 	
 	for(int i = 0; i < 6; i++) {
-		cout << "CARGO HANDLERS SIZE " << simCargoHandlers.size() << endl;
+		// cout << "CARGO HANDLERS SIZE " << simCargoHandlers.size() << endl;
 		t = new Thread("Cargo Handler");
 		t->Fork((VoidFunctionPtr)testCargo, i);
 	}
 	
 	for(int i = 0; i < simNumOfPassengers; i++) {
-		cout << "TP " << i << endl;
+		// cout << "TP " << i << endl;
 		t = new Thread("Passenger");
 		t->Fork((VoidFunctionPtr)testPassenger, i);
 	}
 	
-	cout << "TESTED ALL" << endl;
+	// cout << "TESTED ALL" << endl;
 }
