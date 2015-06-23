@@ -29,6 +29,8 @@
 #define SC_Close		 8
 #define SC_Fork			 9
 #define SC_Yield		 10
+
+// Newly added Syscall are below
 #define SC_Acquire  	 11
 #define SC_Release  	 12
 #define SC_Wait     	 13
@@ -141,9 +143,9 @@ void Yield();
  
 void Acquire(int a);
 void Release(int b);
-void Wait(int c, int d);		/* these are the 3 operations on condition variables; releasing the lock and going to sleep are *atomic* in Wait()*/
-void Signal(int e, int f);		/* conditionLock must be held by*/
-void Broadcast(int g, int h);		/* the currentThread for all of these operations*/
+void Wait(int c, int d);
+void Signal(int e, int f);
+void Broadcast(int g, int h);
 
 int CreateLock();
 void DestroyLock(int i);
