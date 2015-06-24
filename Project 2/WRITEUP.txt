@@ -1,0 +1,234 @@
+Title: Writeup for Project 2, Summer 2015
+
+Date: 6/24/2015
+
+Group Num 11: Name
+              Vance Lindholm 
+              George Li
+              Yoshua Lo
+
+I. Requirements:
+    Part 1:
+        
+        For Part 1, we had to implement extra Syscalls for exception.cc. These included:
+			- Acquire
+			- Release
+			- Wait
+			- Signal
+			- Broadcast
+			- CreateLock
+			- DestroyLock
+			- CreateCV
+			- DestroyCV
+			
+		Once we created these syscall, we had to edit start.s, syscall.h, and exception.cc such
+		that they would compile correctly. Then we needed to implement test files that would 
+		demonstrate the effectiveness of each syscall as well as document them.
+
+    Part 2:
+        
+        For Part 2 of the project, we had to implement Fork, Exec, and Exit (technically part of
+		part 1, but we needed the process table to be done to complete). Additionally, we had to 
+		resolve issues with memory allocation and transforming virtual memory into user programs.
+		Once completed, we had to implement proper and comprehensive tests as well as proper 
+		documentation to prove their effectiveness.
+
+    Part 3:
+        
+        For part 3 of the project we were required to adapt our Airport simulation from Part 1 
+		to fit the multi-process/ syscall functionality that we just created. Proper tests and
+		documentation were required as well.
+
+II. Assumptions:
+
+    We assume:
+        -Functions provided by NACHOS are generally bug free and perform as
+         specified.
+        -File system system calls are correct as provided.
+        -Condition variable and Lock implementations will be identical to
+         project 1.
+        -Programs are provided with adequate stack space to avoid overflow
+        -Physical memory is sufficiently large to accomidate all processes.
+         (i.e. simulated physical memory size can be increased until it is 
+         sufficient for all processes)
+
+III. Design:
+
+    Part 1:
+        For Part 1, our design philosophy was to ensure optimality and flow
+		of the syscalls in exception.cc. As such, we used the same format as
+		prior syscalls in start.s (same exact commands just with the name of 
+		the syscall being changed). For syscall.h we developed different 
+		function calls for each syscall. We also added each syscall to the 
+		list of defined syscalls (going from number 8 to 20). Because we wanted
+		to retain a similar feel to the prior syscalls, each syscall has a
+		function call in syscall.h and a different one in exception.cc with the 
+		same parameters (ex. Acquire(int n) vs Acquire_Syscall(int n)). The 
+		switch statement in exception.cc was done the same way as the prior
+		syscalls since we assume that every prior syscall is optimal and working
+		without bugs.
+		
+		For the Lock Table and CV Table, we decided to use a vector of structs
+		since that would allow for easy appending of new locks/CVs. We declared 
+		the structs in system.h since it is a global file. We then declared the
+		two actual vectors and their locks in exception.cc since that is the 
+		only file that needs access to those tables currently. We also edited
+		synch.h to make the waitingLists for both Locks and CVs public so that
+		we could check if there were threads waiting (for destruction purposes).
+		Every function has the table lock inside to ensure that no race conditions
+		occur that might cause the vector tables to become unstable.
+		
+		void Yield()
+			Yield was the easiest syscall to implement since it puts a thread to
+			sleep. Thus, it was easy to just call currentThread->Sleep();
+		
+		int CreateLock(char* name)
+			CreateLock was used to for threads to current new locks. After a lock
+			is created, the function returns an int value corresponding to the
+			index position in the lock vector table for that lock struct. We didn't
+			want to return a pointer in the kernel because that would allow the user
+			to potentially ruin the OS and the program with bad data. This function
+			creates a new lock struct then creates a new lock, and sets all the data
+			within the lock struct. IsDelete is set to false as the Lock is not yet
+			set to be deleted. The Owner is set to NULL (default) and the lock is 
+			set to the newly created lock. Once created, the lock struct is added
+			to the end of the vector (table) and the index of that struct is returned
+			by the function. That value is then written into register 2 which is used
+			by the thread for future access.
+			
+		void DestroyLock(int n)
+			DestroyLock is used to destroy a lock with index n in the vector table. 
+			The function will first check to see if n is a valid int. It will check
+			if the value is less than 0 (index number can't be negative), if the value 
+			is above size of the vector (index number must be within the size of the
+			vector), and if the lock at that position is already NULL (can't delete
+			a lock twice). We included the last one in the if statement since we used OR
+			statements. This means that if one of the first two is invalid, the if statement
+			will never check the third and thus avoid a segmentation fault. Once the 
+			function checks n's validity, it will provide to check if there are any 
+			threads waiting on the lock. Since deleting a lock while threads are waiting
+			would create an infinite wait, we didn't want that to happen. Therefore, we 
+			check the size of waitingThreads as well if delete has been set yet. If 
+			there are threads waiting, but delete isn't set, then we set delete. If there
+			are no threads waiting and delete isn't set, then we set delete and set the
+			lock to NULL. If there are no threads waiting and delete is set, then we will
+			just set the Lock to NULL. Once done, we will return.
+			
+		int CreateCV(char* name)
+			This function was based upon CreateLock and is essentially the same except that
+			we are creating a CV struct and place it into a CVTable instead. 
+			
+		void DestroyCV(int n)
+			This function was based upon DestroyLock and is essentially the same except that
+			we are destroying a CV instead.
+			
+		void Acquire(int n)
+			This function takes an int which corresponds to a index in the Lock Table and tries
+			to acquire that lock. The function first checks to see if that int value is valid
+			by comparing its index as well as if its lock value is already NULL (similar to
+			above). If the int passes, then it call Acquire() with the lock in that index in
+			the LockTable. Since we assume that the Lock and CV code already works, we decided
+			that it would be easier to just call Acquire() rather than re typing all the code
+			into exception.cc (also prevents issues with private variables in synch.h).
+			
+		void Release(int n)
+			This function takes an int which corresponds to a index in the the Lock Table and 
+			tries to release that lock. The function first checks to see if that int value is
+			valid (same as Acquire()) and if it passes, Release() is called by that lock (this 
+			is for the same reason as above).
+			
+		void Signal(int n, int m)
+			This function takes in two ints, the first corresponds to an index in the CV Table 
+			and the second to an index in the Lock Table. The function first checks both int 
+			values (same as Acquire() but with two ints) and if they both pass, then the function
+			calls Signal(m) using index n in the CVTable. m is the conditionLock that Signal will
+			use in this own function (reasoning is same as prior functions).
+			
+		void Wait(int n, int m)
+			This function is almost exactly like Signal except it will call Wait instead of Signal.
+			
+		void Broadcast(int n, int m)
+			This function is almost exactly like Wait except it will call Broadcast instead of Wait.
+	   
+    Part 2:
+        
+    Part 3:
+
+IV. Implementation:
+
+    + Files Modified
+        userprog/exception.cc
+        userprog/syscall.h
+        test/Makefile
+        threads/system.h
+        threads/system.cc
+		test/Halt.c
+		threads/synch.h
+		threads/threadtest.cc
+		threads/threadtest.h
+		test/start.s
+
+    + Files added
+
+    + Data Structures added, and the file they were added to.
+        userprog/system.h
+            struct KernelLock
+			struct KernelCV
+        userprog/exception.cc
+            vector<KernelLock>LockTable
+			vector<KernelCV>CVTable
+            
+    + Data Structures modified, and the file they were added to.            
+            
+    + Functions added and in which file.
+		userprog/exception.cc
+			Acquire_Syscall(int n)
+			Release_Syscall(int n)
+			CreateLock_Syscall(char* name)
+			DestroyLock_Syscall(int n)
+			CreateCV_Syscall(char* name)
+			DestroyCV_Syscall(int n)
+			Wait(int n, int m)
+			Signal(int n, int m)
+			Broadcast(int n, int m)
+		test/halt.c
+			testLock()
+			testCV()
+
+    + Functions modified and in which file.
+		test/halt.c
+			main()
+		userprog/exception.cc
+			ExceptionHandler(ExceptionType which)
+		
+V. Testing: (For each test case, you must show)
+    + How to test
+
+    -Test for Part 1:
+		All tests for Part 1 are included within halt.c to avoid having to edit
+		the makefile. Within halt.c there are two functions, testLock() and testCV().
+		These two functions test the functionality of the syscalls relating to Locks
+		and CVs. testLock() will test creating a lock, deleting with valid and invalid
+		parameters, and acquiring/releasing with valid and invalid parameters. The 
+		testCV() will test creating and deleting with valid and invalid parameters. The
+		two tests will have output statements that will detail what should happen next. 
+		The output statements from halt.c will have a space indent while those from
+		exception.cc (when there is a failure) will not have that indent. 
+		
+		- To run: nachos -x ../test/halt.c
+      
+VI. Discussion:
+    + Experiment expectation. 
+        The airport simulation should run much better than Part 1. In fact, ideally it
+		should run with no errors or bugs.
+            
+    + Experiment result.
+    
+    + Explanation
+
+VII. Miscellaneous:
+    Our Part 1 was extremely buggy and prone to race conditions and failures. As such,
+	we had to spend a lot of time fixing it up in order to even start Part 3 of this
+	assignment. As such, much of our time went to fixing and repairing our prior project
+	and we would like the grader to take this into consideration while reviewing our 
+	part 3.
