@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <vector>
 #include <iostream>
+#include <cstdio>
+#include <cstring>
 
 using namespace std;
 
@@ -240,8 +242,8 @@ void Close_Syscall(int fd) {
 
 void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that corresponds to lock (in their tables)
 	LockTableLock->Acquire();
-	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
-		printf("%s", "InvalidKernel_Lock Table Number.\n");
+	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
+		printf("%s", "Invalid Lock Table Number in Acquire.\n");
 		LockTableLock->Release();
 		return;		// If the int entered is wrong, print error and return
 	}
@@ -252,8 +254,8 @@ void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that 
 void Release_Syscall(int n){		// Syscall to release a lock... takes an int that corresponds to lock (in their tables)
 	LockTableLock->Acquire();
 	
-	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
-		printf("%s", "InvalidKernel_Lock Table Number.\n");
+	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
+		printf("%s", "Invalid Lock Table Number in Release.\n");
 		LockTableLock->Release();
 		return;		// If the int entered is wrong, print error and return
 	}
@@ -264,7 +266,7 @@ void Release_Syscall(int n){		// Syscall to release a lock... takes an int that 
 void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for position of CV, second is for position of Lock (in their tables)
 	CVTableLock->Acquire();
 	
-	if (x == NULL || CVTable[x].IsDeleted || CVTable[x].CV == NULL || lock == NULL || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (x < 0 || x > (signed)CVTable.size() - 1 || CVTable[x].IsDeleted || CVTable[x].CV == NULL || lock < 0 || lock > (signed)LockTable.size() - 1 || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		return;		// Return if either of the values entered are incorrect
@@ -277,7 +279,7 @@ void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for 
 void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is for position of CV, second is for position of Lock (in their tables)
 	CVTableLock->Acquire();
 	
-	if (y == NULL || CVTable[y].IsDeleted || CVTable[y].CV == NULL || a == NULL || LockTable[a].IsDeleted || LockTable[a].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (y < 0 || y > (signed)CVTable.size() - 1 || CVTable[y].IsDeleted || CVTable[y].CV == NULL || a < 0 || a > (signed)LockTable.size() - 1 || LockTable[a].IsDeleted || LockTable[a].Kernel_Lock == NULL  ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		return;		// Return if either of the values entered are incorrect
@@ -290,7 +292,7 @@ void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is f
 void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int is for position of CV, second is for position of Lock (in their tables)
 	CVTableLock->Acquire();
 	
-	if (z == NULL || CVTable[z].IsDeleted || CVTable[z].CV == NULL || b == NULL || LockTable[b].IsDeleted || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (z < 0 || z > (signed)CVTable.size() - 1 || CVTable[z].IsDeleted || CVTable[z].CV == NULL || b < 0 || b > (signed)LockTable.size() - 1 || LockTable[b].IsDeleted || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		return;		// Return if either of the values entered are incorrect
@@ -300,35 +302,48 @@ void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int 
 	CVTableLock->Release();
 }
 
-int CreateLock_Syscall(){		// Creates a new lock syscall
+int CreateLock_Syscall(char* name){		// Creates a new lock syscall
+    DEBUG('a',"%s: CreateLock_Syscall initiated.\n", currentThread->getName());
 	LockTableLock->Acquire();
+	
 	KernelLock new_Lock;		// Creates a new lock struct
 	Lock* tempLock = new Lock("");		// Creates a new lock
 	new_Lock.Kernel_Lock = tempLock;		// Places lock into struct
-	
 	new_Lock.Owner = NULL;		// Sets Owner of lock to NULL (default)
 	new_Lock.IsDeleted = false;		// Lock has not been deleted and is functional
-	LockTable.push_back(new_Lock);		// Add new lock struct to LockTable
-	int x = LockTable.size() - 1;		// Find index of new lock just created in the LockTable
+	
+	LockTable.push_back(new_Lock);		// Adds lock struct to vector
+	int x = LockTable.size() - 1;		// Finds index value of newly created lock
+	
 	LockTableLock->Release();		
+	DEBUG('a', "%s: Created Lock with number %d\n", currentThread->getName(), x);
 	return x;		// Return that value to the thread so they can acquire/release the new lock
 }
 
 void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
 	LockTableLock->Acquire();
 	
-	if (n == NULL || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL ){		// Check if data exists for entered value
-		printf("%s", "InvalidKernel_Lock Table Number.\n");
+	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].Kernel_Lock == NULL ){		// Check if data exists for entered value
+		printf("%s", "Invalid Lock Table Number.\n");
 		LockTableLock->Release();		// If Lock doesn't exist (or is already deleted) return failure
 		return;
 	}
 	
-	LockTable[n].IsDeleted = true;		// Lock has been deleted
-	LockTable[n].Kernel_Lock = NULL;		// The Lock is deleted
+	if (!LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && !LockTable[n].IsDeleted){		// If threads are waiting for Lock and Deleted hasn't been set
+		LockTable[n].IsDeleted = true;		// Set the lock for deletion
+		printf("%s", "Lock has waiting Threads, setting Delete\n");
+	} else if (LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && !LockTable[n].IsDeleted){			// If no threads are waiting for Lock and Deleted hasn't been set
+		LockTable[n].IsDeleted = true;		// Set the lock for deletion
+		LockTable[n].Kernel_Lock = NULL;		// Delete the lock
+		printf("%s", "Lock has no waiting Threads, setting Delete and Lock\n");
+	} else if (LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && LockTable[n].IsDeleted){		// If no threads are waiting for Lock and Deleted has been set
+		LockTable[n].Kernel_Lock = NULL;		// Delete the lock
+		printf("%s", "Lock has waiting Threads, now setting Lock to NULL\n");
+	}
 	LockTableLock->Release();
 }
 
-int CreateCV_Syscall(){		// Creates a new CV in CVTable
+int CreateCV_Syscall(char* name){		// Creates a new CV in CVTable
 	CVTableLock->Acquire();
 	KernelCV new_cv;		// New CV Struct
 	Condition* cv = new Condition("");		// New CV
@@ -341,17 +356,26 @@ int CreateCV_Syscall(){		// Creates a new CV in CVTable
 	return x;		// Returns said value to Thread to use new CV
 }
 
-void DestroyCV_Syscall(int n){		// Destorys an existing CV in CVTable
+void DestroyCV_Syscall(int n){		// Destroys an existing CV in CVTable
 	CVTableLock->Acquire();
 	
-	if (n == NULL || CVTable[n].IsDeleted || CVTable[n].CV == NULL ){		// Check if data exists for entered value
+	if (n < 0 || n > (signed)CVTable.size() - 1 || CVTable[n].CV == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number.\n");
 		CVTableLock->Release();
 		return;		// If CV doesn't exist (or is already deleted) return failure
 	}
 	
-	CVTable[n].IsDeleted = true;
-	CVTable[n].CV = NULL;
+	if (!CVTable[n].CV->waitingCV->IsEmpty() && !CVTable[n].IsDeleted){		// If threads are waiting for CV and Delete isn't set
+		CVTable[n].IsDeleted = true;		// Set the CV for deletion
+		printf("%s", "CV has waiting Threads, setting Delete\n");
+	} else if (CVTable[n].CV->waitingCV->IsEmpty() && !CVTable[n].IsDeleted){		// If no threads are waiting for CV and Delete isn't set
+		CVTable[n].IsDeleted = true;		// Set the CV for deletion
+		CVTable[n].CV = NULL;		// Delete the CV	
+		printf("%s", "CV has no waiting Threads, setting Delete and Lock\n");
+	} else if (CVTable[n].CV->waitingCV->IsEmpty() && CVTable[n].IsDeleted){		// If no threads are waiting for CV and Delete was set
+		CVTable[n].CV = NULL;		// Delete the CV
+		printf("%s", "CV has waiting Threads, now setting Lock to NULL\n");
+	}
 	CVTableLock->Release();
 }
 
@@ -423,16 +447,16 @@ void ExceptionHandler(ExceptionType which) {
 							  machine->ReadRegister(5));		// Calls Broadcast_Syscall with entered parameters (int, int)
 			break;
 		case SC_CreateLock:		// Syscall for creating locks
-			DEBUG('a', "CreateKernel_Lock Syscall.\n");
-			rv = CreateLock_Syscall();		// Calls CreateLock_Syscall with no parameters
+			DEBUG('a', "Create Lock Syscall.\n");
+			rv = CreateLock_Syscall((char*)machine->ReadRegister(4));		// Calls CreateLock_Syscall with no parameters
 			break;
 		case SC_DestroyLock:		// Syscall for deleting locks
-			DEBUG('a', "DestroyKernel_Lock Syscall.\n");
+			DEBUG('a', "Destroy Lock Syscall.\n");
 			DestroyLock_Syscall(machine->ReadRegister(4));		// Calls DestroyLock_Syscall with entered parameters (int)
 			break;
 		case SC_CreateCV:		// Syscall for creating CVs
 			DEBUG('a', "Create CV Syscall.\n");
-			rv = CreateCV_Syscall();		// Calls CreateCV_Syscall with entered parameters (int)
+			rv = CreateCV_Syscall((char*)machine->ReadRegister(4));		// Calls CreateCV_Syscall with entered parameters (int)
 			break;
 		case SC_DestroyCV:		// Syscall for destroying CVs
 			DEBUG('a', "Destroy CV Syscall.\n");

@@ -76,13 +76,12 @@ class Lock {
 					// holds this lock.  Useful for
 					// checking in Release, and in
 					// Condition variable ops below.
-
+    List *waitingThreads;
 					
   private:
     char* name;				// for debugging
     bool available;
     Thread* owner;
-    List *waitingThreads;
     // plus some other stuff you'll need to define
 };
 
@@ -139,10 +138,11 @@ class Condition {
     void Broadcast(Lock *conditionLock);// the currentThread for all of 
 					// these operations
 
+	List *waitingCV;
+	
   private:
     char* name;
 	Lock* waitingLock;
-	List *waitingCV;
     // plus some other stuff you'll need to define
 };
 #endif // SYNCH_H
