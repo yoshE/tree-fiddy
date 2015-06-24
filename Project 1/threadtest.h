@@ -7,12 +7,12 @@
 
 #define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
-#define AIRLINE_COUNT 1 		// Number of airlines
-#define CHECKIN_COUNT 4		// Number of CheckIn Officers
+#define AIRLINE_COUNT 5	// Number of airlines
+#define CHECKIN_COUNT 5		// Number of CheckIn Officers
 #define PASSENGER_COUNT 150	// Total number of passengers
 #define AIRLINE_SEAT 50		// Number of seats per Airline
-#define LIAISONLINE_COUNT 1 // Number of Liaison Officers
-#define SCREEN_COUNT 1		// Number of Screening and Security Officers
+#define LIAISONLINE_COUNT 7 // Number of Liaison Officers
+#define SCREEN_COUNT 5		// Number of Screening and Security Officers
 // Max agent consts
 #define MAX_PASSENGERS			1000
 #define MAX_AIRLINES			5
@@ -29,10 +29,10 @@ void ThreadTest();
 //----------------------------------------------------------------------
 bool SecurityAvailability[SCREEN_COUNT];		// Array of Bools for availability of each security officer
 int liaisonLine[LIAISONLINE_COUNT];		// Array of line sizes for each Liaison Officer
-int CheckInLine[CHECKIN_COUNT * AIRLINE_COUNT];		// Array of line sizes for each CheckIn Officer
+int CheckInLine[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Array of line sizes for each CheckIn Officer
 int SecurityLine[SCREEN_COUNT];		// Array of line sizes for return passengers from security questioning
-int ScreenLine[1];		// Array of line sizes for each Screening Officer
-Condition *ScreenLineCV[1];			// Condition Variables for the Screening Line
+int ScreenLine[SCREEN_COUNT];		// Array of line sizes for each Screening Officer
+Condition *ScreenLineCV[SCREEN_COUNT];			// Condition Variables for the Screening Line
 Condition *ScreenOfficerCV[SCREEN_COUNT];		// Condition Variables for each Screening Officer
 Condition *SecurityOfficerCV[SCREEN_COUNT];		// Condition Variables for each Security Officer
 Condition *SecurityLineCV[SCREEN_COUNT];		// Condition Variables for returning passengers from questioning
@@ -51,15 +51,15 @@ Lock *CheckInLock;		// Lock to get into CheckIn Line
 Lock *ScreenLines;		// Lock to get into Screening Line
 Lock *CargoHandlerLock;		// Lock for Cargo Handlers for taking baggage off conveyor
 Condition *CargoHandlerCV;		// Condition Variable for Cargo Handlers
-bool seats[50*AIRLINE_COUNT]; // Contains seat numbers for all planes
 Lock *airlineSeatLock;		// Lock for find seat number for customers
 Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
 Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
 Lock *SecurityLines;			// Lock for returning passengers from Security
 Lock *gateLocks[AIRLINE_COUNT];				//Locks for waiting at the gate
 Condition *gateLocksCV[AIRLINE_COUNT];		//CVs for waiting at the gate
-Lock *LiaisonSeats;			// Lock for assigned airline seats in the Liaison
-
+Lock *seatLock;			// Lock for assigned airline seats in the Liaison
+Lock *execLineLocks[MAX_AIRLINES];
+Condition *execLineCV[MAX_AIRLINES];
 //----------------------------------------------------------------------
 // Structs
 //----------------------------------------------------------------------
@@ -71,6 +71,7 @@ struct Baggage{		// Contains information for 1 piece of baggage
 struct LiaisonPassengerInfo{		// Information passed between Liaison Officer and Passengers
 	int baggageCount;
 	int airline;
+	int passengerName;
 };
 
 struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and Passenger
