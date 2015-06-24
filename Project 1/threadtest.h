@@ -7,12 +7,12 @@
 
 #define BAGGAGE_COUNT 2		// Passenger starts with 2 baggages and will randomly have one more
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
-#define AIRLINE_COUNT 3		// Number of airlines
-#define CHECKIN_COUNT 4		// Number of CheckIn Officers
+#define AIRLINE_COUNT 5	// Number of airlines
+#define CHECKIN_COUNT 5		// Number of CheckIn Officers
 #define PASSENGER_COUNT 150	// Total number of passengers
 #define AIRLINE_SEAT 50		// Number of seats per Airline
-#define LIAISONLINE_COUNT 1 // Number of Liaison Officers
-#define SCREEN_COUNT 1		// Number of Screening and Security Officers
+#define LIAISONLINE_COUNT 7 // Number of Liaison Officers
+#define SCREEN_COUNT 5		// Number of Screening and Security Officers
 // Max agent consts
 #define MAX_PASSENGERS			1000
 #define MAX_AIRLINES			5
@@ -58,7 +58,8 @@ Lock *SecurityLines;			// Lock for returning passengers from Security
 Lock *gateLocks[AIRLINE_COUNT];				//Locks for waiting at the gate
 Condition *gateLocksCV[AIRLINE_COUNT];		//CVs for waiting at the gate
 Lock *seatLock;			// Lock for assigned airline seats in the Liaison
-
+Lock *execLineLocks[MAX_AIRLINES];
+Condition *execLineCV[MAX_AIRLINES];
 //----------------------------------------------------------------------
 // Structs
 //----------------------------------------------------------------------
