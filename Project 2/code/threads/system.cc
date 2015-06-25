@@ -20,7 +20,6 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
-Table processTable(PROCESS_TABLE_MAX_SIZE);
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -85,6 +84,7 @@ Initialize(int argc, char **argv)
 
 #ifdef USER_PROGRAM
     bool debugUserProg = FALSE;	// single step user program
+	Table processTable(PROCESS_TABLE_MAX_SIZE);
 #endif
 #ifdef FILESYS_NEEDED
     bool format = FALSE;	// format disk

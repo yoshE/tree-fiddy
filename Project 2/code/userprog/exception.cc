@@ -525,6 +525,7 @@ void ExceptionHandler(ExceptionType which) {
 	switch (type) {
 	    default:
 			DEBUG('a', "Unknown syscall - shutting down.\n");
+			break;
 	    case SC_Halt:
 			DEBUG('a', "Shutdown, initiated by user program.\n");
 			interrupt->Halt();

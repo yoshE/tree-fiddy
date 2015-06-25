@@ -16,6 +16,8 @@
 #include "stats.h"
 #include "timer.h"
 #include "synch.h"
+#include "../userprog/addrspace.h"
+#include "../userprog/table.h"
 
 struct Process {
 	int id;
