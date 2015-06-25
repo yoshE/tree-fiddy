@@ -57,9 +57,11 @@
 // External functions used by this file
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
+extern void TestSuite(void), AirportTests(void);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
+extern void RunSim(void);
 
 //----------------------------------------------------------------------
 // main
@@ -85,13 +87,20 @@ main(int argc, char **argv)
     (void) Initialize(argc, argv);
     
 #ifdef THREADS
-    ThreadTest();
+    //ThreadTest();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
 	argCount = 1;
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
+		if (!strcmp(*argv, "-T")) {
+			//TestSuite();			// part 1 tests
+			AirportTests();			// part 2 tests
+		}
+		if (!strcmp(*argv, "-run")) {
+			RunSim();
+		}
 #ifdef USER_PROGRAM
         if (!strcmp(*argv, "-x")) {        	// run a user program
 	    ASSERT(argc > 1);
