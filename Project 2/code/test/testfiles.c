@@ -1,38 +1,5 @@
 #include "syscall.h"
 
-int num = 10;
-
-void functionA() {
-	Write("Test\n", 5, ConsoleOutput);
-	Exit(0);
-}
-
-void functionB() {
-	Write("Test2\n", 6, ConsoleOutput);
-	Exit(0);
-}
-
-void functionC() {
-	Write("Test3\n", 6, ConsoleOutput);
-	Exit(0);
-}
-
-void functionD() {
-	Write("Test4\n", 6, ConsoleOutput);
-	Exit(0);
-}
-
-int main() {
-
-	Write("Hellooooooo\n", 12, ConsoleOutput);
-	Fork(functionA);
-	Fork(functionB);
-	Fork(functionC);
-	Fork(functionD);
-
-}
-
-/*
 int main() {
   OpenFileId fd;
   int bytesread;
@@ -50,4 +17,3 @@ int main() {
     Write( buf, bytesread, ConsoleOutput );
     Close(fd);
 }
-*/
