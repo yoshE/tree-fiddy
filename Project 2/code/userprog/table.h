@@ -13,8 +13,8 @@ class Table {
     BitMap map;
     void **table;
     Lock *lock;
-    int size;
  public:
+    int size;
     Table(int);
     ~Table();
     void *Get(int);
