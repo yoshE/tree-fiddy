@@ -1,6 +1,6 @@
 #include "copyright.h"
 #include "system.h"
-#include "synch.h"
+#include "syscall.h"
 #include <list>
 #include <vector>
 #include <deque>
@@ -9,20 +9,23 @@
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
 #define AIRLINE_COUNT 5	// Number of airlines
 #define CHECKIN_COUNT 5		// Number of CheckIn Officers
-#define PASSENGER_COUNT 150	// Total number of passengers
+#define PASSENGER_COUNT 20	// Total number of passengers
 #define AIRLINE_SEAT 50		// Number of seats per Airline
 #define LIAISONLINE_COUNT 7 // Number of Liaison Officers
 #define SCREEN_COUNT 5		// Number of Screening and Security Officers
 // Max agent consts
-#define MAX_PASSENGERS			1000
+#define MAX_PASSENGERS			200
 #define MAX_AIRLINES			5
 #define MAX_LIAISONS			7
 #define MAX_CIOS				5
 #define MAX_CARGOHANDLERS		10
 #define MAX_SCREEN				5
+#define MAX_BAGS				3
 
 void SimpleThread(int which);
 void ThreadTest();
+void RunSim();
+void AirportTests();
 
 //----------------------------------------------------------------------
 // Arrays, Lists, and Vectors
@@ -32,34 +35,34 @@ int liaisonLine[LIAISONLINE_COUNT];		// Array of line sizes for each Liaison Off
 int CheckInLine[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Array of line sizes for each CheckIn Officer
 int SecurityLine[SCREEN_COUNT];		// Array of line sizes for return passengers from security questioning
 int ScreenLine[SCREEN_COUNT];		// Array of line sizes for each Screening Officer
-Condition *ScreenLineCV[SCREEN_COUNT];			// Condition Variables for the Screening Line
-Condition *ScreenOfficerCV[SCREEN_COUNT];		// Condition Variables for each Screening Officer
-Condition *SecurityOfficerCV[SCREEN_COUNT];		// Condition Variables for each Security Officer
-Condition *SecurityLineCV[SCREEN_COUNT];		// Condition Variables for returning passengers from questioning
-Condition *liaisonLineCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Line
-Condition *liaisonOfficerCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Officer
-Condition *CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Condition Variables for each CheckIn Line
-Condition *CheckInOfficerCV[CHECKIN_COUNT*AIRLINE_COUNT];		// Condition Variables for each CheckIn Officer
-Condition *CheckInBreakCV[CHECKIN_COUNT*AIRLINE_COUNT];		// Condition Variables for each CheckIn Officer Break Time
-Lock *liaisonLineLock;		// Lock to get into a liaison Line
-Lock *liaisonLineLocks[LIAISONLINE_COUNT];		// Array of Locks for Liaison Officers
-Lock *CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT];		//Array of Locks for CheckIn Officers
-Lock *ScreenLocks[SCREEN_COUNT];		// Array of Locks for Screening Officers
-Lock *SecurityLocks[SCREEN_COUNT];		// Array of Locks for Security Officers
-Lock *AirlineBaggage[AIRLINE_COUNT]; 		// Array of Locks for placing baggage on airlines
-Lock *CheckInLock;		// Lock to get into CheckIn Line
-Lock *ScreenLines;		// Lock to get into Screening Line
-Lock *CargoHandlerLock;		// Lock for Cargo Handlers for taking baggage off conveyor
-Condition *CargoHandlerCV;		// Condition Variable for Cargo Handlers
-Lock *airlineSeatLock;		// Lock for find seat number for customers
-Lock *BaggageLock;		// Lock for placing Baggage onto the conveyor
-Lock *SecurityAvail;		// Lock for seeing if a Security Officer is busy
-Lock *SecurityLines;			// Lock for returning passengers from Security
-Lock *gateLocks[AIRLINE_COUNT];				//Locks for waiting at the gate
-Condition *gateLocksCV[AIRLINE_COUNT];		//CVs for waiting at the gate
-Lock *seatLock;			// Lock for assigned airline seats in the Liaison
-Lock *execLineLocks[MAX_AIRLINES];
-Condition *execLineCV[MAX_AIRLINES];
+int ScreenLineCV[SCREEN_COUNT];			// Condition Variables for the Screening Line
+int ScreenOfficerCV[SCREEN_COUNT];		// Condition Variables for each Screening Officer
+int SecurityOfficerCV[SCREEN_COUNT];		// Condition Variables for each Security Officer
+int SecurityLineCV[SCREEN_COUNT];		// Condition Variables for returning passengers from questioning
+int liaisonLineCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Line
+int liaisonOfficerCV[LIAISONLINE_COUNT];		// Condition Variables for each Liaison Officer
+int CheckInCV[CHECKIN_COUNT*AIRLINE_COUNT+AIRLINE_COUNT];		// Condition Variables for each CheckIn Line
+int CheckInOfficerCV[CHECKIN_COUNT*AIRLINE_COUNT];		// Condition Variables for each CheckIn Officer
+int CheckInBreakCV[CHECKIN_COUNT*AIRLINE_COUNT];		// Condition Variables for each CheckIn Officer Break Time
+int liaisonLineLock;		// Lock to get into a liaison Line
+int liaisonLineLocks[LIAISONLINE_COUNT];		// Array of Locks for Liaison Officers
+int CheckInLocks[CHECKIN_COUNT*AIRLINE_COUNT];		//Array of Locks for CheckIn Officers
+int ScreenLocks[SCREEN_COUNT];		// Array of Locks for Screening Officers
+int SecurityLocks[SCREEN_COUNT];		// Array of Locks for Security Officers
+int AirlineBaggage[AIRLINE_COUNT]; 		// Array of Locks for placing baggage on airlines
+int CheckInLock;		// Lock to get into CheckIn Line
+int ScreenLines;		// Lock to get into Screening Line
+int CargoHandlerLock;		// Lock for Cargo Handlers for taking baggage off conveyor
+int CargoHandlerCV;		// Condition Variable for Cargo Handlers
+int airlineSeatLock;		// Lock for find seat number for customers
+int BaggageLock;		// Lock for placing Baggage onto the conveyor
+int SecurityAvail;		// Lock for seeing if a Security Officer is busy
+int SecurityLines;			// Lock for returning passengers from Security
+int gateLocks[AIRLINE_COUNT];				//Locks for waiting at the gate
+int gateLocksCV[AIRLINE_COUNT];		//CVs for waiting at the gate
+int seatLock;			// Lock for assigned airline seats in the Liaison
+int execLineLocks[MAX_AIRLINES];
+int execLineCV[MAX_AIRLINES];
 //----------------------------------------------------------------------
 // Structs
 //----------------------------------------------------------------------
@@ -81,7 +84,7 @@ struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and 
 	int seat;
 	int gate;
 	int line;
-	std::vector<Baggage> bag;		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
+	Baggage *bag[3];		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
 };
 
 struct ScreenPassengerInfo{		// Information passed between Screening Officer and Passenger
@@ -111,7 +114,7 @@ class Passenger {
 		bool getClass() {return economy;}		// Gets Economy or Executive Class
 		void ChooseLiaisonLine();
 		int getBaggageCount() {return baggageCount;}		// Returns number of baggage
-		std::vector<Baggage> getBags() {return bags;}		// Vector of bag structs
+		// std::vector<Baggage> getBags() {return bags;}		// Vector of bag structs
 	  
   private:
 	  bool NotTerrorist;
@@ -122,7 +125,7 @@ class Passenger {
 	  bool economy;		//economy or executive ticket
 	  int myLine;		//which line the passenger got into
 	  int baggageCount;		// Number of baggage
-	  std::vector<Baggage> bags;	// Vector containing baggage items
+	  Baggage *bags[3];	// Vector containing baggage items
 };
 
 //----------------------------------------------------------------------
@@ -159,7 +162,7 @@ class CheckInOfficer{
 	  void DoWork();
 	  int getAirline();		// Returns airline CheckIn Officer is working for
 	  int getNumber();		// Returns number of officer (which line they control)
-	  std::vector<Baggage> totalBags;
+	  std::vector<Baggage*> totalBags;
 	  bool OnBreak;
 	  int getPassengerCount(){return info.passengerCount;}
 	
@@ -168,7 +171,7 @@ class CheckInOfficer{
 		char* name;
 		int number;
 		int passengerCount;
-		std::vector<Baggage> bags;		// Vector of bags that is appended by Passenger and removed by this Officer
+		Baggage *bags[MAX_BAGS];		// Vector of bags that is appended by Passenger and removed by this Officer
 		int airline;
 		bool OnBreak;		// If there are no passengers in line, the officer goes on break until manager makes them up
 		bool work;		// Always working until all passengers have finished checking in
@@ -250,3 +253,4 @@ class SecurityOfficer{
 		bool TotalPass;				// If the current passenger passed both screening and security
 		int number;
 };
+
