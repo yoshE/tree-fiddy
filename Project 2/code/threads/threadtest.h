@@ -9,20 +9,23 @@
 #define BAGGAGE_WEIGHT 30		// Baggage weight starts at 30 and can have 0-30 more lbs added randomly
 #define AIRLINE_COUNT 5	// Number of airlines
 #define CHECKIN_COUNT 5		// Number of CheckIn Officers
-#define PASSENGER_COUNT 150	// Total number of passengers
+#define PASSENGER_COUNT 20	// Total number of passengers
 #define AIRLINE_SEAT 50		// Number of seats per Airline
 #define LIAISONLINE_COUNT 7 // Number of Liaison Officers
 #define SCREEN_COUNT 5		// Number of Screening and Security Officers
 // Max agent consts
-#define MAX_PASSENGERS			1000
+#define MAX_PASSENGERS			200
 #define MAX_AIRLINES			5
 #define MAX_LIAISONS			7
 #define MAX_CIOS				5
 #define MAX_CARGOHANDLERS		10
 #define MAX_SCREEN				5
+#define MAX_BAGS				3
 
 void SimpleThread(int which);
 void ThreadTest();
+void RunSim();
+void AirportTests();
 
 //----------------------------------------------------------------------
 // Arrays, Lists, and Vectors
@@ -81,7 +84,7 @@ struct CheckInPassengerInfo{		// Information passed between CheckIn Officer and 
 	int seat;
 	int gate;
 	int line;
-	std::vector<Baggage> bag;		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
+	Baggage *bag[3];		// Vector of bags whereas, customer will append bags and CheckIn Officer will remove
 };
 
 struct ScreenPassengerInfo{		// Information passed between Screening Officer and Passenger
@@ -111,7 +114,7 @@ class Passenger {
 		bool getClass() {return economy;}		// Gets Economy or Executive Class
 		void ChooseLiaisonLine();
 		int getBaggageCount() {return baggageCount;}		// Returns number of baggage
-		std::vector<Baggage> getBags() {return bags;}		// Vector of bag structs
+		// std::vector<Baggage> getBags() {return bags;}		// Vector of bag structs
 	  
   private:
 	  bool NotTerrorist;
@@ -122,7 +125,7 @@ class Passenger {
 	  bool economy;		//economy or executive ticket
 	  int myLine;		//which line the passenger got into
 	  int baggageCount;		// Number of baggage
-	  std::vector<Baggage> bags;	// Vector containing baggage items
+	  Baggage *bags[3];	// Vector containing baggage items
 };
 
 //----------------------------------------------------------------------
@@ -159,7 +162,7 @@ class CheckInOfficer{
 	  void DoWork();
 	  int getAirline();		// Returns airline CheckIn Officer is working for
 	  int getNumber();		// Returns number of officer (which line they control)
-	  std::vector<Baggage> totalBags;
+	  std::vector<Baggage*> totalBags;
 	  bool OnBreak;
 	  int getPassengerCount(){return info.passengerCount;}
 	
@@ -168,7 +171,7 @@ class CheckInOfficer{
 		char* name;
 		int number;
 		int passengerCount;
-		std::vector<Baggage> bags;		// Vector of bags that is appended by Passenger and removed by this Officer
+		Baggage *bags[MAX_BAGS];		// Vector of bags that is appended by Passenger and removed by this Officer
 		int airline;
 		bool OnBreak;		// If there are no passengers in line, the officer goes on break until manager makes them up
 		bool work;		// Always working until all passengers have finished checking in

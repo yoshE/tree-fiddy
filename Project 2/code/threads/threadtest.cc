@@ -23,14 +23,14 @@ LiaisonOfficer *liaisonOfficers[MAX_LIAISONS];		// Array of Liaison Officers
 CheckInOfficer *CheckIn[MAX_CIOS*MAX_AIRLINES + MAX_AIRLINES];		// Array of CheckIn Officers
 SecurityOfficer *Security[MAX_SCREEN];		// Array of Security Officers
 ScreeningOfficer *Screen[MAX_SCREEN];		// Array of Screening Officers
-vector<CargoHandler*> cargoHandlers;				//Vector of Cargo Handlers
+CargoHandler* cargoHandlers[MAX_CARGOHANDLERS];				//Vector of Cargo Handlers
 LiaisonPassengerInfo * LPInfo = new LiaisonPassengerInfo[MAX_LIAISONS];		// Array of Structs that contain info from passenger to Liaison
 CheckInPassengerInfo * CPInfo = new CheckInPassengerInfo[MAX_CIOS*MAX_AIRLINES+MAX_AIRLINES];		// Array of Structs that contain info from pasenger to CheckIn
 ScreenPassengerInfo * SPInfo = new ScreenPassengerInfo[MAX_SCREEN+1];		// Array of Structs that contain info from screening to passenger
 SecurityScreenInfo * SSInfo = new SecurityScreenInfo[MAX_SCREEN];		// Array of structs that contains info from security to screener
 SecurityPassengerInfo * SecPInfo = new SecurityPassengerInfo[MAX_SCREEN];		// Array of structs that contains info from security to passenger
 
-deque<Baggage> conveyor;		// Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers
+deque<Baggage*> conveyor;		// Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers
 int aircraftBaggageCount[MAX_AIRLINES];		// Number of baggage on a single airline
 int aircraftBaggageWeight[MAX_AIRLINES];		// Weight of baggage on a single airline
 // AirportManager* am = new AirportManager(); //for testing purposes
@@ -51,12 +51,12 @@ int simNumOfCargoHandlers;
 int simNumOfScreeningOfficers;
 int simSeatsPerPlane = 4;
 int planeCount = 0;
-std::vector<Passenger *> simPassengers;
-std::vector<LiaisonOfficer *> simLiaisons;
-std::vector<CheckInOfficer *> simCIOs;
-std::vector<CargoHandler *> simCargoHandlers;
-std::vector<ScreeningOfficer *> simScreeningOfficers;
-std::vector<SecurityOfficer *> simSecurityOfficers;
+Passenger *simPassengers[PASSENGER_COUNT];
+LiaisonOfficer *simLiaisons[MAX_LIAISONS];
+CheckInOfficer *simCIOs[MAX_CIOS];
+CargoHandler *simCargoHandlers[MAX_CARGOHANDLERS];
+ScreeningOfficer *simScreeningOfficers[MAX_SCREEN];
+SecurityOfficer *simSecurityOfficers[MAX_SCREEN];
 AirportManager *simAirportManager;
 
 //----------------------------------------------------------------------
@@ -235,8 +235,13 @@ Passenger::Passenger(int n){		// Constructor
 	}
 	baggageCount = rand() % 2 + BAGGAGE_COUNT;		// Randomly have people with 3 baggage
 	for(int i = 0; i < baggageCount; i++){			// Add baggage and their weight to Passenger Baggage Vector
-		bags.push_back(Baggage());
-		bags[i].weight = rand() % 31 + BAGGAGE_WEIGHT;		// Baggage will weigh from 30 to 60 lb
+		bags[i] = new Baggage();
+		bags[i]->weight = rand() % 31 + BAGGAGE_WEIGHT;		// Baggage will weigh from 30 to 60 lb
+	}
+	if(baggageCount == 2){
+	printf("FUCK\n");
+		bags[2] = new Baggage();
+		bags[2]->weight = 0;
 	}
 	//ChooseLiaisonLine();
 }
@@ -269,7 +274,7 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	airline = LPInfo[myLine].airline;		// Gets airline info from Liaison Officer shared struct
 	totalBaggage[airline] += baggageCount;
 	for(int i = 0; i < baggageCount; i++){			// Add baggage and their weight to Passenger Baggage Vector
-		totalWeight[airline] += bags[i].weight;
+		totalWeight[airline] += bags[i]->weight;
 	}
 	if (liaisonLine[myLine] > 0) liaisonLine[myLine] = liaisonLine[myLine] - 1; //Passenger left the line
 	liaisonOfficerCV[myLine]->Signal(liaisonLineLocks[myLine]); // Wakes up Liaison Officer to say I'm leaving
@@ -321,12 +326,11 @@ void Passenger::ChooseLiaisonLine(){		// Picks a Liaison line, talkes to the Off
 	CheckInLock->Release();
 	
 	CPInfo[myLine].baggageCount = baggageCount;		// Place baggage onto counter (into shared struct)
-	for(int i; i < (signed)CPInfo[myLine].bag.size(); i++){
+	/* for(int i; i < (signed)CPInfo[myLine].bag.size(); i++){
 		CPInfo[myLine].bag.pop_back();
-	}
+	} */
 	for (int i = 0; i < baggageCount; i++){		// Add baggage info to shared struct for CheckIn Officer
-		CPInfo[myLine].bag.push_back(Baggage());
-		CPInfo[myLine].bag[i].weight = bags[i].weight;
+		CPInfo[myLine].bag[i]->weight = bags[i]->weight;
 	}
 	CPInfo[myLine].passenger = name;		// Tell Officer passenger name 
 	CPInfo[myLine].IsEconomy = economy;		// Tell Officer passenger class
@@ -593,12 +597,16 @@ void CheckInOfficer::DoWork(){
 		if(helpedExecLine){
 			execLineNeedsHelp[info.airline] = true;
 		}
-		info.bags = CPInfo[info.number].bag;		// Place baggage info in shared struct into internal struct
-		// cout << "CIO " << info.number << " OF AIRLINE " << info.airline << " GOT BAGGAGE INFO from " << CPInfo[info.number].passenger 
-		// << " THERE ARE " << info.bags.size() << " and baggageCount is " << CPInfo[info.number].baggageCount << endl;
-		CPInfo[info.number].bag.clear();		// Clear the bag vector in shared struct so next passenger wont overwrite baggage
+		for(int i = 0; i < CPInfo[info.number].baggageCount; i++){
+			if(CPInfo[info.number].bag[i]->weight != 0){
+				info.bags[i] = CPInfo[info.number].bag[i];		// Place baggage info in shared struct into internal struct
+			} else {
+				info.bags[i]->weight = 0;
+			}
+		}
+		// CPInfo[info.number].bag.clear();		// Clear the bag vector in shared struct so next passenger wont overwrite baggage
 		for (int i = 0; i < CPInfo[info.number].baggageCount; i++){	
-			info.bags[i].airlineCode = info.airline;		// Add airline code to baggage
+			info.bags[i]->airlineCode = info.airline;		// Add airline code to baggage
 			BaggageLock->Acquire();			// Acquire lock for putting baggage on conveyor
 			conveyor.push_back(info.bags[i]);		// Place baggage onto conveyor belt for Cargo Handlers
 			BaggageLock->Release();		// Release baggage lock
@@ -639,7 +647,7 @@ void CargoHandler::DoWork(){
 	while (true){
 		onBreak = false;
 		CargoHandlerLock->Acquire();
-		Baggage temp;		// Baggage that handler will move off conveyor
+		Baggage *temp;		// Baggage that handler will move off conveyor
 		if (!conveyor.empty()){		// If the conveyor belt has baggage
 			// printf("About to move baggage\n");
 			temp = conveyor[0];
@@ -651,14 +659,14 @@ void CargoHandler::DoWork(){
 			printf("Cargo Handler %d returned from break\n", name);		// OFFICIAL OUTPUT STATEMENT
 			continue;		// Restart loop
 		}
-		AirlineBaggage[temp.airlineCode]->Acquire();		// Acquire lock to put baggage on an airline
+		AirlineBaggage[temp->airlineCode]->Acquire();		// Acquire lock to put baggage on an airline
 		CargoHandlerLock->Release();
-		aircraftBaggageCount[temp.airlineCode]++;		// Increase baggage count of airline
-		aircraftBaggageWeight[temp.airlineCode] += temp.weight;		// Increase baggage weight of airline
-		printf("Cargo Handler %d picked bag of airline %d with weighing %d lbs\n", name, temp.airlineCode, temp.weight);		// OFFICIAL OUTPUT STATEMENT
-		weight[temp.airlineCode] += temp.weight;		// Increment total weight of baggage this handler has dealt with
-		count[temp.airlineCode] ++;		// Increment total count of baggage this handler has dealt with
-		AirlineBaggage[temp.airlineCode]->Release();
+		aircraftBaggageCount[temp->airlineCode]++;		// Increase baggage count of airline
+		aircraftBaggageWeight[temp->airlineCode] += temp->weight;		// Increase baggage weight of airline
+		printf("Cargo Handler %d picked bag of airline %d with weighing %d lbs\n", name, temp->airlineCode, temp->weight);		// OFFICIAL OUTPUT STATEMENT
+		weight[temp->airlineCode] += temp->weight;		// Increment total weight of baggage this handler has dealt with
+		count[temp->airlineCode] ++;		// Increment total count of baggage this handler has dealt with
+		AirlineBaggage[temp->airlineCode]->Release();
 		currentThread->Yield();
 	}
 }
@@ -687,15 +695,19 @@ void AirportManager::DoWork(){
 	while(true){
 		//if the conveyor belt is not empty and cargo people are on break, wake them up
 		// cout << "cargo: " << cargoHandlers.size() << " conveyor: " << conveyor.size() << endl;
-		if(!conveyor.empty() && !cargoHandlers.empty()){
+		int chCount = 0;
+		for(int i = 0; i < simNumOfCargoHandlers; i++){
+			chCount++;
+		}
+		if(!conveyor.empty() && chCount == MAX_CARGOHANDLERS){
 			CargoHandlerLock->Acquire();
 			int breakCount = 0;
-			for(int i = 0; i < (signed)cargoHandlers.size(); i++){
+			for(int i = 0; i < simNumOfCargoHandlers; i++){
 				if(cargoHandlers[i]->getBreak()){
 					breakCount++;
 				}
 			}
-			if(breakCount == (signed)cargoHandlers.size()){
+			if(breakCount == simNumOfCargoHandlers){
 				cout << "Airport manager calls back all the cargo handlers from break" << endl; //OFFICIAL
 				CargoHandlerCV->Broadcast(CargoHandlerLock);
 			}
@@ -728,7 +740,7 @@ void AirportManager::DoWork(){
 }
 
 void AirportManager::EndOfDay(){
-	for(int i = 0; i < (signed)cargoHandlers.size(); i++){
+	for(int i = 0; i < simNumOfCargoHandlers; i++){
 		for(int j = 0; j < simNumOfAirlines; j++){
 			CargoHandlerTotalWeight[j] += cargoHandlers[i]->getWeight(j);
 			CargoHandlerTotalCount[j] += cargoHandlers[i]->getCount(j);
@@ -736,7 +748,7 @@ void AirportManager::EndOfDay(){
 	}
 	for(int i = 0; i < simNumOfCIOs * simNumOfAirlines; i++){
 		for(int j = 0; j < (signed)CheckIn[i]->totalBags.size(); j++){
-			CIOTotalWeight[CheckIn[i]->totalBags[j].airlineCode] += CheckIn[i]->totalBags[j].weight;
+			CIOTotalWeight[CheckIn[i]->totalBags[j]->airlineCode] += CheckIn[i]->totalBags[j]->weight;
 		}
 		checkInPassengerCount += CheckIn[i]->getPassengerCount();
 	}
@@ -1304,8 +1316,10 @@ void setupAirlines(int airlineCount) {
 }
 
 void createPassengers(int quantity) {
+printf("INSIDE CREATE PASS %d\n", quantity);
 	for(int i = 0; i < quantity; i++) {
-		simPassengers.push_back(new Passenger(i));
+	printf("ABOUT TO CREATE NEW PASSENGER %d\n", i);
+		simPassengers[i] = new Passenger(i);
 		printf("Debug: Created Passenger %d\n", i);
 	}
 }
@@ -1317,7 +1331,7 @@ void createLiaisons(int quantity) {
 		liaisonOfficerCV[i] = new Condition("Liaison Officer CV " + 1);
 		liaisonLineLocks[i] = new Lock("Liaison Line Lock " + i);
 		liaisonOfficers[i] = new LiaisonOfficer(i);
-		simLiaisons.push_back(liaisonOfficers[i]);
+		simLiaisons[i] = liaisonOfficers[i];
 		printf("Debug: Created Liaison Officer %d\n", i);
 	}
 }
@@ -1346,9 +1360,9 @@ void setupExecutiveCIOs(int airlineCount, int quantity) {
 
 void createCIOs(int airlineCount, int quantity) {
 	for(int i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
-		simCIOs.push_back(new CheckInOfficer(i));
-		CheckIn[i] = simCIOs.back();
-		// printf("Debug: Created Check In Officer %d\n", i);
+		simCIOs[i] = new CheckInOfficer(i);
+		CheckIn[i] = simCIOs[i];
+		printf("Debug: Created Check In Officer %d\n", i);
 	}
 }
 
@@ -1366,10 +1380,10 @@ void createSecurityAndScreen(int quantity) {
 		ScreenLocks[i] = new Lock("Screen Lock");
 		SecurityLocks[i] = new Lock("Security Lock");
 		SecurityLineCV[i] = new Condition("Security line CV");
-		simScreeningOfficers.push_back(Screen[i]);
-		simSecurityOfficers.push_back(Security[i]);
-		// cout << "Debug: Created Screening Officers " << i << endl;
-		// cout << "Debug: Created Security Officers " << i << endl;
+		simScreeningOfficers[i] = Screen[i];
+		simSecurityOfficers[i] = Security[i];
+		cout << "Debug: Created Screening Officers " << i << endl;
+		cout << "Debug: Created Security Officers " << i << endl;
 	}
 	
 	for (int i = 0; i < quantity;i++){
@@ -1382,30 +1396,30 @@ void createSecurityAndScreen(int quantity) {
 void createCargoHandlers(int quantity) {
 	for(int i = 0; i < quantity; i++) {
 		CargoHandler *c = new CargoHandler(i);
-		simCargoHandlers.push_back(c);
+		simCargoHandlers[i] = c;
+		cargoHandlers[i] = simCargoHandlers[i];
 		printf("Debug: Created Cargo Handler %d\n", i);
 	}
-	cargoHandlers = simCargoHandlers;
 }
 
 void testPassenger(int i) {
 	// cout << "SIM PASS " << i << endl;
-	simPassengers.at(i)->ChooseLiaisonLine();
+	simPassengers[i]->ChooseLiaisonLine();
 }
 
 void testLiaison(int i){
 	// cout << "SIM LIAI " << i << endl;
-	simLiaisons.at(i)->DoWork();
+	simLiaisons[i]->DoWork();
 }
 
 void testCheckIn(int i){
 	// cout << "SIM CIO " << i << " SIM SIZE " << simCIOs.size() << endl;
-	simCIOs.at(i)->DoWork();
+	simCIOs[i]->DoWork();
 }
 
 void testCargo(int i){
 	// cout << "SIM CARGO " << i << endl;
-	simCargoHandlers.at(i)->DoWork();
+	simCargoHandlers[i]->DoWork();
 }
 
 void testAirportManager() {
@@ -1427,12 +1441,12 @@ void setupBaggageAndCargo(int airlineCount) {
 
 void testScreen(int i){
 	// cout << "SIM Screening " << i << endl;
-	simScreeningOfficers.at(i)->DoWork();
+	simScreeningOfficers[i]->DoWork();
 }
 
 void testSecurity(int i){
 	// cout << "SIM Security " << i << endl;
-	simSecurityOfficers.at(i)->DoWork();
+	simSecurityOfficers[i]->DoWork();
 }
 
 void setupSingularLocks() {
@@ -1460,6 +1474,7 @@ void setup(){
 	createSecurityAndScreen(simNumOfScreeningOfficers);
 	setupBaggageAndCargo(simNumOfAirlines);
 	createCargoHandlers(simNumOfCargoHandlers);
+	printf("ABOUT TO CALL CREATE PASS\n");
 	createPassengers(simNumOfPassengers);
 }
 
@@ -1621,21 +1636,23 @@ void AirportTests() {
 	printf("TESTING PART 2\n");
 	printf("================\n");
 	
+	cargoHandlers[0] = NULL;
+
 	for(int i = 0; i < simNumOfAirlines; ++i) {
 		liaisonBaggageCount[i] = 0;
 		ticketsIssued[i] = 0;
 		alreadyBoarded[i] = false;
 	}
 	
-	simNumOfPassengers = 200;
+	simNumOfPassengers = PASSENGER_COUNT;
 	simNumOfCargoHandlers = MAX_CARGOHANDLERS;
-	simNumOfAirlines = AIRLINE_COUNT;
-	simNumOfCIOs = CHECKIN_COUNT;
-	simNumOfLiaisons = LIAISONLINE_COUNT;
-	simNumOfScreeningOfficers = SCREEN_COUNT;
+	simNumOfAirlines = MAX_AIRLINES;
+	simNumOfCIOs = MAX_CIOS;
+	simNumOfLiaisons = MAX_LIAISONS;
+	simNumOfScreeningOfficers = MAX_SCREEN;
 	
 	setup();	// Sets up CVs and Locks
-
+	printf("MADE IT PAST SETUP\n");
 	// createAirportManager();
 	Thread *t;
 
