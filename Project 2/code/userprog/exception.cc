@@ -255,19 +255,23 @@ void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that 
 void Release_Syscall(int n){		// Syscall to release a lock... takes an int that corresponds to lock (in their tables)
 	LockTableLock->Acquire();
 	
-	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
+	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
 		printf("%s", "Invalid Lock Table Number in Release.\n");
 		LockTableLock->Release();
 		return;		// If the int entered is wrong, print error and return
 	}
 	LockTable[n].Kernel_Lock->Release();		// Releases said lock
 	LockTableLock->Release();
+	
+	if (LockTable[n].IsDeleted && LockTable[n].Kernel_Lock->waitingThreads->IsEmpty()){		// If Lock is set for deletion and there are no threads waiting...
+		LockTable[n].Kernel_Lock = NULL;		// Delete this lock
+	}
 }
 
 void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for position of CV, second is for position of Lock (in their tables)
 	CVTableLock->Acquire();
 	
-	if (x < 0 || x > (signed)CVTable.size() - 1 || CVTable[x].IsDeleted || CVTable[x].CV == NULL || lock < 0 || lock > (signed)LockTable.size() - 1 || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (x < 0 || x > (signed)CVTable.size() - 1 || CVTable[x].CV == NULL || lock < 0 || lock > (signed)LockTable.size() - 1 || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		LockTable[lock].Kernel_Lock->Release();
@@ -278,13 +282,9 @@ void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for 
 	LockTable[lock].Kernel_Lock->Release();
 }
 
-void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is for position of CV, second is for position of Lock (in their tables)
-	printf("INSIDE SIGNAL BEFORE LOCK ACQUIRE\n");
-	printf("WAITING QUEUE SIZE = %d", CVTableLock->waitingThreads->IsEmpty());
-	
+void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is for position of CV, second is for position of Lock (in their tables)	
 	CVTableLock->Acquire();
-	printf("INSIDE SIGNAL\n");
-	if (y < 0 || y > (signed)CVTable.size() - 1 || CVTable[y].IsDeleted || CVTable[y].CV == NULL || a < 0 || a > (signed)LockTable.size() - 1 || LockTable[a].IsDeleted || LockTable[a].Kernel_Lock == NULL  ){		// Check if data exists for entered value
+	if (y < 0 || y > (signed)CVTable.size() - 1 || CVTable[y].CV == NULL || a < 0 || a > (signed)LockTable.size() - 1 || LockTable[a].Kernel_Lock == NULL  ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		LockTable[a].Kernel_Lock->Release();
@@ -292,13 +292,16 @@ void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is f
 	}
 	
 	CVTable[y].CV->Signal(LockTable[a].Kernel_Lock);		// Signal said CV
+	if (CVTable[y].IsDeleted && CVTable[y].CV->waitingCV->IsEmpty()){		// If CV is set for deletion and there are no threads waiting...
+		CVTable[y].CV = NULL;		// Delete the CV
+	}
 	CVTableLock->Release();
 }
 
 void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int is for position of CV, second is for position of Lock (in their tables)
 	CVTableLock->Acquire();
 	
-	if (z < 0 || z > (signed)CVTable.size() - 1 || CVTable[z].IsDeleted || CVTable[z].CV == NULL || b < 0 || b > (signed)LockTable.size() - 1 || LockTable[b].IsDeleted || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
+	if (z < 0 || z > (signed)CVTable.size() - 1 || CVTable[z].CV == NULL || b < 0 || b > (signed)LockTable.size() - 1 || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
 		LockTable[b].Kernel_Lock->Release();
@@ -359,7 +362,6 @@ int CreateCV_Syscall(char* name){		// Creates a new CV in CVTable
 	
 	CVTable.push_back(new_cv);		// Adds new struct to CVTable
 	int x = CVTable.size() - 1;		// Finds index of newly created CV
-	printf("RELEASING LOCK IN CREATE CV\n");
 	CVTableLock->Release();
 	return x;		// Returns said value to Thread to use new CV
 }
@@ -387,7 +389,7 @@ void DestroyCV_Syscall(int n){		// Destroys an existing CV in CVTable
 	CVTableLock->Release();
 }
 
-void newProcess(int arg){
+void newProcess(int arg){		// Restores the thread
     currentThread->space->InitRegisters();
 	
 	currentThread->space->SaveState();
@@ -396,15 +398,15 @@ void newProcess(int arg){
         // We should never reach here.
 }
 
-int Exec_Syscall(unsigned int vaddr, unsigned int length) {
+int Exec_Syscall(unsigned int vaddr, unsigned int length) {		// Creates a new process
 	char* filename = new char[MAXFILENAME];
 	
-	if(!filename) {
+	if(!filename) {		// Allocate space for the name
 		printf("Failed to allocate filename buffer (size = %d)!\n", MAXFILENAME);
 		delete[] filename;
 		return -1;
 	}
-	if(copyin(vaddr, MAXFILENAME, filename) == -1) {
+	if(copyin(vaddr, MAXFILENAME, filename) == -1) {		// Find the physical data from the kernel
 		printf("Invalid pointer (vaddr = %d)!\n", vaddr);
 		delete[] filename;
 		return -1;
@@ -413,7 +415,7 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {
 	
 	OpenFile* file = fileSystem->Open(filename);
 	
-	if(!file) {
+	if(!file) {		// Open the file
 		printf("File (filename = %s) could not be opened!\n", filename);
 		delete[] filename;
 		delete file;
@@ -422,128 +424,99 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {
 	
 	syscallLock->Acquire();
 	
-	Process* p = new Process();
-	Thread* t = new Thread("Exec");
-	t->space = new AddrSpace(file);
+	Process* p = new Process();		// New process
+	Thread* t = new Thread("Exec");		// New Thread
+	t->space = new AddrSpace(file);		// The addrspace of the new thread is set to an empty space
 	
-	p->activeThreadCount = 1;
-	p->inactiveThreadCount = 0;
-	int processID = processTable->Put(p);
-	if(processID == -1) {
+	p->activeThreadCount = 1;		// Process has 1 thread
+	p->inactiveThreadCount = 0;		// Process has no sleeping/inactive thread
+	int processID = processTable->Put(p);		// Find the index of the new process in the processTable
+	if(processID == -1) {		// If i failed to be placed into the processTable
 		printf("Could not add process to Process Table!\n");
 		delete[] filename;
 		delete file;
 		delete p;
-		return -1;
+		return -1;		// Return failure
 	}
 	printf("Added new process with ID = %d\n", processID);
-	p->id = processID;
-	t->setPID(p->id);
-	t->setID(1);
+	p->id = processID;		// Sets the ID of the process to the Process ID
+	t->setPID(p->id);		// Sets the process ID of the thread to the process ID
+	t->setID(1);		// Sets ID of the thread to 1 (First thread of the new process)
 	
-	delete file;
+	delete file;		// Delete the used files
 	delete[] filename;
-	syscallLock->Release();
+	syscallLock->Release();		// Release the lock
 	
-	t->Fork((VoidFunctionPtr) newProcess, 0);
+	t->Fork((VoidFunctionPtr) newProcess, 0);		// Fork the new thread of the new process
 	return processID;
 }
 
-void kernelRun(int vaddr) {
+void kernelRun(int vaddr) {		// Set up new thread
 	machine->WriteRegister(PCReg, (unsigned int)vaddr);
 	machine->WriteRegister(NextPCReg, (unsigned int)vaddr+4);
 	currentThread->space->RestoreState();
-	int stackPosition = currentThread->space->getNumPages()*PageSize-8;
+	int stackPosition = currentThread->space->getNumPages()*PageSize-8;		// Allocate space for new thread
 	machine->WriteRegister(StackReg, stackPosition);
 
-	machine->Run();
+	machine->Run();		// Run the thread
 	ASSERT(false);
 }
 
-void Fork_Syscall(int funcAddr){
+void Fork_Syscall(int funcAddr){		// Creates a new thread to run
     syscallLock->Acquire();
     printf("%s", "Forking Thread!\n");
     DEBUG('a', "%s: Called Fork_Syscall.\n",currentThread->getName());
-    Thread *t = new Thread(currentThread->getName());
-	int processID = currentThread->getPID();
-	Process* p = (Process*) processTable->Get(processID);
-	if(!p) {
+    Thread *t = new Thread(currentThread->getName());		// new thread name is said as currentThread
+	int processID = currentThread->getPID();		
+	Process* p = (Process*) processTable->Get(processID);		// Find process that runs currentThread
+	if(!p) {		// If no process exists, return error
 		printf("Failed to fetch process %d from Process Table!\n", processID);
 		return;
 	}
-	p->activeThreadCount++;
-	t->setID(p->inactiveThreadCount + p->activeThreadCount);
-	t->setPID(processID);
-	t->space = currentThread->space;
+	p->activeThreadCount++;		// Increment count of active threads for said process
+	t->setID(p->inactiveThreadCount + p->activeThreadCount);		// ID of new thread is equal threads created by process
+	t->setPID(processID);		// Set process ID of thread to process ID
+	t->space = currentThread->space;		// Sets addrspace of thread to current thread addrspace
 	
-    t->Fork((VoidFunctionPtr) kernelRun, funcAddr);
-    currentThread->space->RestoreState();
+    t->Fork((VoidFunctionPtr) kernelRun, funcAddr);		// Runs the new thread
+    currentThread->space->RestoreState();		// Restores state of currentThread
     syscallLock->Release();
 }
 
-/*void Fork_Syscall(unsigned int vaddr, unsigned int length) {
-	char* filename = new char[MAXFILENAME];
-	
-	if(!filename) {
-		printf("Failed to allocate filename buffer (size = %d)!\n", MAXFILENAME);
-		delete[] filename;
-		return;
-	}
-
-	Thread* t = new Thread("tempname");
-	
-	syscallLock->Acquire();
-	
-	int processID = currentThread->getPID();
-	Process* p = (Process*) processTable.Get(processID);
-	if(!p) {
-		printf("Failed to fetch process %d from Process Table!\n", processID);
-		return;
-	}
-	t->setID(p->inactiveThreadCount + p->activeThreadCount);
-	t->setPID(processID);
-	p->activeThreadCount++;
-	t->space = currentThread->space;
-	
-	syscallLock->Release();
-	
-	printf("Running forked thing\n");
-	t->Fork(kernelRun, (int)vaddr);
-}*/
-
-void Exit_Syscall(int code) {
+void Exit_Syscall(int code) {		// Ends threads and process'
 	printf("EXITING WITH CODE = %d\n", code);
 	
 	syscallLock->Acquire();
 	
-	int processID = currentThread->getPID();
-	Process* p = (Process*)processTable->Get(processID);
-	if(!p) {
+	int processID = currentThread->getPID();		// Find processID of currentThread
+	Process* p = (Process*)processTable->Get(processID);		// Find the process that owns this thread
+	if(!p) {		// If no process, return error
 		printf("Could not retrieve process %d from Process Table!\n", processID);
 	}
 	
-	if (processTable->size > 1){
-		if (p->activeThreadCount == 0){\
+	if (processTable->size > 1){		// If there are more than 1 process running
+		if (p->activeThreadCount == 1){		// If this thread is the only active thread
 			syscallLock->Release();
-			processTable->Remove(processID);
-		}else {
+			processTable->Remove(processID);		// End the process
+			currentThread->Finish();		// End currentThread
+		}else {		// If there are multiple threads running
 			printf("Thread Finishing!\n");
-			p->activeThreadCount--;
+			p->activeThreadCount--;		// Decrement active thread count for the process
 			p->inactiveThreadCount++;
 			syscallLock->Release();
-			currentThread->Finish();
+			currentThread->Finish();		// End currentThread
 		}
-	} else {
-		if (p->activeThreadCount == 0){
-			processTable->Remove(processID);
+	} else {		// If there is only one process left
+		if (p->activeThreadCount == 1){
+			processTable->Remove(processID);		// End the process
 			printf("Ending Last Process!\n");
-			interrupt->Halt();
-		}else {
+			interrupt->Halt();		// Kill the program
+		}else {		// If there are multiple threads left
 			printf("Thread Finishing!\n");
-			p->activeThreadCount--;
+			p->activeThreadCount--;		// Decrement active threads
 			p->inactiveThreadCount++;
-			syscallLock->Release();
-			currentThread->Finish();
+			syscallLock->Release();	
+			currentThread->Finish();		// End currentThread
 		}
 	}
 }

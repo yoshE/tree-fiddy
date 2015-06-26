@@ -135,14 +135,21 @@ III. Design:
 			This function takes an int which corresponds to a index in the the Lock Table and 
 			tries to release that lock. The function first checks to see if that int value is
 			valid (same as Acquire()) and if it passes, Release() is called by that lock (this 
-			is for the same reason as above).
+			is for the same reason as above). At the end of the function, Release() will set
+			locks to NULL if they are already set to be deleted and there are no threads waiting
+			on that specific lock. The reason is that once a lock is set for deletion, it should
+			be deleted at the next available opportunity, which would be the Release() call once
+			all threads have woken up (and before a new thread can Acquire());
 			
 		void Signal(int n, int m)
 			This function takes in two ints, the first corresponds to an index in the CV Table 
 			and the second to an index in the Lock Table. The function first checks both int 
 			values (same as Acquire() but with two ints) and if they both pass, then the function
 			calls Signal(m) using index n in the CVTable. m is the conditionLock that Signal will
-			use in this own function (reasoning is same as prior functions).
+			use in this own function (reasoning is same as prior functions). Signal will also set 
+			CVs to NULL at the end of the function is that CV is already set to be deleted and there
+			are no threads currently waiting for that CV. This is the same reason as to why Locks 
+			are deleted in Release();
 			
 		void Wait(int n, int m)
 			This function is almost exactly like Signal except it will call Wait instead of Signal.
@@ -151,6 +158,60 @@ III. Design:
 			This function is almost exactly like Wait except it will call Broadcast instead of Wait.
 	   
     Part 2:
+	
+		The AddrSpace class has been redesigned to accomidate multiple processes and multiple threads 
+		within a process.  We allow for multiple processes by decoupling a page's virtual address from 
+		its physical address.  We maintain a global BitMap corresponding to all physical pages of memory 
+		and associate them with virtual pages as they are needed.  To create multiple threads the AddrSpace 
+		must allocate stack space for each thread.
+		
+		Additionally, we had to create functions for Exec, Fork, Exit, Kernel_Run, newProcess, and printf.
+		
+		void Fork(void (*func)())
+			This system call is used to fork a new thread. When we call this function we get the virtual 
+			address of the function to be forked from the machine register(2). Then we first make a new 
+			thread. And we make the address space pointer point to the same address space as that of the 
+			spawning process. We then fork the kernel_thread function with the virtual address of the 
+			function to initialize the registers and allocate a new stack. This call also creates the
+            required entries to the process table.
+		
+		SpaceId Exec(char *name, int length)
+		    This system call is used to create a new process. The new process which is created is like the 
+			one in fork but it has its own address space rather than sharing the address space with the 
+			spawning thread. The system call copies the code of the executable from the file specified by 
+			the argument and enters the entry into the process table. This system call then forks the 
+			process with newProcess which then initializes the different registers and prepares the process 
+			to run.
+			
+		void Exit(int status)	
+		    This system call prepares the thread to exit properly. This function has the following steps:
+                If this isn't the last process in the system:
+					If this is the last thread in that process:
+						End the thread, Remove the process
+					If this isn't the last thread in that process:
+						End the thread
+				If this is the last process in the system:
+					If this is the last thread in that process:
+						interrupt->Halt() and end the program
+					If this isn't the last thread in that process:
+						End the thread
+		
+		void Kernel_Run (int)
+			This is a helper function for the fork system call. It does the following steps:
+                1. Load the Reg with virtual address
+                2. Load the Next Reg with virtual address + 4
+                3. Restore the CPU state of a user program
+                4. Increment the number of user stacks for currentThread (by one)
+                5. Load the stack register with the stack address of new stack
+                6. Start the CPU so that it starts  running the user program thread
+				
+		void newProcess(int)
+		    This is a helper function similar to Kernel_Run(). This function takes the following steps: 
+                1. Initialize the register by using currentThread->space.
+                2. Call Restore State through currentThread->space.
+                3. Call machine->Run() 
+	
+		void printf(char* text, int, int, int)
         
     Part 3:
 
@@ -159,26 +220,39 @@ IV. Implementation:
     + Files Modified
         userprog/exception.cc
         userprog/syscall.h
+		userprog/addrspace.h
+		userprog/addrspace.cc
+		userprog/progtest.cc
+		userprog/table.h
+		userprog/bitmap.h
         test/Makefile
         threads/system.h
         threads/system.cc
-		test/Halt.c
+		test/halt.c
 		threads/synch.h
 		threads/threadtest.cc
 		threads/threadtest.h
 		test/start.s
 
     + Files added
+		test/exectest
+		test/Exec_Test
+		test/forktest
 
     + Data Structures added, and the file they were added to.
         userprog/system.h
             struct KernelLock
 			struct KernelCV
+			struct Process
+			Table processTable
+			BitMap memMap
         userprog/exception.cc
             vector<KernelLock>LockTable
 			vector<KernelCV>CVTable
             
-    + Data Structures modified, and the file they were added to.            
+    + Data Structures modified, and the file they were added to.  
+		threads/threadtest.cc
+			All vectors were turned into arrays
             
     + Functions added and in which file.
 		userprog/exception.cc
@@ -188,18 +262,31 @@ IV. Implementation:
 			DestroyLock_Syscall(int n)
 			CreateCV_Syscall(char* name)
 			DestroyCV_Syscall(int n)
-			Wait(int n, int m)
-			Signal(int n, int m)
-			Broadcast(int n, int m)
+			Wait_Syscall(int n, int m)
+			Signal_Syscall(int n, int m)
+			Broadcast_Syscall(int n, int m)
+			Exit_Syscall(char *name, int length)
+			newProcess(int n)
+			Fork_Syscall(int n)
+			Kernel_Run(int n)
+			printf(char* , int, int, int)
 		test/halt.c
 			testLock()
 			testCV()
+		test/forktest.c
+			func1()
 
     + Functions modified and in which file.
 		test/halt.c
 			main()
 		userprog/exception.cc
 			ExceptionHandler(ExceptionType which)
+		threads/system.cc
+			Initialize(int, char**)
+		theads/threadtest.cc
+			Everything (in order to fit syscall methodology)
+		userprog/addrspace.cc
+			AddrSpace(OpenFile)
 		
 V. Testing: (For each test case, you must show)
     + How to test
@@ -216,6 +303,17 @@ V. Testing: (For each test case, you must show)
 		exception.cc (when there is a failure) will not have that indent. 
 		
 		- To run: nachos -x ../test/halt.c
+		
+	-Tests for Part 2
+		There are two tests for Part 2... one for Fork and one for Exec. The Exec test 
+		will call exec on another valid test file as well as a nonexistent file. The
+		valid file should run and just put a simple output statement while the invalid
+		file should return an error. The test for Fork will create Locks and CVs, then 
+		call Fork. The forked thread will run all parts of Part 1 (acquire, release, 
+		signal, wait, broadcast) before going to sleep. All parts should succeed.
+		
+		- To run Exec: nachos -x ../test/exectest
+		- To run Fork: nachos -x ../test/forktest
       
 VI. Discussion:
     + Experiment expectation. 

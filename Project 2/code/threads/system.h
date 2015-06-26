@@ -22,19 +22,19 @@
 
 #define PROCESS_TABLE_MAX_SIZE	32
 
-struct Process {
-	int id;
-	int activeThreadCount;
+struct Process {		// struct to hold thread count for processes
+	int id;		// ID of the process
+	int activeThreadCount;		// Number of threads currently running
 	int inactiveThreadCount;
 };
 
-struct KernelLock{
-	Lock* Kernel_Lock;
-	Thread *Owner;
-	bool IsDeleted;
+struct KernelLock{		// struct to hold locks for the lock table
+	Lock* Kernel_Lock;		// Actual Lock
+	Thread *Owner;		// Owner of the Lock
+	bool IsDeleted;		// If the lock is slated for deletion
 };
 
-struct KernelCV{
+struct KernelCV{		// struct to hold CVs for the CV table
 	Condition* CV;
 	bool IsDeleted;
 };
@@ -52,8 +52,8 @@ extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
 
-extern Table *processTable;
-extern BitMap *memMap;
+extern Table *processTable;		// Table of process'
+extern BitMap *memMap;		// BitMap of available pages for user programs
 
 #ifdef USER_PROGRAM
 #include "machine.h"

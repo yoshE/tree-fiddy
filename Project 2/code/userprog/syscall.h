@@ -30,7 +30,7 @@
 #define SC_Fork		9
 #define SC_Yield	10
 
-/* Newly added Syscall are below*/
+/* Newly added Syscall are below */
 #define SC_Acquire  	 11
 #define SC_Release  	 12
 #define SC_Wait     	 13
@@ -135,7 +135,9 @@ void Fork(void (*func)());
 /* Yield the CPU to another runnable thread, whether in this address space 
  * or not. 
  */
-void Yield();		
+void Yield();	
+
+/* Syscalls for Locks and CVs */	
 
 void Acquire(int a);
 void Release(int b);

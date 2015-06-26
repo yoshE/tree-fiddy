@@ -23,7 +23,7 @@
 #define MaxOpenFiles 256
 #define MaxChildSpaces 256
 
-extern BitMap *memMap;
+extern BitMap *memMap;		// To ensure addrspace can access memMap
 
 class AddrSpace {
   public:
