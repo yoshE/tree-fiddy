@@ -17,6 +17,10 @@
 #include <sstream>
 
 using namespace std;
+
+void AirportTests();
+void RunSim();
+
 int gates[MAX_AIRLINES];		// Tracks gate numbers for each airline
 bool ScreeningResult[MAX_PASSENGERS];
 LiaisonOfficer *liaisonOfficers[MAX_LIAISONS];		// Array of Liaison Officers

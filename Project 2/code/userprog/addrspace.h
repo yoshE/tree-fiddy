@@ -16,14 +16,12 @@
 #include "copyright.h"
 #include "../filesys/filesys.h"
 #include "table.h"
-#include "translate.h"
+#include "../machine/translate.h"
 
 #define UserStackSize		1024 	// increase this as necessary!
 
 #define MaxOpenFiles 256
 #define MaxChildSpaces 256
-
-extern BitMap *memMap;
 
 class AddrSpace {
   public:
