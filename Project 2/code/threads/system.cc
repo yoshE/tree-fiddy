@@ -82,8 +82,8 @@ Initialize(int argc, char **argv)
     char* debugArgs = "";
     bool randomYield = FALSE;
 	
-	processTable = new Table(PROCESS_TABLE_MAX_SIZE);
-	memMap = new BitMap(NumPhysPages);
+	processTable = new Table(PROCESS_TABLE_MAX_SIZE);		// Initialize processTable to max number of process'
+	memMap = new BitMap(NumPhysPages);		// Initialize memMap to number of physical pages
 
 #ifdef USER_PROGRAM
     bool debugUserProg = FALSE;	// single step user program

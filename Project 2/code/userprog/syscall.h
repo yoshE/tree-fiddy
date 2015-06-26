@@ -30,7 +30,7 @@
 #define SC_Fork		9
 #define SC_Yield	10
 
-/* Newly added Syscall are below*/
+/* Newly added Syscall are below */
 #define SC_Acquire  	 11
 #define SC_Release  	 12
 #define SC_Wait     	 13
@@ -40,6 +40,7 @@
 #define SC_DestroyLock   17
 #define SC_CreateCV 	 18
 #define SC_DestroyCV 	 19
+#define SC_printf		 20
 
 #define MAXFILENAME 256
 
@@ -135,7 +136,9 @@ void Fork(void (*func)());
 /* Yield the CPU to another runnable thread, whether in this address space 
  * or not. 
  */
-void Yield();		
+void Yield();	
+
+/* Syscalls for Locks and CVs */	
 
 void Acquire(int a);
 void Release(int b);
@@ -147,6 +150,9 @@ int CreateLock(char* name);
 void DestroyLock(int i);
 int CreateCV(char* name);
 void DestroyCV(int j);
+
+/* Syscall for user printf */
+void printf(unsigned int vaddr, int len, int k, int l);
 
 #endif /* IN_ASM */
 
