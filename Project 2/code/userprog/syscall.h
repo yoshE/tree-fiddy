@@ -40,6 +40,7 @@
 #define SC_DestroyLock   17
 #define SC_CreateCV 	 18
 #define SC_DestroyCV 	 19
+#define SC_printf		 20
 
 #define MAXFILENAME 256
 
@@ -149,6 +150,9 @@ int CreateLock(char* name);
 void DestroyLock(int i);
 int CreateCV(char* name);
 void DestroyCV(int j);
+
+/* Syscall for user printf */
+void printf(unsigned int vaddr, int len, int k, int l);
 
 #endif /* IN_ASM */
 

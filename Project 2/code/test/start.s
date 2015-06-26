@@ -204,6 +204,14 @@ DestroyCV:
 	syscall
 	j $31
 	.end DestroyCV
+	
+	.globl printf
+	.ent printf
+printf:
+	addiu $2,$0,SC_printf
+	syscall
+	j $31
+	.end printf
 
 /* dummy function to keep gcc happy */
         .globl  __main

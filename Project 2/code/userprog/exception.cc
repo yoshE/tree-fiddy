@@ -36,6 +36,7 @@ using namespace std;
 Lock* syscallLock = new Lock("Syscall");
 std::vector<KernelLock>LockTable;		// Table of all current Locks
 std::vector<KernelCV>CVTable;		// Table of all current Condition Variables
+Lock* PrintfLock = new Lock("");
 Lock* LockTableLock = new Lock("");		// Lock for accessing the LockTable
 Lock* CVTableLock = new Lock("");		// Lock for accessing the CVTable
 
@@ -521,6 +522,21 @@ void Exit_Syscall(int code) {		// Ends threads and process'
 	}
 }
 
+void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
+    // Print string of length len to synchronized console including 
+    // the integer arguments supplied in the args array. 
+    PrintfLock->Acquire();
+	char* c_buf;
+    c_buf=new char[len];
+    copyin(vaddr,len,c_buf);
+    
+	printf(c_buf, a, b);
+	
+    delete c_buf;
+    PrintfLock->Release();
+
+}
+
 void ExceptionHandler(ExceptionType which) {
     int type = machine->ReadRegister(2); // Which syscall?
     int rv=0; 	// the return value from a syscall
@@ -610,6 +626,10 @@ void ExceptionHandler(ExceptionType which) {
 		case SC_DestroyCV:		// Syscall for destroying CVs
 			DEBUG('a', "Destroy CV Syscall.\n");
 			DestroyCV_Syscall(machine->ReadRegister(4));		// Calls DestroyCV_Syscall with entered parameters (int)
+			break;
+		case SC_printf:
+			DEBUG('a', "printf Syscall.\n");
+			printf_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
 			break;
 	}
 

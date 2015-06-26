@@ -20,6 +20,7 @@ I. Requirements:
 			- DestroyLock
 			- CreateCV
 			- DestroyCV
+			- printf
 			
 		Once we created these syscall, we had to edit start.s, syscall.h, and exception.cc such
 		that they would compile correctly. Then we needed to implement test files that would 
@@ -158,8 +159,7 @@ III. Design:
 			This function is almost exactly like Wait except it will call Broadcast instead of Wait.
 	   
     Part 2:
-	
-		The AddrSpace class has been redesigned to accomidate multiple processes and multiple threads 
+		The AddrSpace class has been redesigned to accommodate multiple processes and multiple threads 
 		within a process.  We allow for multiple processes by decoupling a page's virtual address from 
 		its physical address.  We maintain a global BitMap corresponding to all physical pages of memory 
 		and associate them with virtual pages as they are needed.  To create multiple threads the AddrSpace 
@@ -212,8 +212,19 @@ III. Design:
                 3. Call machine->Run() 
 	
 		void printf(char* text, int, int, int)
+			This function takes in a string, the length of that strength, and two int values and then 
+			prints it to the screen. It will first call copyin() to read from virtual memory the string
+			char and then uses printf statements in exception.cc to print out the original message.
         
     Part 3:
+		Since our simulation was now going to be run through syscalls, the first thing that we changed
+		was the include statements, the data structures, and the output statements. Since vectors and printf
+		statements were no longer included as valid calls, we had to change all vectors to arrays and all
+		output statements to configure to the new printf syscall function. Additionally, the Locks and CVs
+		now had to be created explicitly through syscalls and added to their corresponding tables. This meant
+		that all code relating to the acquire, release, wait, signal, and broadcast had to be changed to
+		accommodate the new functionalities. We had to make sure to remember the ints corresponding to each lock
+		and CV and correctly use them in order to remove the possibility of race conditions.
 
 IV. Implementation:
 
@@ -300,9 +311,10 @@ V. Testing: (For each test case, you must show)
 		testCV() will test creating and deleting with valid and invalid parameters. The
 		two tests will have output statements that will detail what should happen next. 
 		The output statements from halt.c will have a space indent while those from
-		exception.cc (when there is a failure) will not have that indent. 
+		exception.cc (when there is a failure) will not have that indent. The first 
+		print statement in this test is done using printf syscall to test its optimality.
 		
-		- To run: nachos -x ../test/halt.c
+		- To run Halt: nachos -x ../test/halt.c
 		
 	-Tests for Part 2
 		There are two tests for Part 2... one for Fork and one for Exec. The Exec test 

@@ -28,7 +28,8 @@ int testLock(){
 	/*Test Lock Creation */
 	b = CreateLock("");
 	if(b >= 0){
-		Write(" Testing lock creation...Pass\n" , sizeof(" Testing lock creation...Pass\n"), ConsoleOutput );
+		/* Tests the printf Syscall! */
+		printf(" Testing lock creation...Success(This was printed with printf syscall)\n", sizeof(" Testing lock creation...Success(This was printed with printf syscall)\n"),0,0);
 	} else {
 		Write(" Testing lock creation...Fail\n", sizeof(" Testing lock creation...Fail\n"), ConsoleOutput );
 	}
