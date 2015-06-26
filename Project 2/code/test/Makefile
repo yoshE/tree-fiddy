@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles forktest exectest
+all: halt matmult sort testfiles forktest Exec_Test exectest
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -68,6 +68,13 @@ forktest: forktest.o start.o
 	$(LD) $(LDFLAGS) start.o forktest.o -o forktest.coff
 	../bin/coff2noff forktest.coff forktest
 
+Exec_Test.o: Exec_Test.c
+	$(CC) $(CFLAGS) -c Exec_Test.c
+Exec_Test: Exec_Test.o start.o
+	$(LD) $(LDFLAGS) start.o Exec_Test.o -o Exec_Test.coff
+	../bin/coff2noff Exec_Test.coff Exec_Test
+	
+	
 exectest.o: exectest.c
 	$(CC) $(CFLAGS) -c exectest.c
 exectest: exectest.o start.o

@@ -116,12 +116,14 @@ Lock::~Lock() {
 //		waiting queue
 void Lock::Acquire() {
   IntStatus inter = interrupt->SetLevel(IntOff); // Disable Interrupts
-
+  printf("ENTERING ACQUIRE for %p\n", this);
   if (isHeldByCurrentThread()){ // See if thread already owns this Lock
     interrupt->SetLevel(inter);
     return;
   }
+  printf("NOT HELD BY CURRENT THREAD\n");
   if (available){ // If Lock is FREE
+    printf("LOCK IS AVAILABLE\n");
     available = false; // Make Lock BUSY and...
     owner = currentThread; // Assign this thread as the owner!
   }else{
@@ -146,6 +148,7 @@ void Lock::Release() {
 	if (thread != NULL) scheduler->ReadyToRun(thread); // Wake it up!
 	owner = thread; // Then make that thread this thread's owner
   }else{ // If the waiting is empty, then FREE up!
+	printf("RELEASING LOCK for %p\n", this);
 	available = true;
 	owner = NULL;
   }

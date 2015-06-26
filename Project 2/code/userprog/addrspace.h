@@ -23,6 +23,8 @@
 #define MaxOpenFiles 256
 #define MaxChildSpaces 256
 
+extern BitMap *memMap;
+
 class AddrSpace {
   public:
     AddrSpace(OpenFile *executable);	// Create an address space,

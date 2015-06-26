@@ -270,19 +270,24 @@ void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for 
 	if (x < 0 || x > (signed)CVTable.size() - 1 || CVTable[x].IsDeleted || CVTable[x].CV == NULL || lock < 0 || lock > (signed)LockTable.size() - 1 || LockTable[lock].IsDeleted || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
+		LockTable[lock].Kernel_Lock->Release();
 		return;		// Return if either of the values entered are incorrect
 	}
-	
-	CVTable[x].CV->Wait(LockTable[lock].Kernel_Lock);		// Wait on said lock
 	CVTableLock->Release();
+	CVTable[x].CV->Wait(LockTable[lock].Kernel_Lock);		// Wait on said lock
+	LockTable[lock].Kernel_Lock->Release();
 }
 
 void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is for position of CV, second is for position of Lock (in their tables)
-	CVTableLock->Acquire();
+	printf("INSIDE SIGNAL BEFORE LOCK ACQUIRE\n");
+	printf("WAITING QUEUE SIZE = %d", CVTableLock->waitingThreads->IsEmpty());
 	
+	CVTableLock->Acquire();
+	printf("INSIDE SIGNAL\n");
 	if (y < 0 || y > (signed)CVTable.size() - 1 || CVTable[y].IsDeleted || CVTable[y].CV == NULL || a < 0 || a > (signed)LockTable.size() - 1 || LockTable[a].IsDeleted || LockTable[a].Kernel_Lock == NULL  ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
+		LockTable[a].Kernel_Lock->Release();
 		return;		// Return if either of the values entered are incorrect
 	}
 	
@@ -296,6 +301,7 @@ void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int 
 	if (z < 0 || z > (signed)CVTable.size() - 1 || CVTable[z].IsDeleted || CVTable[z].CV == NULL || b < 0 || b > (signed)LockTable.size() - 1 || LockTable[b].IsDeleted || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
 		CVTableLock->Release();
+		LockTable[b].Kernel_Lock->Release();
 		return;		// Return if either of the values entered are incorrect
 	}
 	
@@ -353,6 +359,7 @@ int CreateCV_Syscall(char* name){		// Creates a new CV in CVTable
 	
 	CVTable.push_back(new_cv);		// Adds new struct to CVTable
 	int x = CVTable.size() - 1;		// Finds index of newly created CV
+	printf("RELEASING LOCK IN CREATE CV\n");
 	CVTableLock->Release();
 	return x;		// Returns said value to Thread to use new CV
 }
@@ -380,12 +387,13 @@ void DestroyCV_Syscall(int n){		// Destroys an existing CV in CVTable
 	CVTableLock->Release();
 }
 
-void newProcess(int unused) {
-	currentThread->space->InitRegisters();
+void newProcess(int arg){
+    currentThread->space->InitRegisters();
+	
 	currentThread->space->SaveState();
-	currentThread->space->RestoreState();
-	machine->Run();
-	ASSERT(false);
+    currentThread->space->RestoreState();
+    machine->Run();
+        // We should never reach here.
 }
 
 int Exec_Syscall(unsigned int vaddr, unsigned int length) {
@@ -412,13 +420,15 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {
 		return -1;
 	}
 	
-	AddrSpace* s = new AddrSpace(file);
-	Process* p = new Process();
-	Thread* t = new Thread("Exec");
-	
 	syscallLock->Acquire();
 	
-	int processID = processTable.Put(p);
+	Process* p = new Process();
+	Thread* t = new Thread("Exec");
+	t->space = new AddrSpace(file);
+	
+	p->activeThreadCount = 1;
+	p->inactiveThreadCount = 0;
+	int processID = processTable->Put(p);
 	if(processID == -1) {
 		printf("Could not add process to Process Table!\n");
 		delete[] filename;
@@ -428,35 +438,50 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {
 	}
 	printf("Added new process with ID = %d\n", processID);
 	p->id = processID;
-	
-	syscallLock->Release();
-	
 	t->setPID(p->id);
-	t->setID(p->inactiveThreadCount + p->activeThreadCount);
-	t->space = s;
-	p->activeThreadCount = 1;
-	p->inactiveThreadCount = 0;
-	
-	t->Fork(newProcess, 0);
-	currentThread->Yield();
+	t->setID(1);
 	
 	delete file;
 	delete[] filename;
+	syscallLock->Release();
 	
+	t->Fork((VoidFunctionPtr) newProcess, 0);
 	return processID;
 }
 
 void kernelRun(int vaddr) {
 	machine->WriteRegister(PCReg, (unsigned int)vaddr);
 	machine->WriteRegister(NextPCReg, (unsigned int)vaddr+4);
+	currentThread->space->RestoreState();
 	int stackPosition = currentThread->space->getNumPages()*PageSize-8;
 	machine->WriteRegister(StackReg, stackPosition);
-	currentThread->space->RestoreState();
+
 	machine->Run();
 	ASSERT(false);
 }
 
-void Fork_Syscall(unsigned int vaddr, unsigned int length) {
+void Fork_Syscall(int funcAddr){
+    syscallLock->Acquire();
+    printf("%s", "Forking Thread!\n");
+    DEBUG('a', "%s: Called Fork_Syscall.\n",currentThread->getName());
+    Thread *t = new Thread(currentThread->getName());
+	int processID = currentThread->getPID();
+	Process* p = (Process*) processTable->Get(processID);
+	if(!p) {
+		printf("Failed to fetch process %d from Process Table!\n", processID);
+		return;
+	}
+	p->activeThreadCount++;
+	t->setID(p->inactiveThreadCount + p->activeThreadCount);
+	t->setPID(processID);
+	t->space = currentThread->space;
+	
+    t->Fork((VoidFunctionPtr) kernelRun, funcAddr);
+    currentThread->space->RestoreState();
+    syscallLock->Release();
+}
+
+/*void Fork_Syscall(unsigned int vaddr, unsigned int length) {
 	char* filename = new char[MAXFILENAME];
 	
 	if(!filename) {
@@ -464,14 +489,7 @@ void Fork_Syscall(unsigned int vaddr, unsigned int length) {
 		delete[] filename;
 		return;
 	}
-	/*
-	if(copyin(vaddr2, MAXFILENAME, filename) == -1) {
-		printf("Invalid pointer (vaddr2 = %d)!\n", vaddr2);
-		delete[] filename;
-		return;
-	}
-	filename[length] = '\0';
-	*/
+
 	Thread* t = new Thread("tempname");
 	
 	syscallLock->Acquire();
@@ -491,7 +509,7 @@ void Fork_Syscall(unsigned int vaddr, unsigned int length) {
 	
 	printf("Running forked thing\n");
 	t->Fork(kernelRun, (int)vaddr);
-}
+}*/
 
 void Exit_Syscall(int code) {
 	printf("EXITING WITH CODE = %d\n", code);
@@ -499,22 +517,35 @@ void Exit_Syscall(int code) {
 	syscallLock->Acquire();
 	
 	int processID = currentThread->getPID();
-	Process* p = (Process*)processTable.Get(processID);
+	Process* p = (Process*)processTable->Get(processID);
 	if(!p) {
 		printf("Could not retrieve process %d from Process Table!\n", processID);
 	}
-	p->activeThreadCount--;
-	p->inactiveThreadCount++;
-	if(p->activeThreadCount == 0) {
-		processTable.Remove(processID);
-		interrupt->Halt();
-		printf("Last process\n");
-	} else {
-		printf("Thread finish\n");
-		currentThread->Finish();
-	}
 	
-	syscallLock->Release();
+	if (processTable->size > 1){
+		if (p->activeThreadCount == 0){\
+			syscallLock->Release();
+			processTable->Remove(processID);
+		}else {
+			printf("Thread Finishing!\n");
+			p->activeThreadCount--;
+			p->inactiveThreadCount++;
+			syscallLock->Release();
+			currentThread->Finish();
+		}
+	} else {
+		if (p->activeThreadCount == 0){
+			processTable->Remove(processID);
+			printf("Ending Last Process!\n");
+			interrupt->Halt();
+		}else {
+			printf("Thread Finishing!\n");
+			p->activeThreadCount--;
+			p->inactiveThreadCount++;
+			syscallLock->Release();
+			currentThread->Finish();
+		}
+	}
 }
 
 void ExceptionHandler(ExceptionType which) {
@@ -560,7 +591,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_Fork:
 			DEBUG('a', "Fork syscall.\n");
-			Fork_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+			Fork_Syscall(machine->ReadRegister(4));
 			break;
 		case SC_Exit:
 			Exit_Syscall(machine->ReadRegister(4));
@@ -584,8 +615,7 @@ void ExceptionHandler(ExceptionType which) {
 			break;
 		case SC_Signal:		// Syscall for Signal
 			DEBUG('a', "Signal for CV Syscall.\n");
-			Signal_Syscall(machine->ReadRegister(4),
-						   machine->ReadRegister(5));		// Calls Signal_Syscall with entered parameters (int, int)
+			Signal_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));		// Calls Signal_Syscall with entered parameters (int, int)
 			break;
 		case SC_Broadcast:		// Syscall for Broadcast
 			DEBUG('a', "Broadcast for CV Syscall.\n");

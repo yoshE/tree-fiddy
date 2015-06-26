@@ -40,7 +40,7 @@ StartProcess(char *filename)
 	Process* p = new Process();
 	p->inactiveThreadCount = 0;
 	p->activeThreadCount = 1;
-	int processID = processTable.Put(p);
+	int processID = processTable->Put(p);
 	if(processID == -1) {
 		printf("Failed to add process %d to Process Table!\n", processID);
 		delete p;

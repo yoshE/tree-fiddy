@@ -1,53 +1,33 @@
 #include "syscall.h"
 
-int num = 10;
+int lock, cv;
 
-void functionA() {
-	Write("Test\n", 5, ConsoleOutput);
-	Exit(0);
+void func1(){
+	Write("func1 forked and running\n", sizeof("func1 forked and running\n"), ConsoleOutput );
+
+    Acquire(lock);
+    Write("func1 acquired lock\n", sizeof("func1 acquired lock\n"), ConsoleOutput );
+    Signal(cv, lock);
+
+    Write("func1 Exiting with exit status 0\n", sizeof("func1 Exiting with exit status 0\n"), ConsoleOutput );
+
+    Release(lock);
+    Yield();
+    Exit(0);
 }
 
-void functionB() {
-	Write("Test2\n", 6, ConsoleOutput);
-	Exit(0);
+void main(){
+    lock = CreateLock("lock");
+    cv = CreateCV("condition");
+    Acquire(lock);
+
+    Fork(func1);
+
+    Write("main forked func1\n", sizeof("main forked func1\n"), ConsoleOutput );
+    Wait(cv, lock);
+    Write("main got signaled\n", sizeof("main got signaled\n"), ConsoleOutput );
+    Release(lock);
+    Write("main released lock\n", sizeof("main released lock\n"), ConsoleOutput );
+    Yield();
+    Exit(0);
 }
-
-void functionC() {
-	Write("Test3\n", 6, ConsoleOutput);
-	Exit(0);
-}
-
-void functionD() {
-	Write("Test4\n", 6, ConsoleOutput);
-	Exit(0);
-}
-
-int main() {
-
-	Write("Hellooooooo\n", 12, ConsoleOutput);
-	Fork(functionA);
-	Fork(functionB);
-	Fork(functionC);
-	Fork(functionD);
-
-}
-
-/*
-int main() {
-  OpenFileId fd;
-  int bytesread;
-  char buf[20];
-
-    Create("testfile", 8);
-    fd = Open("testfile", 8);
-
-    Write("testing a write\n", 16, fd );
-    Close(fd);
-
-
-    fd = Open("testfile", 8);
-    bytesread = Read( buf, 100, fd );
-    Write( buf, bytesread, ConsoleOutput );
-    Close(fd);
-}
-*/

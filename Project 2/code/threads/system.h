@@ -18,6 +18,9 @@
 #include "synch.h"
 #include "../userprog/addrspace.h"
 #include "../userprog/table.h"
+#include "../userprog/bitmap.h"
+
+#define PROCESS_TABLE_MAX_SIZE	32
 
 struct Process {
 	int id;
@@ -36,8 +39,6 @@ struct KernelCV{
 	bool IsDeleted;
 };
 
-extern Table processTable;
-
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,
 						// called before anything else
@@ -50,6 +51,9 @@ extern Scheduler *scheduler;			// the ready list
 extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
+
+extern Table *processTable;
+extern BitMap *memMap;
 
 #ifdef USER_PROGRAM
 #include "machine.h"
