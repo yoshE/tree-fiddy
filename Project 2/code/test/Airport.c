@@ -15,14 +15,14 @@
 #define false 0
 
 /* Max agent consts */
-#define PASSENGER_COUNT			60
+#define PASSENGER_COUNT			9
 #define MAX_AIRLINES			3
-#define MAX_LIAISONS			5
-#define MAX_CIOS				5
-#define MAX_CARGOHANDLERS		10
-#define MAX_SCREEN				5
+#define MAX_LIAISONS			3
+#define MAX_CIOS				3
+#define MAX_CARGOHANDLERS		4
+#define MAX_SCREEN				3
 #define MAX_BAGS				3
-#define AIRLINE_SEAT 			20	
+#define AIRLINE_SEAT 			3
 
 int Passenger_ID = 0;
 int Liaison_ID = 0;
@@ -52,9 +52,9 @@ int SecurityOfficerCV[MAX_SCREEN];		/* Condition Variables for each Security Off
 int SecurityLineCV[MAX_SCREEN];		/* Condition Variables for returning passengers from questioning */
 int liaisonLineCV[MAX_LIAISONS];		/* Condition Variables for each Liaison Line */
 int liaisonOfficerCV[MAX_LIAISONS];		/* Condition Variables for each Liaison Officer */
-int CheckInCV[MAX_CIOS*MAX_LIAISONS+MAX_LIAISONS];		/* Condition Variables for each CheckIn Line */
-int CheckInOfficerCV[MAX_CIOS*MAX_LIAISONS];		/* Condition Variables for each CheckIn Officer */
-int CheckInBreakCV[MAX_CIOS*MAX_LIAISONS];		/* Condition Variables for each CheckIn Officer Break Time */
+int CheckInCV[MAX_CIOS*MAX_AIRLINES+MAX_AIRLINES];		/* Condition Variables for each CheckIn Line */
+int CheckInOfficerCV[MAX_CIOS*MAX_AIRLINES];		/* Condition Variables for each CheckIn Officer */
+int CheckInBreakCV[MAX_CIOS*MAX_AIRLINES];		/* Condition Variables for each CheckIn Officer Break Time */
 int liaisonLineLock;		/* Lock to get into a liaison Line */
 int liaisonLineLocks[MAX_LIAISONS];		/* Array of Locks for Liaison Officers */
 int CheckInLocks[MAX_CIOS*MAX_LIAISONS];		/* Array of Locks for CheckIn Officers */
@@ -177,16 +177,16 @@ typedef struct {		/* Information passed between Security and Passenger */
 int gates[3];		/* Tracks gate numbers for each airline*/
 int ScreeningResult[PASSENGER_COUNT];
 
-LiaisonOfficer_t liaisonOfficers[5];		/* Array of Liaison Officers*/
-CheckInOfficer_t CheckIn[15];		/* Array of CheckIn Officers*/
-SecurityOfficer_t Security[5];		/* Array of Security Officers*/
-ScreeningOfficer_t Screen[5];		/* Array of Screening Officers*/
-CargoHandler_t cargoHandlers[10];				/* Array of Cargo Handlers*/
-LiaisonPassengerInfo_t LPInfo[5];		/* Array of Structs that contain info from passenger to Liaison*/
-CheckInPassengerInfo_t CPInfo[15];		/* Array of Structs that contain info from pasenger to CheckIn*/
+LiaisonOfficer_t liaisonOfficers[MAX_LIAISONS];		/* Array of Liaison Officers*/
+CheckInOfficer_t CheckIn[MAX_CIOS*MAX_AIRLINES];		/* Array of CheckIn Officers*/
+SecurityOfficer_t Security[MAX_SCREEN];		/* Array of Security Officers*/
+ScreeningOfficer_t Screen[MAX_SCREEN];		/* Array of Screening Officers*/
+CargoHandler_t cargoHandlers[MAX_CARGOHANDLERS];				/* Array of Cargo Handlers*/
+LiaisonPassengerInfo_t LPInfo[MAX_LIAISONS];		/* Array of Structs that contain info from passenger to Liaison*/
+CheckInPassengerInfo_t CPInfo[MAX_CIOS*MAX_AIRLINES];		/* Array of Structs that contain info from pasenger to CheckIn*/
 ScreenPassengerInfo_t SPInfo[MAX_SCREEN+1];		/* Array of Structs that contain info from screening to passenger*/
-SecurityScreenInfo_t SSInfo[5];		/* Array of structs that contains info from security to screener */
-SecurityPassengerInfo_t SecPInfo[5];		/* Array of structs that contains info from security to passenger */
+SecurityScreenInfo_t SSInfo[MAX_SCREEN];		/* Array of structs that contains info from security to screener */
+SecurityPassengerInfo_t SecPInfo[MAX_SCREEN];		/* Array of structs that contains info from security to passenger */
 
 Baggage_t conveyor[PASSENGER_COUNT*2];		/* Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers*/
 int aircraftBaggageCount[MAX_AIRLINES];		/* Number of baggage on a single airline */
@@ -221,9 +221,7 @@ AirportManager_t simAirportManager;
 // Passenger
 //----------------------------------------------------------------------*/
 void ChooseLiaisonLine(int name);
-void Liaison_DoWork(int name);
 void CheckIn_DoWork(int number);
-void Cargo_DoWork(int number);
 void Manager_DoWork();
 void EndOfDay();
 void Screening_DoWork(int n);
@@ -257,7 +255,7 @@ void ChooseLiaisonLine(int name){		/* Picks a Liaison line, talks to the Officer
 		}
 	}
 
-	printf((int)"Passenger %d chose Liaison %d with a line of length %d\n", sizeof("Passenger %d chose Liaison %d with a line of length %d\n"), name, simPassengers[name].myLine + 100*(liaisonLine[simPassengers[name].myLine]));		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Passenger %d chose Liaison %d with a line of length %d\n", sizeof("Passenger %d chose Liaison %d with a line of length %d\n"), name, simPassengers[name].myLine + (100 * liaisonLine[simPassengers[name].myLine]));		/* OFFICIAL OUTPUT STATEMENT */
 	
 	liaisonLine[simPassengers[name].myLine] += 1;		/* Increment size of line you join*/
 	Wait(liaisonLineCV[simPassengers[name].myLine], liaisonLineLock);
@@ -456,29 +454,19 @@ void ChooseLiaisonLine(int name){		/* Picks a Liaison line, talks to the Officer
 /*----------------------------------------------------------------------
 // Liaison Officer
 //---------------------------------------------------------------------- */
-
-void LiaisonOfficer(){		/* Constructor */
-	int g, i;
-	Acquire(Liaison_ID_Lock);	
-	i = Liaison_ID;
-	liaisonOfficers[i].number = i;
-	Liaison_ID++;
-	Release(Liaison_ID_Lock);
-	
-	liaisonOfficers[i].passengerCount = 0;
-	for (g = 0; g < simNumOfAirlines; g++){
-		liaisonOfficers[i].airlineBaggageCount[g] = 0;
-	}
-	Liaison_DoWork(i);
-}
-
 int Liaison_getPassengerCount(int n) {return liaisonOfficers[n].passengerCount;} /* For manager to get passenger headcount */
 
 int Liaison_getAirlineBaggageCount(int n){ /* For manager to get passenger bag count */
 	return liaisonOfficers[n].airlineBaggageCount[n];
 }
 
-void Liaison_DoWork(int name){
+void Liaison(){
+	int name;
+	Acquire(Liaison_ID_Lock);	
+	name = Liaison_ID;
+	liaisonOfficers[name].number = name;
+	Liaison_ID++;
+	Release(Liaison_ID_Lock);
 	while(true){		/* Always be running, never go on break */
 		Acquire(liaisonLineLock);		/* Acquire lock for lining up in order to see if there is someone waiting in your line */
 		if (liaisonLine[name] > 0){		/* Check if passengers are in your line */
@@ -618,28 +606,16 @@ void CheckIn_DoWork(int number){
 /*----------------------------------------------------------------------
 // Cargo Handler
 //---------------------------------------------------------------------- */
-void CargoHandler(){	
+void Cargo(){
 	int i, n;
+	Baggage_t temp;		/* Baggage that handler will move off conveyor */
 	Acquire(Cargo_ID_Lock);	
 	n = Cargo_ID;
 	cargoHandlers[n].name = n;
 	Cargo_ID++;
 	Release(Cargo_ID_Lock);
-	
-	/* am->AddCargoHandler(this);
-	// cargoHandlers.push_back(this); */
-	for(i = 0; i < simNumOfAirlines; i++){
-		cargoHandlers[n].weight[i] = 0;
-		cargoHandlers[n].count[i] = 0;
-	}
-	Cargo_DoWork(n);
-}
-
-void Cargo_DoWork(int number){
-	int i;
-	Baggage_t temp;		/* Baggage that handler will move off conveyor */
 	while (true){
-		cargoHandlers[number].onBreak = false;
+		cargoHandlers[n].onBreak = false;
 		Acquire(CargoHandlerLock);
 		for (i = 0; i < PASSENGER_COUNT*2; i++){
 			if(conveyor[i].weight != 0){
@@ -649,10 +625,10 @@ void Cargo_DoWork(int number){
 			}
 		}
 		if (temp.weight == 0){
-			cargoHandlers[number].onBreak = true;
-			printf((int)"Cargo Handler %d is going for a break\n", sizeof("Cargo Handler %d is going for a break\n"), number, -1);		/* OFFICIAL OUTPUT STATEMENT */
+			cargoHandlers[n].onBreak = true;
+			printf((int)"Cargo Handler %d is going for a break\n", sizeof("Cargo Handler %d is going for a break\n"), n, -1);		/* OFFICIAL OUTPUT STATEMENT */
 			Wait(CargoHandlerCV, CargoHandlerLock);		/* Sleep until woken up by manager */
-			printf((int)"Cargo Handler %d returned from break\n", sizeof("Cargo Handler %d returned from break\n"), number, -1);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"Cargo Handler %d returned from break\n", sizeof("Cargo Handler %d returned from break\n"), n, -1);		/* OFFICIAL OUTPUT STATEMENT */
 			continue;
 		}
 	
@@ -660,9 +636,11 @@ void Cargo_DoWork(int number){
 		Release(CargoHandlerLock);
 		aircraftBaggageCount[temp.airline]++;		/* Increase baggage count of airline */
 		aircraftBaggageWeight[temp.airline] += temp.weight;		/* Increase baggage weight of airline */
-		printf((int)"Cargo Handler %d picked bag of airline %d with weighing %d lbs\n", sizeof("Cargo Handler %d picked bag of airline %d with weighing %d lbs\n"), number, temp.airline + (100 * temp.weight));		/* OFFICIAL OUTPUT STATEMENT */
-		cargoHandlers[number].weight[temp.airline] += temp.weight;		/* Increment total weight of baggage this handler has dealt with */
-		cargoHandlers[number].count[temp.airline] ++;		/* Increment total count of baggage this handler has dealt with */
+		printf((int)"Cargo Handler %d picked bag of airline %d with weighing %d lbs\n", sizeof("Cargo Handler %d picked bag of airline %d with weighing %d lbs\n"), n, temp.airline + (100 * temp.weight));		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"ID is: %d\n", sizeof("ID is: %d\n"), Cargo_ID, -1);
+		printf((int)"number is: %d\n", sizeof("number is: %d\n"), n, -1);
+		cargoHandlers[n].weight[temp.airline] += temp.weight;		/* Increment total weight of baggage this handler has dealt with */
+		cargoHandlers[n].count[temp.airline] ++;		/* Increment total count of baggage this handler has dealt with */
 		Release(AirlineBaggage[temp.airline]);
 		Yield();
 	}
@@ -1002,7 +980,6 @@ void createLiaisons(int quantity) {
 		liaisonOfficers[i].airlineBaggageCount[0] = 0;
 		liaisonOfficers[i].airlineBaggageCount[1] = 0;
 		liaisonOfficers[i].airlineBaggageCount[2] = 0;
-		simLiaisons[i] = liaisonOfficers[i];
 	}
 }
 
@@ -1072,15 +1049,14 @@ void createSecurityAndScreen(int quantity) {
 void createCargoHandlers(int quantity) {
 	int i;
 	for(i = 0; i < quantity; i++) {
-		simCargoHandlers[i].weight[0] = 0;
-		simCargoHandlers[i].weight[1] = 0;
-		simCargoHandlers[i].weight[2] = 0;
-		simCargoHandlers[i].count[0] = 0;
-		simCargoHandlers[i].count[1] = 0;
-		simCargoHandlers[i].count[1] = 0;
-		simCargoHandlers[i].name = i;
-		simCargoHandlers[i].onBreak = false;
-		cargoHandlers[i] = simCargoHandlers[i];
+		cargoHandlers[i].weight[0] = 0;
+		cargoHandlers[i].weight[1] = 0;
+		cargoHandlers[i].weight[2] = 0;
+		cargoHandlers[i].count[0] = 0;
+		cargoHandlers[i].count[1] = 0;
+		cargoHandlers[i].count[1] = 0;
+		cargoHandlers[i].name = i;
+		cargoHandlers[i].onBreak = false;
 	}
 }
 
@@ -1154,7 +1130,7 @@ void main() {
 	}
 	
 	for(i = 0; i < simNumOfLiaisons; i++) {
-		Fork(LiaisonOfficer);
+		Fork(Liaison);
 	}
 	
 	for(i = 0; i < simNumOfScreeningOfficers; i++) {
@@ -1163,7 +1139,7 @@ void main() {
 	}
 	
 	for(i = 0; i < simNumOfCargoHandlers; i++) {
-		Fork(CargoHandler);
+		Fork(Cargo);
 	}
 	
 	for(i = 0; i < simNumOfPassengers; i++) {
