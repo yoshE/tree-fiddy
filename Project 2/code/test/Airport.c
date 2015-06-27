@@ -529,11 +529,6 @@ void CheckInOfficer(){
 	CheckIn[i].number = i;
 	CheckIn_ID++;
 	Release(CheckIn_ID_Lock);
-	
-	CheckIn[i].airline = i/simNumOfCIOs;
-	CheckIn[i].passengerCount = 0;		/* Passenger Count */
-	CheckIn[i].OnBreak = false;		/* Controls break time */
-	CheckIn[i].work = true;
 	CheckIn_DoWork(i);
 }
 
@@ -975,23 +970,38 @@ void setupAirlines(int airlineCount) {
 }
 
 void createPassengers(int quantity) {
-	Passenger_t x;
 	int i;
+
 	for(i = 0; i < quantity; i++) {
-		simPassengers[i] = x;
+		simPassengers[i].NotTerrorist = true;
+		simPassengers[i].gate = -1;
+		simPassengers[i].name = i;
+		simPassengers[i].seat = -1;
+		simPassengers[i].airline = -1;
+		simPassengers[i].economy = true;
+		simPassengers[i].myLine = -1;
+		simPassengers[i].baggageCount = 2;
+		simPassengers[i].bags[1].weight = 0;
+		simPassengers[i].bags[0].weight = 0;
+		simPassengers[i].bags[1].airline = -1;
+		simPassengers[i].bags[0].airline = -1;
 	}
 }
 
 void createLiaisons(int quantity) {
 	int i;
-	LiaisonOfficer_t x;
 
 	for(i = 0; i < quantity; i++) {
 		liaisonLine[i] = 0;
 		liaisonLineCV[i] = CreateCV("Liaison Line CV " + i);
 		liaisonOfficerCV[i] = CreateCV("Liaison Officer CV " + 1);
 		liaisonLineLocks[i] = CreateLock("Liaison Line Lock " + i);
-		liaisonOfficers[i] = x;
+		liaisonOfficers[i].airline = -1;
+		liaisonOfficers[i].number = i;
+		liaisonOfficers[i].passengerCount = 0;
+		liaisonOfficers[i].airlineBaggageCount[0] = 0;
+		liaisonOfficers[i].airlineBaggageCount[1] = 0;
+		liaisonOfficers[i].airlineBaggageCount[2] = 0;
 		simLiaisons[i] = liaisonOfficers[i];
 	}
 }
@@ -1017,11 +1027,13 @@ void setupExecutiveCIOs(int airlineCount, int quantity) {
 }
 
 void createCIOs(int airlineCount, int quantity) {
-	CheckInOfficer_t x;
 	int i;
 	for(i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
-		simCIOs[i] = x;
-		CheckIn[i] = simCIOs[i];
+		CheckIn[i].airline = i/simNumOfCIOs;
+		CheckIn[i].passengerCount = 0;		/* Passenger Count */
+		CheckIn[i].OnBreak = false;		/* Controls break time */
+		CheckIn[i].work = true;
+		CheckIn[i].number = i;
 	}
 }
 
@@ -1030,13 +1042,17 @@ void createAirportManager() {
 }
 
 void createSecurityAndScreen(int quantity) {
-	SecurityOfficer_t x;
-	ScreeningOfficer_t y;
 	int i;
 	for (i = 0; i < quantity; i++){
 		SecurityLine[i] = 0;
-		Security[i] = x;
-		Screen[i] = y;
+		Security[i].PassedPassengers = 0;
+		Security[i].didPassScreening = false;
+		Security[i].SecurityPass = false;
+		Security[i].TotalPass = false;
+		Security[i].number = i;
+		Screen[i].IsBusy = false;
+		Screen[i].number = i;
+		Screen[i].ScreenPass = false;
 		ScreenOfficerCV[i] = CreateCV("Screen Officer CV");
 		SecurityOfficerCV[i] = CreateCV("Security Officer CV");
 		ScreenLocks[i] = CreateLock("Screen Lock");
@@ -1054,24 +1070,30 @@ void createSecurityAndScreen(int quantity) {
 }
 
 void createCargoHandlers(int quantity) {
-	CargoHandler_t	x;
 	int i;
 	for(i = 0; i < quantity; i++) {
-		simCargoHandlers[i] = x;
+		simCargoHandlers[i].weight[0] = 0;
+		simCargoHandlers[i].weight[1] = 0;
+		simCargoHandlers[i].weight[2] = 0;
+		simCargoHandlers[i].count[0] = 0;
+		simCargoHandlers[i].count[1] = 0;
+		simCargoHandlers[i].count[1] = 0;
+		simCargoHandlers[i].name = i;
+		simCargoHandlers[i].onBreak = false;
 		cargoHandlers[i] = simCargoHandlers[i];
 	}
 }
 
 void setupBaggageAndCargo(int airlineCount) {
 	int i;
-	Baggage_t x;
 	for (i = 0; i < airlineCount; i++){
 		AirlineBaggage[i] = CreateLock("Airline Baggage Lock");
 	}
 	CargoHandlerLock = CreateLock("Cargo Handler Lock");
 	CargoHandlerCV = CreateCV("Cargo Handler CV ");
 	for(i = 0; i < PASSENGER_COUNT*2; i++){
-		conveyor[i] = x;  
+		conveyor[i].weight = 0;
+		conveyor[i].airline = -1;  
 	}
 }
 
@@ -1108,7 +1130,6 @@ void RunSim(){
 }
 
 void main() {
-	/*cargoHandlers[0] = 0;*/
 	int i;
 
 	for(i = 0; i < simNumOfAirlines; i++) {
