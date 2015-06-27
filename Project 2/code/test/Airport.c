@@ -24,6 +24,20 @@
 #define MAX_BAGS				3
 #define AIRLINE_SEAT 			20	
 
+int Passenger_ID = 0;
+int Liaison_ID = 0;
+int Screening_ID = 0;
+int CheckIn_ID = 0;
+int Security_ID = 0;
+int Cargo_ID = 0;
+
+int Passenger_ID_Lock;
+int Liaison_ID_Lock;
+int CheckIn_ID_Lock;
+int Screening_ID_Lock;
+int Security_ID_Lock;
+int Cargo_ID_Lock;
+
 /*----------------------------------------------------------------------
 // Arrays, Lists, and Vectors
 //---------------------------------------------------------------------- */
@@ -216,8 +230,13 @@ void Screening_DoWork(int n);
 void Screening_setBusy(int n);
 void Security_DoWork(int number);
 
-void Passenger(int n){		/* Constructor */
+void Passenger(){		/* Constructor */
+	int n;
+	Acquire(Passenger_ID_Lock);	
+	n = Passenger_ID;
 	simPassengers[n].name = n;
+	Passenger_ID++;
+	Release(Passenger_ID_Lock);
 	simPassengers[n].economy = true;				/* Default is economy class */
 	if(rand() % 3 == 1){		/* 25% of being executive class */
 		simPassengers[n].economy = false;
@@ -438,13 +457,18 @@ void ChooseLiaisonLine(int name){		/* Picks a Liaison line, talks to the Officer
 // Liaison Officer
 //---------------------------------------------------------------------- */
 
-void LiaisonOfficer(int i){		/* Constructor */
-	int g;
+void LiaisonOfficer(){		/* Constructor */
+	int g, i;
+	Acquire(Liaison_ID_Lock);	
+	i = Liaison_ID;
+	liaisonOfficers[i].number = i;
+	Liaison_ID++;
+	Release(Liaison_ID_Lock);
+	
 	liaisonOfficers[i].passengerCount = 0;
 	for (g = 0; g < simNumOfAirlines; g++){
 		liaisonOfficers[i].airlineBaggageCount[g] = 0;
 	}
-	liaisonOfficers[i].number = i;
 	Liaison_DoWork(i);
 }
 
@@ -498,8 +522,14 @@ void Liaison_DoWork(int name){
 // Check In Staff
 //---------------------------------------------------------------------- */
 
-void CheckInOfficer(int i){
+void CheckInOfficer(){
+	int i;
+	Acquire(CheckIn_ID_Lock);	
+	i = CheckIn_ID;
 	CheckIn[i].number = i;
+	CheckIn_ID++;
+	Release(CheckIn_ID_Lock);
+	
 	CheckIn[i].airline = i/simNumOfCIOs;
 	CheckIn[i].passengerCount = 0;		/* Passenger Count */
 	CheckIn[i].OnBreak = false;		/* Controls break time */
@@ -593,9 +623,14 @@ void CheckIn_DoWork(int number){
 /*----------------------------------------------------------------------
 // Cargo Handler
 //---------------------------------------------------------------------- */
-void CargoHandler(int n){
-	int i;
+void CargoHandler(){	
+	int i, n;
+	Acquire(Cargo_ID_Lock);	
+	n = Cargo_ID;
 	cargoHandlers[n].name = n;
+	Cargo_ID++;
+	Release(Cargo_ID_Lock);
+	
 	/* am->AddCargoHandler(this);
 	// cargoHandlers.push_back(this); */
 	for(i = 0; i < simNumOfAirlines; i++){
@@ -747,8 +782,14 @@ void EndOfDay(){
 /*----------------------------------------------------------------------
 // Screening Officer
 //---------------------------------------------------------------------- */
-void ScreeningOfficer(int i){
+void ScreeningOfficer(){
+	int i;
+	Acquire(Screening_ID_Lock);	
+	i = Screening_ID;
 	Screen[i].number = i;
+	Screening_ID++;
+	Release(Screening_ID_Lock);
+	
 	Acquire(ScreenLines);
 	Screen[i].IsBusy = false;		/* Set Officer to available */
 	Release(ScreenLines);
@@ -817,7 +858,14 @@ void Screening_DoWork(int n){
 /*----------------------------------------------------------------------
 // Security Officer
 //---------------------------------------------------------------------- */
-void SecurityOfficer(int i){
+void SecurityOfficer(){
+	int i;
+	Acquire(Security_ID_Lock);	
+	i = Security_ID;
+	Security[i].number = i;
+	Security_ID++;
+	Release(Security_ID_Lock);
+	
 	Security[i].number = i;
 	Acquire(SecurityAvail);
 	SecurityAvailability[i] = true;
@@ -1027,6 +1075,12 @@ void setupBaggageAndCargo(int airlineCount) {
 }
 
 void setupSingularLocks() {
+	Passenger_ID_Lock = CreateLock("");
+	Liaison_ID_Lock = CreateLock("");
+	CheckIn_ID_Lock = CreateLock("");
+	Screening_ID_Lock = CreateLock("");
+	Security_ID_Lock = CreateLock("");
+	Cargo_ID_Lock = CreateLock("");
 	liaisonLineLock = CreateLock("Liaison Line Lock");
 	CheckInLock = CreateLock("CheckIn Line Lock");
 	ScreenLines = CreateLock("Screen Line Lock");
@@ -1076,23 +1130,23 @@ void main() {
 	Fork(AirportManager());	
 
 	for(i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
-		Fork(CheckInOfficer(i));
+		Fork(CheckInOfficer());
 	}
 	
 	for(i = 0; i < simNumOfLiaisons; i++) {
-		Fork(LiaisonOfficer(i));
+		Fork(LiaisonOfficer());
 	}
 	
 	for(i = 0; i < simNumOfScreeningOfficers; i++) {
-		Fork(ScreeningOfficer(i));
-		Fork(ScreeningOfficer(i));
+		Fork(ScreeningOfficer());
+		Fork(SecurityOfficer());
 	}
 	
 	for(i = 0; i < simNumOfCargoHandlers; i++) {
-		Fork(CargoHandler(i));
+		Fork(CargoHandler());
 	}
 	
 	for(i = 0; i < simNumOfPassengers; i++) {
-		Fork(Passenger(i));
+		Fork(Passenger());
 	}
 }
