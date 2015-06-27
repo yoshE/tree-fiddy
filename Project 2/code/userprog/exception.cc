@@ -534,8 +534,9 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
 		int x = b % 100;
 		int y = (b-x) / 100;
 		printf(c_buf, a, x, y);
-		
-	}else {
+	}else if (b == -1){
+		printf(c_buf, a);
+	} else {
 		printf(c_buf, a, b);
 	}
 
