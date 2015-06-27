@@ -536,7 +536,9 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
 		printf(c_buf, a, x, y);
 	}else if (b == -1){
 		printf(c_buf, a);
-	} else {
+	} else if (a == -1 && b == -1){
+		printf(c_buf);
+	}else {
 		printf(c_buf, a, b);
 	}
 

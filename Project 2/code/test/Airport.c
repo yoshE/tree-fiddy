@@ -658,6 +658,7 @@ void AirportManager(){
 }
 
 void Manager_DoWork(){
+	int breakCount, y;
 	while(true){
 		/*if the conveyor belt is not empty and cargo people are on break, wake them up */
 		int chCount = 0;
@@ -665,21 +666,25 @@ void Manager_DoWork(){
 		for(i = 0; i < simNumOfCargoHandlers; i++){
 			chCount++;
 		}
-		if(!conveyor.empty() && chCount == MAX_CARGOHANDLERS){
-			Acquire(CargoHandlerLock);
-			int breakCount = 0;
-			for(i = 0; i < simNumOfCargoHandlers; i++){
-				if(cargoHandlers[i].onBreak == 1){
-					breakCount++;
+		
+		for (i = 0; i < PASSENGER_COUNT*2; i++){
+			if(conveyor[i].weight != 0 && chCount == MAX_CARGOHANDLERS){
+				Acquire(CargoHandlerLock);
+				breakCount = 0;
+				for(y = 0; y < simNumOfCargoHandlers; y++){
+					if(cargoHandlers[y].onBreak == 1){
+						breakCount++;
+					}	
 				}
+				if(breakCount == simNumOfCargoHandlers){
+					printf((int)"Airport manager calls back all the cargo handlers from break\n", sizeof("Airport manager calls back all the cargo handlers from break\n"), -1, -1);
+					Broadcast(CargoHandlerCV, CargoHandlerLock);
+					break;
+				}
+				Release(CargoHandlerLock);
 			}
-			if(breakCount == simNumOfCargoHandlers){
-				printf((int)"Airport manager calls back all the cargo handlers from break\n");
-				Broadcast(CargoHandlerCV, CargoHandlerLock);
-			}
-			Release(CargoHandlerLock);
 		}
-
+		
 		for(i = 0; i < simNumOfAirlines; i++){
 			if(boardingLounges[i] == totalPassengersOfAirline[i] && totalBaggage[i] == aircraftBaggageCount[i] && !alreadyBoarded[i]){
 				Acquire(gateLocks[i]);
