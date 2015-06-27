@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles forktest Exec_Test exectest runsim threadtest
+all: halt matmult sort testfiles forktest Exec_Test exectest runsim Airport
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -87,13 +87,13 @@ runsim: runsim.o start.o
 	$(LD) $(LDFLAGS) start.o runsim.o -o runsim.coff
 	../bin/coff2noff runsim.coff runsim
 	
-threadtest.o: threadtest.cc
-	$(CC) $(CFLAGS) -c threadtest.cc
-threadtest: threadtest.o start.o
-	$(LD) $(LDFLAGS) start.o threadtest.o -o threadtest.coff
-	../bin/coff2noff threadtest.coff threadtest
+Airport.o: Airport.cc
+	$(CC) $(CFLAGS) -c Airport.c
+Airport: Airport.o start.o
+	$(LD) $(LDFLAGS) start.o Airport.o -o Airport.coff
+	../bin/coff2noff Airport.coff Airport
 	
 clean:
 	rm -f *.o *.coff
-	rm halt sort matmult testfiles forktest exectest runsim threadtest
+	rm halt sort matmult testfiles forktest exectest runsim Airport
 	rm *~

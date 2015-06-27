@@ -529,9 +529,16 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
 	char* c_buf;
     c_buf=new char[len];
     copyin(vaddr,len,c_buf);
-    
-	printf(c_buf, a, b);
 	
+	if (b > 100){
+		int x = b % 100;
+		int y = (b-x) / 100;
+		printf(c_buf, a, x, y);
+		
+	}else {
+		printf(c_buf, a, b);
+	}
+
     delete c_buf;
     PrintfLock->Release();
 
