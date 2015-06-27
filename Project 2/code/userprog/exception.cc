@@ -534,9 +534,9 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
     c_buf=new char[len];
     copyin(vaddr,len,c_buf);
 	
-	if (b > 100){
+	if (b >= 100){
 		int x = b % 100;
-		int y = (b-x) / 100;
+		int y = (b / 100) - 1;
 		printf(c_buf, a, x, y);
 	}else if (b == -1){
 		printf(c_buf, a);
