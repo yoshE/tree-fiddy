@@ -41,6 +41,7 @@
 #define SC_CreateCV 	 18
 #define SC_DestroyCV 	 19
 #define SC_printf		 20
+#define SC_rand			 21
 
 #define MAXFILENAME 256
 
@@ -153,6 +154,9 @@ void DestroyCV(int j);
 
 /* Syscall for user printf */
 void printf(unsigned int vaddr, int len, int k, int l);
+
+/* Syscall to return a random value */
+int rand();
 
 #endif /* IN_ASM */
 

@@ -225,6 +225,15 @@ III. Design:
 		that all code relating to the acquire, release, wait, signal, and broadcast had to be changed to
 		accommodate the new functionalities. We had to make sure to remember the ints corresponding to each lock
 		and CV and correctly use them in order to remove the possibility of race conditions.
+		
+		Additionally, since we had to change the file into a .c file, we could no longer use classes. Instead, we
+		had to change all the class objects into structs and statically declare them. Additionally, we had to create
+		global locks and ints in order for each thread to understand their number once they were forked. The process
+		of changing all the code into C also meant we had to implement a printf() and a rand() syscall since they 
+		did not exist in C.
+		
+		int rand()
+			This function returns rand() to the user program.
 
 IV. Implementation:
 
@@ -244,11 +253,13 @@ IV. Implementation:
 		threads/threadtest.cc
 		threads/threadtest.h
 		test/start.s
+		test/Airport.s
 
     + Files added
 		test/exectest
 		test/Exec_Test
 		test/forktest
+		test/Airport.c
 
     + Data Structures added, and the file they were added to.
         userprog/system.h
@@ -262,7 +273,7 @@ IV. Implementation:
 			vector<KernelCV>CVTable
             
     + Data Structures modified, and the file they were added to.  
-		threads/threadtest.cc
+		threads/threadtest.cc->Airport.c
 			All vectors were turned into arrays
             
     + Functions added and in which file.
@@ -280,7 +291,8 @@ IV. Implementation:
 			newProcess(int n)
 			Fork_Syscall(int n)
 			Kernel_Run(int n)
-			printf(char* , int, int, int)
+			printf_Syscall(char* , int, int, int)
+			rand_Syscall()
 		test/halt.c
 			testLock()
 			testCV()
@@ -294,7 +306,7 @@ IV. Implementation:
 			ExceptionHandler(ExceptionType which)
 		threads/system.cc
 			Initialize(int, char**)
-		theads/threadtest.cc
+		theads/threadtest.cc -> Airport.c
 			Everything (in order to fit syscall methodology)
 		userprog/addrspace.cc
 			AddrSpace(OpenFile)

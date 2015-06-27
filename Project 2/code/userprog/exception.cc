@@ -242,6 +242,10 @@ void Close_Syscall(int fd) {
     }
 }
 
+int rand_Syscall(){
+	return rand();
+}
+
 void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that corresponds to lock (in their tables)
 	LockTableLock->Acquire();
 	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
@@ -640,6 +644,10 @@ void ExceptionHandler(ExceptionType which) {
 		case SC_printf:
 			DEBUG('a', "printf Syscall.\n");
 			printf_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+			break;
+		case SC_rand:
+			DEBUG('a', "rand Syscall.\n");
+			rv = rand_Syscall();
 			break;
 	}
 

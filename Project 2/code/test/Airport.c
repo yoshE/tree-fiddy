@@ -771,7 +771,7 @@ void EndOfDay(){
 	
 	for(i = 0; i < simNumOfAirlines; i++){
 		printf((int)"From setup: Baggage count of airline %d = %d\n", sizeof("From setup: Baggage count of airline %s = %d\n"), i, totalBaggage[i]);
-		prinf("From airport liaison: Baggage count of airline %d = %d\n", sizeof("From airport liaison: Baggage count of airline %d = %d\n"), i, simAirportManager.LiaisonTotalCount[i]);
+		printf((int)"From airport liaison: Baggage count of airline %d = %d\n", sizeof("From airport liaison: Baggage count of airline %d = %d\n"), i, simAirportManager.LiaisonTotalCount[i]);
 		printf((int)"From cargo handlers: Baggage count of airline %d = %d\n", sizeof("From cargo handlers: Baggage count of airline %d = %d\n"), i, simAirportManager.CargoHandlerTotalCount[i]);
 		printf((int)"From setup: Baggage weight of airline %d = %d\n", sizeof("From setup: Baggage weight of airline %d = %d\n"), i, totalWeight[i]);
 		printf((int)"From airline check-in staff: Baggage weight of airline %d = %d\n", sizeof("From airline check-in staff: Baggage weight of airline %d = %d\n"), i, simAirportManager.CIOTotalWeight[i]);
@@ -964,9 +964,9 @@ void setupAirlines(int airlineCount) {
 	for (i = 0; i < airlineCount; i++){
 		/* LiaisonSeat[i] = AIRLINE_SEAT; */
 		gateLocks[i] = CreateLock("Gate Lock");
-		gateLocksCV[i] = CreateCondition("Gate CV");
+		gateLocksCV[i] = CreateCV("Gate CV");
 		execLineLocks[i] = CreateLock("Exec Line Lock");
-		execLineCV[i] = CreateCondition("Exec Line CV");
+		execLineCV[i] = CreateCV("Exec Line CV");
 	}
 	
 	for (i = 0; i < airlineCount * AIRLINE_SEAT; i++){
@@ -983,12 +983,13 @@ void createPassengers(int quantity) {
 }
 
 void createLiaisons(int quantity) {
-	LiaisonOfficer_t x;
 	int i;
+	LiaisonOfficer_t x;
+
 	for(i = 0; i < quantity; i++) {
 		liaisonLine[i] = 0;
-		liaisonLineCV[i] = CreateCondition("Liaison Line CV " + i);
-		liaisonOfficerCV[i] = CreateCondition("Liaison Officer CV " + 1);
+		liaisonLineCV[i] = CreateCV("Liaison Line CV " + i);
+		liaisonOfficerCV[i] = CreateCV("Liaison Officer CV " + 1);
 		liaisonLineLocks[i] = CreateLock("Liaison Line Lock " + i);
 		liaisonOfficers[i] = x;
 		simLiaisons[i] = liaisonOfficers[i];
@@ -1000,9 +1001,9 @@ void setupEconomyCIOs(int airlineCount, int quantity) {
 	for (i = 0; i < simNumOfAirlines*simNumOfCIOs; i++){
 		CheckInLine[i] = 0;
 		CheckInLocks[i] = CreateLock("CheckIn Officer Lock");
-		CheckInBreakCV[i] = CreateCondition("CheckIn Break Time CV");
-		CheckInCV[i] = CreateCondition("CheckIn Line CV");
-		CheckInOfficerCV[i] = CreateCondition("CheckIn Officer CV");
+		CheckInBreakCV[i] = CreateCV("CheckIn Break Time CV");
+		CheckInCV[i] = CreateCV("CheckIn Line CV");
+		CheckInOfficerCV[i] = CreateCV("CheckIn Officer CV");
 	}
 }
 
@@ -1011,7 +1012,7 @@ void setupExecutiveCIOs(int airlineCount, int quantity) {
 	for(i = simNumOfAirlines*simNumOfCIOs; i < simNumOfAirlines*simNumOfCIOs + simNumOfAirlines; i++) {
 		CheckInLine[i] = 0;
 		CheckInLocks[i] = CreateLock("CheckIn Officer Lock");
-		CheckInCV[i] = CreateCondition("CheckIn Line CV");
+		CheckInCV[i] = CreateCV("CheckIn Line CV");
 	}
 }
 
@@ -1036,11 +1037,11 @@ void createSecurityAndScreen(int quantity) {
 		SecurityLine[i] = 0;
 		Security[i] = x;
 		Screen[i] = y;
-		ScreenOfficerCV[i] = CreateCondition("Screen Officer CV");
-		SecurityOfficerCV[i] = CreateCondition("Security Officer CV");
+		ScreenOfficerCV[i] = CreateCV("Screen Officer CV");
+		SecurityOfficerCV[i] = CreateCV("Security Officer CV");
 		ScreenLocks[i] = CreateLock("Screen Lock");
 		SecurityLocks[i] = CreateLock("Security Lock");
-		SecurityLineCV[i] = CreateCondition("Security line CV");
+		SecurityLineCV[i] = CreateCV("Security line CV");
 		simScreeningOfficers[i] = Screen[i];
 		simSecurityOfficers[i] = Security[i];
 	}
@@ -1049,7 +1050,7 @@ void createSecurityAndScreen(int quantity) {
 		SecurityAvailability[i] = true;
 	}
 	
-	ScreenLineCV[0] = CreateCondition("Screen Line CV");
+	ScreenLineCV[0] = CreateCV("Screen Line CV");
 }
 
 void createCargoHandlers(int quantity) {
@@ -1068,7 +1069,7 @@ void setupBaggageAndCargo(int airlineCount) {
 		AirlineBaggage[i] = CreateLock("Airline Baggage Lock");
 	}
 	CargoHandlerLock = CreateLock("Cargo Handler Lock");
-	CargoHandlerCV = CreateCondition("Cargo Handler CV ");
+	CargoHandlerCV = CreateCV("Cargo Handler CV ");
 	for(i = 0; i < PASSENGER_COUNT*2; i++){
 		conveyor[i] = x;  
 	}
@@ -1092,9 +1093,7 @@ void setupSingularLocks() {
 	SecurityLines = CreateLock("Security Line Lock");
 }
 
-void RunSim(){
-	srand (time(0));
-	
+void RunSim(){	
 	createAirportManager();
 	setupAirlines(simNumOfAirlines);
 	setupSingularLocks();
@@ -1127,26 +1126,26 @@ void main() {
 	
 	RunSim();	/* Sets up CVs and Locks */
 
-	Fork(AirportManager());	
+	Fork(AirportManager);	
 
 	for(i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
-		Fork(CheckInOfficer());
+		Fork(CheckInOfficer);
 	}
 	
 	for(i = 0; i < simNumOfLiaisons; i++) {
-		Fork(LiaisonOfficer());
+		Fork(LiaisonOfficer);
 	}
 	
 	for(i = 0; i < simNumOfScreeningOfficers; i++) {
-		Fork(ScreeningOfficer());
-		Fork(SecurityOfficer());
+		Fork(ScreeningOfficer);
+		Fork(SecurityOfficer);
 	}
 	
 	for(i = 0; i < simNumOfCargoHandlers; i++) {
-		Fork(CargoHandler());
+		Fork(CargoHandler);
 	}
 	
 	for(i = 0; i < simNumOfPassengers; i++) {
-		Fork(Passenger());
+		Fork(Passenger);
 	}
 }

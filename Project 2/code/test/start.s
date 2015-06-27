@@ -212,6 +212,14 @@ printf:
 	syscall
 	j $31
 	.end printf
+	
+	.globl rand
+	.ent rand
+rand:
+	addiu $2,$0,SC_rand
+	syscall
+	j $31
+	.end rand
 
 /* dummy function to keep gcc happy */
         .globl  __main
