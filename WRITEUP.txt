@@ -345,8 +345,16 @@ VI. Discussion:
 		should run with no errors or bugs.
             
     + Experiment result.
+		All 'agents' are created and running properly in their own threads. Passengers
+		correctly choose the liaison lines. Then there a minor bug at this point, and the
+		simulation does not proceed.
     
     + Explanation
+		A 100% successful conversion of the airport simulation was not achieved. The vast
+		majority of the code is able to work still, but there is a rather odd bug occurring
+		in the early portion of the liaison officer's behavior. The exact cause is known to
+		be caused by the liaison's line count not being incremented correctly, but an
+		acceptable solution was not found in time.
 
 VII. Miscellaneous:
     Our Part 1 was extremely buggy and prone to race conditions and failures. As such,
