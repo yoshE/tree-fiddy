@@ -23,6 +23,8 @@
 
 void SimpleThread(int which);
 void ThreadTest();
+void AirportTests();
+void RunSim();
 
 //----------------------------------------------------------------------
 // Arrays, Lists, and Vectors

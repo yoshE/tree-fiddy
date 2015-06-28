@@ -87,7 +87,7 @@ runsim: runsim.o start.o
 	$(LD) $(LDFLAGS) start.o runsim.o -o runsim.coff
 	../bin/coff2noff runsim.coff runsim
 	
-Airport.o: Airport.cc
+Airport.o: Airport.c
 	$(CC) $(CFLAGS) -c Airport.c
 Airport: Airport.o start.o
 	$(LD) $(LDFLAGS) start.o Airport.o -o Airport.coff
