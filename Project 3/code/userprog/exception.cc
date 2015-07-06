@@ -556,109 +556,111 @@ void ExceptionHandler(ExceptionType which) {
     int rv=0; 	// the return value from a syscall
 
     if ( which == SyscallException ) {
-	switch (type) {
-	    default:
-			DEBUG('a', "Unknown syscall - shutting down.\n");
-			break;
-	    case SC_Halt:
-			DEBUG('a', "Shutdown, initiated by user program.\n");
-			interrupt->Halt();
-			break;
-	    case SC_Create:
-			DEBUG('a', "Create syscall.\n");
-			Create_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-			break;
-	    case SC_Open:
-			DEBUG('a', "Open syscall.\n");
-			rv = Open_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-			break;
-	    case SC_Write:
-			DEBUG('a', "Write syscall.\n");
-			Write_Syscall(machine->ReadRegister(4),
-					  machine->ReadRegister(5),
-					  machine->ReadRegister(6));
-			break;
-	    case SC_Read:
-			DEBUG('a', "Read syscall.\n");
-			rv = Read_Syscall(machine->ReadRegister(4),
-					  machine->ReadRegister(5),
-					  machine->ReadRegister(6));
-			break;
-	    case SC_Close:
-			DEBUG('a', "Close syscall.\n");
-			Close_Syscall(machine->ReadRegister(4));
-			break;
-		case SC_Exec:
-			DEBUG('a', "Exec syscall.\n");
-			rv = Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
-			break;
-		case SC_Fork:
-			DEBUG('a', "Fork syscall.\n");
-			Fork_Syscall(machine->ReadRegister(4));
-			break;
-		case SC_Exit:
-			Exit_Syscall(machine->ReadRegister(4));
-			break;
-		case SC_Yield:						// Causes the current Thread to yield
-			DEBUG('a', "Yield Thread.\n");
-			currentThread->Yield();
-			break;
-		case SC_Acquire:		// Syscall for Acquire
-			DEBUG('a', "AcquireKernel_Lock Syscall.\n");
-			Acquire_Syscall(machine->ReadRegister(4));		// Calls Acquire_Syscall with entered parameter (int)
-			break;
-		case SC_Release:		// Syscall for Release
-			DEBUG('a', "ReleaseKernel_Lock Syscall.\n");
-			Release_Syscall(machine->ReadRegister(4));		// Call Release_Syscall with entered parameter (int)
-			break;
-		case SC_Wait:		// Syscall for Wait
-			DEBUG('a', "Wait for CV Syscall.\n");
-			Wait_Syscall(machine->ReadRegister(4),		
-						 machine->ReadRegister(5));		// Calls Wait_Syscall with entered parameter (int, int)
-			break;
-		case SC_Signal:		// Syscall for Signal
-			DEBUG('a', "Signal for CV Syscall.\n");
-			Signal_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));		// Calls Signal_Syscall with entered parameters (int, int)
-			break;
-		case SC_Broadcast:		// Syscall for Broadcast
-			DEBUG('a', "Broadcast for CV Syscall.\n");
-			Broadcast_Syscall(machine->ReadRegister(4),
-							  machine->ReadRegister(5));		// Calls Broadcast_Syscall with entered parameters (int, int)
-			break;
-		case SC_CreateLock:		// Syscall for creating locks
-			DEBUG('a', "Create Lock Syscall.\n");
-			rv = CreateLock_Syscall((char*)machine->ReadRegister(4));		// Calls CreateLock_Syscall with no parameters
-			break;
-		case SC_DestroyLock:		// Syscall for deleting locks
-			DEBUG('a', "Destroy Lock Syscall.\n");
-			DestroyLock_Syscall(machine->ReadRegister(4));		// Calls DestroyLock_Syscall with entered parameters (int)
-			break;
-		case SC_CreateCV:		// Syscall for creating CVs
-			DEBUG('a', "Create CV Syscall.\n");
-			rv = CreateCV_Syscall((char*)machine->ReadRegister(4));		// Calls CreateCV_Syscall with entered parameters (int)
-			break;
-		case SC_DestroyCV:		// Syscall for destroying CVs
-			DEBUG('a', "Destroy CV Syscall.\n");
-			DestroyCV_Syscall(machine->ReadRegister(4));		// Calls DestroyCV_Syscall with entered parameters (int)
-			break;
-		case SC_printf:
-			DEBUG('a', "printf Syscall.\n");
-			printf_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
-			break;
-		case SC_rand:
-			DEBUG('a', "rand Syscall.\n");
-			rv = rand_Syscall();
-			break;
-	}
-
-	// Put in the return value and increment the PC
-	machine->WriteRegister(2,rv);
-	machine->WriteRegister(PrevPCReg,machine->ReadRegister(PCReg));
-	machine->WriteRegister(PCReg,machine->ReadRegister(NextPCReg));
-	machine->WriteRegister(NextPCReg,machine->ReadRegister(PCReg)+4);
-	return;
-    } else {
+		switch (type) {
+			default:
+				DEBUG('a', "Unknown syscall - shutting down.\n");
+				break;
+			case SC_Halt:
+				DEBUG('a', "Shutdown, initiated by user program.\n");
+				interrupt->Halt();
+				break;
+			case SC_Create:
+				DEBUG('a', "Create syscall.\n");
+				Create_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+				break;
+			case SC_Open:
+				DEBUG('a', "Open syscall.\n");
+				rv = Open_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+				break;
+			case SC_Write:
+				DEBUG('a', "Write syscall.\n");
+				Write_Syscall(machine->ReadRegister(4),
+				  machine->ReadRegister(5),
+				  machine->ReadRegister(6));
+				break;
+			case SC_Read:
+				DEBUG('a', "Read syscall.\n");
+				rv = Read_Syscall(machine->ReadRegister(4),
+				  machine->ReadRegister(5),
+				  machine->ReadRegister(6));
+				break;
+			case SC_Close:
+				DEBUG('a', "Close syscall.\n");
+				Close_Syscall(machine->ReadRegister(4));
+				break;
+			case SC_Exec:
+				DEBUG('a', "Exec syscall.\n");
+				rv = Exec_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+				break;
+			case SC_Fork:
+				DEBUG('a', "Fork syscall.\n");
+				Fork_Syscall(machine->ReadRegister(4));
+				break;
+			case SC_Exit:
+				Exit_Syscall(machine->ReadRegister(4));
+				break;
+			case SC_Yield:						// Causes the current Thread to yield
+				DEBUG('a', "Yield Thread.\n");
+				currentThread->Yield();
+				break;
+			case SC_Acquire:		// Syscall for Acquire
+				DEBUG('a', "AcquireKernel_Lock Syscall.\n");
+				Acquire_Syscall(machine->ReadRegister(4));		// Calls Acquire_Syscall with entered parameter (int)
+				break;
+			case SC_Release:		// Syscall for Release
+				DEBUG('a', "ReleaseKernel_Lock Syscall.\n");
+				Release_Syscall(machine->ReadRegister(4));		// Call Release_Syscall with entered parameter (int)
+				break;
+			case SC_Wait:		// Syscall for Wait
+				DEBUG('a', "Wait for CV Syscall.\n");
+				Wait_Syscall(machine->ReadRegister(4),		
+							 machine->ReadRegister(5));		// Calls Wait_Syscall with entered parameter (int, int)
+				break;
+			case SC_Signal:		// Syscall for Signal
+				DEBUG('a', "Signal for CV Syscall.\n");
+				Signal_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));		// Calls Signal_Syscall with entered parameters (int, int)
+				break;
+			case SC_Broadcast:		// Syscall for Broadcast
+				DEBUG('a', "Broadcast for CV Syscall.\n");
+				Broadcast_Syscall(machine->ReadRegister(4),
+								  machine->ReadRegister(5));		// Calls Broadcast_Syscall with entered parameters (int, int)
+				break;
+			case SC_CreateLock:		// Syscall for creating locks
+				DEBUG('a', "Create Lock Syscall.\n");
+				rv = CreateLock_Syscall((char*)machine->ReadRegister(4));		// Calls CreateLock_Syscall with no parameters
+				break;
+			case SC_DestroyLock:		// Syscall for deleting locks
+				DEBUG('a', "Destroy Lock Syscall.\n");
+				DestroyLock_Syscall(machine->ReadRegister(4));		// Calls DestroyLock_Syscall with entered parameters (int)
+				break;
+			case SC_CreateCV:		// Syscall for creating CVs
+				DEBUG('a', "Create CV Syscall.\n");
+				rv = CreateCV_Syscall((char*)machine->ReadRegister(4));		// Calls CreateCV_Syscall with entered parameters (int)
+				break;
+			case SC_DestroyCV:		// Syscall for destroying CVs
+				DEBUG('a', "Destroy CV Syscall.\n");
+				DestroyCV_Syscall(machine->ReadRegister(4));		// Calls DestroyCV_Syscall with entered parameters (int)
+				break;
+			case SC_printf:
+				DEBUG('a', "printf Syscall.\n");
+				printf_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6), machine->ReadRegister(7));
+				break;
+			case SC_rand:
+				DEBUG('a', "rand Syscall.\n");
+				rv = rand_Syscall();
+				break;
+		}		
+		// Put in the return value and increment the PC
+		machine->WriteRegister(2,rv);
+		machine->WriteRegister(PrevPCReg,machine->ReadRegister(PCReg));
+		machine->WriteRegister(PCReg,machine->ReadRegister(NextPCReg));
+		machine->WriteRegister(NextPCReg,machine->ReadRegister(PCReg)+4);
+	} else if(which == PageFaultException){
+		int currentVPN = machine->ReadRegister(BadVAddrReg)/PageSize;
+		currentThread->space->PopulateTLB(currentVPN);
+	} else {
       cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
       interrupt->Halt();
     }
+	return;
 }
