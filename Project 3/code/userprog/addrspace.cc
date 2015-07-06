@@ -259,7 +259,7 @@ void AddrSpace::RestoreState()
     machine->pageTableSize = numPages;
 	
 	int i = 0;
-	IntState oldLevel = interrupt->SetLevel(IntOff);
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);
 	for (i = 0; i < TLBSize; i++){
 		machine->tlb[i].valid = false;
 	}
