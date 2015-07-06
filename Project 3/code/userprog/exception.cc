@@ -655,6 +655,7 @@ void ExceptionHandler(ExceptionType which) {
 		machine->WriteRegister(PrevPCReg,machine->ReadRegister(PCReg));
 		machine->WriteRegister(PCReg,machine->ReadRegister(NextPCReg));
 		machine->WriteRegister(NextPCReg,machine->ReadRegister(PCReg)+4);
+		return;
 	} else if(which == PageFaultException){
 		int currentVPN = machine->ReadRegister(BadVAddrReg)/PageSize;
 		currentThread->space->PopulateTLB(currentVPN);
@@ -662,5 +663,4 @@ void ExceptionHandler(ExceptionType which) {
       cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
       interrupt->Halt();
     }
-	return;
 }
