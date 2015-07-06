@@ -40,6 +40,8 @@ class AddrSpace {
     Table fileTable;			// Table of openfiles
 	
 	int getNumPages() { return (numPages); }
+	
+	void PopulateTLB(int currentVPN);
 
  private:
     TranslationEntry *pageTable;	// Assume linear page table translation

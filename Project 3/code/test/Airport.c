@@ -202,7 +202,7 @@ int alreadyBoarded[MAX_AIRLINES];
 int execLineNeedsHelp[MAX_AIRLINES];
 
 int simNumOfPassengers;
-int simNumOfAirlines;
+int simNumOfAirlines ;
 int simNumOfLiaisons;
 int simNumOfCIOs;
 int simNumOfCargoHandlers;
@@ -1100,12 +1100,6 @@ void RunSim(){
 
 void main() {
 	int i;
-
-	for(i = 0; i < simNumOfAirlines; i++) {
-		liaisonBaggageCount[i] = 0;
-		ticketsIssued[i] = 0;
-		alreadyBoarded[i] = false;
-	}
 	
 	simNumOfPassengers = PASSENGER_COUNT;
 	simNumOfCargoHandlers = MAX_CARGOHANDLERS;
@@ -1113,6 +1107,12 @@ void main() {
 	simNumOfCIOs = MAX_CIOS;
 	simNumOfLiaisons = MAX_LIAISONS;
 	simNumOfScreeningOfficers = MAX_SCREEN;
+	
+	for(i = 0; i < simNumOfAirlines; i++) {
+		liaisonBaggageCount[i] = 0;
+		ticketsIssued[i] = 0;
+		alreadyBoarded[i] = false;
+	}
 	
 	RunSim();	/* Sets up CVs and Locks */
 

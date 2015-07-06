@@ -10,7 +10,7 @@
  *	be careful to allocate a big enough stack to hold the automatics! 
  */
 
-#include "syscall.h"
+#include "../userprog/syscall.h"
 int a[3];
 int b, c, d, e;
 
@@ -29,7 +29,7 @@ int testLock(){
 	b = CreateLock("");
 	if(b >= 0){
 		/* Tests the printf Syscall! */
-		printf(" Testing lock creation...Success(This was printed with printf syscall)\n", sizeof(" Testing lock creation...Success(This was printed with printf syscall)\n"),0,0);
+		printf((int)" Testing lock creation...Success(This was printed with printf syscall)\n", sizeof(" Testing lock creation...Success(This was printed with printf syscall)\n"),0,0);
 	} else {
 		Write(" Testing lock creation...Fail\n", sizeof(" Testing lock creation...Fail\n"), ConsoleOutput );
 	}

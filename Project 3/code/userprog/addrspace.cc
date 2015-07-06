@@ -181,6 +181,28 @@ AddrSpace::~AddrSpace()
 }
 
 //----------------------------------------------------------------------
+// AddrSpace::PopulateTLB
+// 	populate the TLB from pageTable
+//----------------------------------------------------------------------
+
+int currentTLBIndex = 0;
+void AddrSpace::PopulateTLB(int n){
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);
+	currentTLBIndex = (currentTLBIndex + 1) % TLBSize;
+	
+	machine->tlb[currentTLBIndex].virtualPage = pageTable[n].virtualPage;
+	machine->tlb[currentTLBIndex].virtualPage = pageTable[n].virtualPage;
+	machine->tlb[currentTLBIndex].physicalPage = pageTable[n].physicalPage;
+	machine->tlb[currentTLBIndex].valid = pageTable[n].valid;
+	machine->tlb[currentTLBIndex].use = pageTable[n].use;
+	machine->tlb[currentTLBIndex].dirty = pageTable[n].dirty;
+	machine->tlb[currentTLBIndex].readOnly = pageTable[n].readOnly;
+	interrupt->SetLevel(oldLevel);
+}
+
+
+
+//----------------------------------------------------------------------
 // AddrSpace::InitRegisters
 // 	Set the initial values for the user-level register set.
 //
@@ -235,4 +257,11 @@ void AddrSpace::RestoreState()
 {
     machine->pageTable = pageTable;
     machine->pageTableSize = numPages;
+	
+	int i = 0;
+	IntState oldLevel = interrupt->SetLevel(IntOff);
+	for (i = 0; i < TLBSize; i++){
+		machine->tlb[i].valid = false;
+	}
+	interrupt->SetLevel(oldLevel);
 }
