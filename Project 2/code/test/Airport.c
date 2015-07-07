@@ -246,6 +246,8 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 	printf((int)"Passenger %d chose Liaison %d with a line of length %d\n", sizeof("Passenger %d chose Liaison %d with a line of length %d\n"), name, simPassengers[name].myLine + (100 * liaisonLine[simPassengers[name].myLine] + 100));		/* OFFICIAL OUTPUT STATEMENT */
 	
 	liaisonLine[simPassengers[name].myLine] += 1;		/* Increment size of line you join*/
+	printf("my line = %d\n", sizeof("my line = %d\n"), simPassengers[name].myLine, 0);
+	printf("size of my line = %d\n", sizeof("size of my line = %d\n"), liaisonLine[simPassengers[name].myLine], 0);
 	Wait(liaisonLineCV[simPassengers[name].myLine], liaisonLineLock);
 	Release(liaisonLineLock);		/* Release the lock you acquired from waking up */
 	Acquire(liaisonLineLocks[simPassengers[name].myLine]); /* New lock needed for liaison interaction */
@@ -449,15 +451,15 @@ int Liaison_getAirlineBaggageCount(int n){ /* For manager to get passenger bag c
 }
 
 void Liaison(){
-	int name;
-	Acquire(Liaison_ID_Lock);	
-	name = Liaison_ID;
-	liaisonOfficers[name].number = name;
-	Liaison_ID++;
+	int* name = 0;
+	Acquire(Liaison_ID_Lock);
+	*name = Liaison_ID++;
+	liaisonOfficers[name].number = *name;
 	Release(Liaison_ID_Lock);
-	while(true){		/* Always be running, never go on break */
+	
+	while(true) {/* Always be running, never go on break */
 		Acquire(liaisonLineLock);		/* Acquire lock for lining up in order to see if there is someone waiting in your line */
-		if (liaisonLine[name] > 0){		/* Check if passengers are in your line */
+		if (liaisonLine[*name] > 0){		/* Check if passengers are in your line */
 			Signal(liaisonLineCV[name], liaisonLineLock);		/* Signal them if there are */
 			Acquire(liaisonLineLocks[name]);		
 			Release(liaisonLineLock);
@@ -470,7 +472,7 @@ void Liaison(){
 				liaisonOfficers[name].airline = rand() % simNumOfAirlines;
 				if (ticketsIssued[liaisonOfficers[name].airline] < totalPassengersOfAirline[liaisonOfficers[name].airline]){
 					ticketsIssued[liaisonOfficers[name].airline] += 1;
-					break;
+					/*break*/
 				}
 			}
 			liaisonOfficers[name].airlineBaggageCount[liaisonOfficers[name].airline] += LPInfo[liaisonOfficers[name].number].baggageCount;
@@ -487,7 +489,7 @@ void Liaison(){
 			Release(liaisonLineLock); /*if there are no passengers in line, release */
 			Yield();
 			if(planeCount == simNumOfAirlines){
-				break;
+				/*break*/
 			}
 		}
 		Yield();
