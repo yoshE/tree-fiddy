@@ -40,6 +40,8 @@ Lock* PrintfLock = new Lock("");
 Lock* LockTableLock = new Lock("");		// Lock for accessing the LockTable
 Lock* CVTableLock = new Lock("");		// Lock for accessing the CVTable
 
+bool populateTLBFromIPT(int currentVPN);
+
 int copyin(unsigned int vaddr, int len, char *buf) {
     // Copy len bytes from the current thread's virtual address vaddr.
     // Return the number of bytes so read, or -1 if an error occors.
@@ -658,7 +660,10 @@ void ExceptionHandler(ExceptionType which) {
 		return;
 	} else if(which == PageFaultException){
 		int currentVPN = machine->ReadRegister(BadVAddrReg)/PageSize;
-		currentThread->space->PopulateTLB(currentVPN);
+		
+		if(!PopulateTLB_IPT(currentVPN)){
+			currentThread->space->PopulateTLB(currentVPN);
+		}
 	} else {
       cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
       interrupt->Halt();

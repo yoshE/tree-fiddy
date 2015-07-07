@@ -23,8 +23,18 @@
 #include "synch.h"
 
 extern BitMap *memMap;
+extern Lock *iptLock;	//IPT lock
 
 extern "C" { int bzero(char *, int); };
+
+class IPT:public TranslationEntry {
+    public:
+        AddrSpace *space;// addrspace class pointer to identify process
+		
+	IPT(){}
+};
+
+IPT *ipt = new IPT[NumPhysPages]; //ipt is created.
 
 Table::Table(int s) : map(s), table(0), lock(0), size(s) {
     table = new void *[size];
@@ -200,7 +210,54 @@ void AddrSpace::PopulateTLB(int n){
 	interrupt->SetLevel(oldLevel);
 }
 
+//----------------------------------------------------------------------
+// AddrSpace::PopulateTLB_IPT
+// 	populate the TLB from IPT
+//----------------------------------------------------------------------
 
+bool PopulateTLBFromIPT(int currentVPN){
+	int i=0; 
+	bool foundInIPT = false;
+	int physicalPage = -1;
+
+	iptLock -> Acquire();		// Acquire IPT lock
+	for(i=0; i<NumPhysPages; i++){		// Search IPT if required vpn entry is in page table or not
+		// Check if there is a valid, currently unused, and same process entry required vpn in IPT
+		if( ipt[i].virtualPage == currentVPN && ipt[i].valid == TRUE && ipt[i].use == FALSE && ipt[i].space == currentThread->space){
+			physicalPage = i;			// If it exists, that ppn is used
+			ipt[i].use = TRUE; 			// Use bit is set to true
+			foundInIPT = true;
+			break;
+		}
+	}
+	iptLock -> Release(); 
+
+	// If there is a IPT miss
+	if(physicalPage == -1){
+		physicalPage = currentThread->space->handleIPTMiss(currentVPN);		// Handle IPT miss NEED TO IMPLEMENT
+	} else {		// Populate TLB from IPT
+		foundInIPT = true;
+		IntStatus oldLevel = interrupt->SetLevel(IntOff);		// Turn off interrupts
+		currentTLBIndex = (currentTLBIndex + 1)% TLBSize;		// Current index is moved to next location
+
+		if(machine->tlb[currentTLBIndex].valid == TRUE){		// If TLB index is valid
+			ipt[machine->tlb[currentTLBIndex].physicalPage].dirty = machine->tlb[currentTLBIndex].dirty;		//Propagate Dirty Bit
+		}
+
+		machine->tlb[currentTLBIndex].virtualPage = ipt[physicalPage].virtualPage;
+		machine->tlb[currentTLBIndex].physicalPage = ipt[physicalPage].physicalPage;
+		machine->tlb[currentTLBIndex].valid = ipt[physicalPage].valid;
+		machine->tlb[currentTLBIndex].use = FALSE;
+		machine->tlb[currentTLBIndex].dirty = ipt[physicalPage].dirty;
+		machine->tlb[currentTLBIndex].readOnly = ipt[physicalPage].readOnly;
+		interrupt->SetLevel(oldLevel);		// Turn Interrupts back on
+	}
+	
+	iptLock -> Acquire();
+	ipt[physicalPage].use = FALSE;
+	iptLock -> Release(); 
+	return foundInIPT;
+}
 
 //----------------------------------------------------------------------
 // AddrSpace::InitRegisters
