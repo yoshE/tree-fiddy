@@ -210,6 +210,34 @@ void AddrSpace::PopulateTLB(int n){
 	interrupt->SetLevel(oldLevel);
 }
 
+void handleIPTMiss(int currentVPN) {
+	memoryLock->Acquire();
+	int pageIndex = memory->Find(currentVPN);
+	memoryLock->Release();
+	
+	// Assuming page is available
+	TranslationEntry** table = currentThread->space->pageTable;
+	
+	table[currentVPN].physicalPage = pageIndex;
+	table[currentVPN].valid = true;
+	
+	if(false) {		// todo: if requires executable
+		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table[currentVPN].byteOffset);
+		ipt[pageIndex].dirty = false;
+	} else {
+		iptLock->Acquire();
+		ipt[pageIndex].physicalPage = pageIndex;
+		ipt[pageIndex].virtualPage = currentVPN;
+		ipt[pageIndex].use = true;
+		ipt[pageIndex].valid = true;
+		ipt[pageIndex].readOnly = table[currentVPN].readOnly;
+		ipt[pageIndex].space = currentThread->space;
+		iptLock->Release();
+	}
+	
+	return pageIndex;
+}
+
 //----------------------------------------------------------------------
 // AddrSpace::PopulateTLB_IPT
 // 	populate the TLB from IPT

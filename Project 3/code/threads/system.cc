@@ -21,6 +21,7 @@ Timer *timer;				// the hardware timer device,
 					
 Table *processTable;
 BitMap *memMap;
+Lock *memoryLock;			// for memory bitmap
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;

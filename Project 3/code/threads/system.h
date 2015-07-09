@@ -52,8 +52,9 @@ extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
 
-extern Table *processTable;		// Table of process'
+extern Table *processTable;		// Table of processes
 extern BitMap *memMap;		// BitMap of available pages for user programs
+extern BitMap *memory;			// BitMap for representing availability of memory
 
 #ifdef USER_PROGRAM
 #include "machine.h"
