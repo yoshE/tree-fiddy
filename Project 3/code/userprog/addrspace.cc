@@ -210,36 +210,54 @@ void AddrSpace::PopulateTLB(int n){
 	interrupt->SetLevel(oldLevel);
 }
 
-void handleIPTMiss(int currentVPN) {
+//----------------------------------------------------------------------
+// AddrSpace::handleIPTMiss
+// 	populate the TLB from pageTable
+//----------------------------------------------------------------------
+
+int AddrSpace::handleIPTMiss(int currentVPN) {
 	memoryLock->Acquire();
 	int pageIndex = memory->Find(currentVPN);
 	memoryLock->Release();
 	
-	// Assuming page is available
+	if (pageIndex == -1){
+		pageIndex = Evict_IPT(currentVPN); // TODO: Create Evict_IPT
+	}else {
+		iptLock->Acquire();			
+		ipt[nextAvailablePage].use = true;		//page is made to be use
+		if(replacementPolicy == 1){		// If fifo is in use as a page replacement policy then 
+			// TODO: Find way to place page into queue
+		}
+		iptLock->Release();
+	}
+	
+	// TODO: Create Lock for this portion (accessing pageTable inside addrspace)
 	TranslationEntry** table = currentThread->space->pageTable;
 	
 	table[currentVPN].physicalPage = pageIndex;
 	table[currentVPN].valid = true;
 	
-	if(false) {		// todo: if requires executable
+	if(something = EXECUTABLE) {		// TODO: if requires executable
 		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table[currentVPN].byteOffset);
 		ipt[pageIndex].dirty = false;
 	} else {
-		iptLock->Acquire();
-		ipt[pageIndex].physicalPage = pageIndex;
-		ipt[pageIndex].virtualPage = currentVPN;
-		ipt[pageIndex].use = true;
-		ipt[pageIndex].valid = true;
-		ipt[pageIndex].readOnly = table[currentVPN].readOnly;
-		ipt[pageIndex].space = currentThread->space;
-		iptLock->Release();
+		
 	}
+	
+	iptLock->Acquire();
+	ipt[pageIndex].physicalPage = pageIndex;
+	ipt[pageIndex].virtualPage = currentVPN;
+	ipt[pageIndex].use = true;
+	ipt[pageIndex].valid = true;
+	ipt[pageIndex].readOnly = table[currentVPN].readOnly;
+	ipt[pageIndex].space = currentThread->space;
+	iptLock->Release();
 	
 	return pageIndex;
 }
 
 //----------------------------------------------------------------------
-// AddrSpace::PopulateTLB_IPT
+//  PopulateTLB_IPT
 // 	populate the TLB from IPT
 //----------------------------------------------------------------------
 
@@ -263,23 +281,23 @@ bool PopulateTLBFromIPT(int currentVPN){
 	// If there is a IPT miss
 	if(physicalPage == -1){
 		physicalPage = currentThread->space->handleIPTMiss(currentVPN);		// Handle IPT miss NEED TO IMPLEMENT
-	} else {		// Populate TLB from IPT
-		foundInIPT = true;
-		IntStatus oldLevel = interrupt->SetLevel(IntOff);		// Turn off interrupts
-		currentTLBIndex = (currentTLBIndex + 1)% TLBSize;		// Current index is moved to next location
+	}	// Populate TLB from IPT
+	
+	foundInIPT = true;
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);		// Turn off interrupts
+	currentTLBIndex = (currentTLBIndex + 1)% TLBSize;		// Current index is moved to next location
 
-		if(machine->tlb[currentTLBIndex].valid == TRUE){		// If TLB index is valid
-			ipt[machine->tlb[currentTLBIndex].physicalPage].dirty = machine->tlb[currentTLBIndex].dirty;		//Propagate Dirty Bit
-		}
-
-		machine->tlb[currentTLBIndex].virtualPage = ipt[physicalPage].virtualPage;
-		machine->tlb[currentTLBIndex].physicalPage = ipt[physicalPage].physicalPage;
-		machine->tlb[currentTLBIndex].valid = ipt[physicalPage].valid;
-		machine->tlb[currentTLBIndex].use = FALSE;
-		machine->tlb[currentTLBIndex].dirty = ipt[physicalPage].dirty;
-		machine->tlb[currentTLBIndex].readOnly = ipt[physicalPage].readOnly;
-		interrupt->SetLevel(oldLevel);		// Turn Interrupts back on
+	if(machine->tlb[currentTLBIndex].valid == TRUE){		// If TLB index is valid
+		ipt[machine->tlb[currentTLBIndex].physicalPage].dirty = machine->tlb[currentTLBIndex].dirty;		//Propagate Dirty Bit
 	}
+
+	machine->tlb[currentTLBIndex].virtualPage = ipt[physicalPage].virtualPage;
+	machine->tlb[currentTLBIndex].physicalPage = ipt[physicalPage].physicalPage;
+	machine->tlb[currentTLBIndex].valid = ipt[physicalPage].valid;
+	machine->tlb[currentTLBIndex].use = FALSE;
+	machine->tlb[currentTLBIndex].dirty = ipt[physicalPage].dirty;
+	machine->tlb[currentTLBIndex].readOnly = ipt[physicalPage].readOnly;
+	interrupt->SetLevel(oldLevel);		// Turn Interrupts back on
 	
 	iptLock -> Acquire();
 	ipt[physicalPage].use = FALSE;
