@@ -23,7 +23,13 @@
 #define MaxOpenFiles 256
 #define MaxChildSpaces 256
 
+enum State {EXECUTABLE, EMPTY, SWAP};
 extern BitMap *memMap;		// To ensure addrspace can access memMap
+
+struct pageTableExtend{
+	State state;
+	int pageAddrOffset;
+} pageTableExtend_t;
 
 class AddrSpace {
   public:
@@ -42,10 +48,11 @@ class AddrSpace {
 	int getNumPages() { return (numPages); }
 	
 	void PopulateTLB(int currentVPN);
+	int handleIPTMiss(int currentVPN);
 
  private:
-    TranslationEntry *pageTable;	// Assume linear page table translation
-					// for now!
+    TranslationEntry *pageTable;	// Assume linear page table translation for now!
+	pageTableExtend_t *pageTable2;
     unsigned int numPages;		// Number of pages in the virtual 
 					// address space
 					

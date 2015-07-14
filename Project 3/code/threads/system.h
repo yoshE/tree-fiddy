@@ -56,6 +56,8 @@ extern Table *processTable;		// Table of processes
 extern BitMap *memMap;		// BitMap of available pages for user programs
 extern BitMap *memory;			// BitMap for representing availability of memory
 
+extern List *evictQueue;
+
 #ifdef USER_PROGRAM
 #include "machine.h"
 extern Machine* machine;	// user program memory and registers
