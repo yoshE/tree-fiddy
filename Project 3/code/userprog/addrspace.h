@@ -48,6 +48,8 @@ class AddrSpace {
 					// for now!
     unsigned int numPages;		// Number of pages in the virtual 
 					// address space
+					
+	Lock *pageTableLock;
 };
 
 #endif // ADDRSPACE_H
