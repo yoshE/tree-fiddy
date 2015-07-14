@@ -264,9 +264,9 @@ int Evict_IPT(int currentVPN){
 	swapLock->Release();
 	
 	if(ipt[ppn].dirty){
-		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize); //wrting to swap file
-		ipt[ppn].space->pageTable2[vpn].pageAddrOffset = swapLocation * PageSize; //saving swap file location
-		ipt[ppn].space->pageTable2[vpn].state = SWAP; //changing location of page to swap file
+		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize);		//writing to swap file
+		ipt[ppn].space->pageTable2[vpn].pageAddrOffset = swapLocation * PageSize;		//saving swap file location
+		ipt[ppn].space->pageTable2[vpn].state = SWAP;		//changing location of page to swap file
 	}
 	ipt[ppn].space->pageTableLock->Release();
 	return ppn;
