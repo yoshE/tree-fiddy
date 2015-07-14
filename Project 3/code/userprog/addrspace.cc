@@ -26,13 +26,14 @@ extern BitMap *memMap;
 extern Lock *iptLock;	//IPT lock
 extern Lock *QueueLock;
 extern OpenFile *swapFile;
-exten Lock *swapFileLock;
+extern Lock *swapFileLock;
+extern Lock *memoryLock;
 
 extern "C" { int bzero(char *, int); };
 
 class IPT:public TranslationEntry {
     public:
-        AddrSpace *space;// addrspace class pointer to identify process
+        AddrSpace *space;// address space class pointer to identify process
 		
 	IPT(){}
 };
@@ -132,7 +133,7 @@ SwapHeader (NoffHeader *noffH)
 //      constructed set to false.
 //----------------------------------------------------------------------
 
-AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
+AddrSpace::AddrSpace(OpenFile *tempExecutable) : fileTable(MaxOpenFiles) {
     NoffHeader noffH;
     unsigned int i, size;
 
@@ -141,6 +142,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     fileTable.Put(0);
 	pageTableLock = new Lock("pageTableLock");
 
+	executable = tempExecutable;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
@@ -160,7 +162,7 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 					
 	// first, set up the translation 
     pageTable = new TranslationEntry[numPages];
-	pageTable2 = new pageTableExtend_t[numPages];
+	pageTable2 = new PageTableExtend[numPages];
 	
     for (i = 0; i < numPages; i++) {
 		pageTable[i].virtualPage = i;		// for now, virtual page # = phys page #
@@ -172,9 +174,9 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 		
 		if(i <  divRoundUp(noffH.code.size + noffH.initData.size, PageSize)){	//code and initialize data offset are stored in pagetable, location is set executable
 			pageTable2[i].state = EXECUTABLE;
-			pageTable2[i]. = noffH.code.inFileAddr + (i * PageSize);		//offset in executable;   
+			pageTable2[i].pageAddrOffset = noffH.code.inFileAddr + (i * PageSize);		//offset in executable;   
 		} else {		// this is not in executable, so its offset is not required
-			pageTable2[i].state = NOT_ON_DISK;
+			pageTable2[i].state = EMPTY;
 			pageTable2[i].pageAddrOffset = -1;   
 		} 
    }
@@ -224,14 +226,14 @@ int Evict_IPT(int currentVPN){
 	
 	while(true){
 		QueueLock->Acquire();
-		if(!EvictQueue->IsEmpty()) ppn = (int)EvictQueue->Remove();
+		if(!evictQueue->IsEmpty()) ppn = (int)evictQueue->Remove();
 		QueueLock->Release();
 		
 		if (ppn >= 0){
 			iptLock->Acquire();
 			if (!ipt[ppn].use){
 				ipt[ppn].use = true;
-				if (ipt[ppn].space == currentThread->Space){
+				if (ipt[ppn].space == currentThread->space){
 					IntStatus oldLevel = interrupt->SetLevel(IntOff);
 					for(i = 0; i <= TLBSize; i++){
 						if(machine->tlb[i].valid && ppn == machine->tlb[i].physicalPage){
@@ -245,26 +247,27 @@ int Evict_IPT(int currentVPN){
 				vpn = ipt[ppn].virtualPage;
 				ipt[ppn].virtualPage = currentVPN;
 				QueueLock->Acquire();
-				EvictQueue->Append((void *)ppn);
+				evictQueue->Append((void *)ppn);
 				QueueLock->Release();
 				ipt[ppn].space->pageTableLock->Acquire(); 
 				iptLock->Release();
 				break;
 			}else {
 				QueueLock->Acquire();
-				EvictQueue->Prepend((void *)ppn);		//then prepend it to fifo queue.
+				evictQueue->Prepend((void *)ppn);		//then prepend it to fifo queue.
 				QueueLock->Release();
 				iptLock->Release();		//ipt lock is released
 			}
 		}
 	}
 	
-	swapLock->Acquire();
+	swapFileLock->Acquire();
 	// TODO: Find free location in swapFile
-	swapLock->Release();
+	swapFileLock->Release();
 	
 	if(ipt[ppn].dirty){
-		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize); //wrting to swap file
+		int swapLocation = 0; //Have to change and move this later
+		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize); //writing to swap file
 		ipt[ppn].space->pageTable2[vpn].pageAddrOffset = swapLocation * PageSize; //saving swap file location
 		ipt[ppn].space->pageTable2[vpn].state = SWAP; //changing location of page to swap file
 	}
@@ -280,7 +283,7 @@ int Evict_IPT(int currentVPN){
 int AddrSpace::handleIPTMiss(int currentVPN) {
 	memoryLock->Acquire();
 	int pageIndex = -1;
-	pageIndex = memory->Find(currentVPN);
+	pageIndex = memory->Find();
 	memoryLock->Release();
 	
 	if (pageIndex == -1){
@@ -288,14 +291,14 @@ int AddrSpace::handleIPTMiss(int currentVPN) {
 	}
 	
 	currentThread->space->pageTableLock->Acquire();
-	TranslationEntry** table = currentThread->space->pageTable;		// Safer method instead of calling pageTable
-	TranslationEntry** table2 = currentThread->space->pageTable2;	
+	TranslationEntry* table = currentThread->space->pageTable;		// QOL method instead of calling pageTable
+	PageTableExtend* table2 = currentThread->space->pageTable2;	
 	
 	if(table2[currentVPN].state == EXECUTABLE) {
-		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table[currentVPN].byteOffset);
+		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);
 	} else if (table2[currentVPN].state == SWAP){
 		swapFileLock->Acquire();
-		swapFile -> ReadAt(&(machine -> mainMemory[pageIndex*PageSize]), PageSize, currentThread->space->pageTable2[currentVPN].pageAddrOffset);
+		swapFile -> ReadAt(&(machine -> mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);
 		swapFileLock->Release();
 	}
 	

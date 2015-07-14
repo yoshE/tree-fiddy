@@ -26,14 +26,14 @@
 enum State {EXECUTABLE, EMPTY, SWAP};
 extern BitMap *memMap;		// To ensure addrspace can access memMap
 
-struct pageTableExtend{
+struct PageTableExtend{
 	State state;
 	int pageAddrOffset;
-} pageTableExtend_t;
+};
 
 class AddrSpace {
   public:
-    AddrSpace(OpenFile *executable);	// Create an address space,
+    AddrSpace(OpenFile *tempExecutable);	// Create an address space,
 					// initializing it with the program
 					// stored in the file "executable"
     ~AddrSpace();			// De-allocate an address space
@@ -49,14 +49,15 @@ class AddrSpace {
 	
 	void PopulateTLB(int currentVPN);
 	int handleIPTMiss(int currentVPN);
+	Lock *pageTableLock;
+	PageTableExtend *pageTable2;
+	TranslationEntry *pageTable;	// Assume linear page table translation for now!
+	OpenFile *executable;
 
  private:
-    TranslationEntry *pageTable;	// Assume linear page table translation for now!
-	pageTableExtend_t *pageTable2;
     unsigned int numPages;		// Number of pages in the virtual 
-					// address space
+								// address space
 					
-	Lock *pageTableLock;
 };
 
 #endif // ADDRSPACE_H
