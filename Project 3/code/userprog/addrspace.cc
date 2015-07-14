@@ -156,23 +156,26 @@ AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
-// first, set up the translation 
+					
+	// first, set up the translation 
     pageTable = new TranslationEntry[numPages];
+	
     for (i = 0; i < numPages; i++) {
-	pageTable[i].virtualPage = i;		// for now, virtual page # = phys page #
-		int ppn = memMap->Find();		// Sets ppn to first available page in memMap
+		
+		/*int ppn = memMap->Find();		// Sets ppn to first available page in memMap
 		if ( ppn < 0 ) {		// If there are no spaces in memMap, then error!
 			printf("Physical Pages too small!\n");
 			interrupt->Halt();
-		}
-	pageTable[i].physicalPage = ppn;		// Set page to be used to ppn
-	pageTable[i].valid = TRUE;
-	pageTable[i].use = FALSE;
-	pageTable[i].dirty = FALSE;
-	pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
-					// a separate page, we could set its 
-					// pages to be read-only
-     executable->ReadAt(&(machine->mainMemory[ppn*PageSize]),
+		}*/
+		
+		pageTable[i].virtualPage = i;		// for now, virtual page # = phys page #
+		pageTable[i].physicalPage = -1;		// Set page to be used to ppn
+		pageTable[i].valid = TRUE;
+		pageTable[i].use = FALSE;
+		pageTable[i].dirty = FALSE;
+		pageTable[i].readOnly = FALSE;  // if the code segment was entirely on a separate page, we could set its pages to be read-only
+		
+		executable->ReadAt(&(machine->mainMemory[ppn*PageSize]),
 			PageSize, noffH.code.inFileAddr + i * PageSize);
       
    }
