@@ -24,7 +24,9 @@
 
 extern BitMap *memMap;
 extern Lock *iptLock;	//IPT lock
+extern Lock *QueueLock;
 extern OpenFile *swapFile;
+exten Lock *swapFileLock;
 
 extern "C" { int bzero(char *, int); };
 
@@ -210,6 +212,66 @@ void AddrSpace::PopulateTLB(int n){
 	interrupt->SetLevel(oldLevel);
 }
 
+
+//----------------------------------------------------------------------
+//  Evict_IPT
+//  Evicts a page from physical memory which is further loaded with new
+//  virtual page
+//----------------------------------------------------------------------
+
+int Evict_IPT(int currentVPN){
+	int ppn = -1, i = 0, vpn = -1;
+	
+	while(true){
+		QueueLock->Acquire();
+		if(!EvictQueue->IsEmpty()) ppn = (int)EvictQueue->Remove();
+		QueueLock->Release();
+		
+		if (ppn >= 0){
+			iptLock->Acquire();
+			if (!ipt[ppn].use){
+				ipt[ppn].use = true;
+				if (ipt[ppn].space == currentThread->Space){
+					IntStatus oldLevel = interrupt->SetLevel(IntOff);
+					for(i = 0; i <= TLBSize; i++){
+						if(machine->tlb[i].valid && ppn == machine->tlb[i].physicalPage){
+							ipt[ppn].dirty = machine->tlb[i].dirty;
+							machine->tlb[i].valid = false;
+							break;
+						}
+					}
+					interrupt->SetLevel(oldLevel);
+				}
+				vpn = ipt[ppn].virtualPage;
+				ipt[ppn].virtualPage = currentVPN;
+				QueueLock->Acquire();
+				EvictQueue->Append((void *)ppn);
+				QueueLock->Release();
+				ipt[ppn].space->pageTableLock->Acquire(); 
+				iptLock->Release();
+				break;
+			}else {
+				QueueLock->Acquire();
+				EvictQueue->Prepend((void *)ppn);		//then prepend it to fifo queue.
+				QueueLock->Release();
+				iptLock->Release();		//ipt lock is released
+			}
+		}
+	}
+	
+	swapLock->Acquire();
+	// TODO: Find free location in swapFile
+	swapLock->Release();
+	
+	if(ipt[ppn].dirty){
+		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize); //wrting to swap file
+		ipt[ppn].space->pageTable2[vpn].pageAddrOffset = swapLocation * PageSize; //saving swap file location
+		ipt[ppn].space->pageTable2[vpn].state = SWAP; //changing location of page to swap file
+	}
+	ipt[ppn].space->pageTableLock->Release();
+	return ppn;
+} 
+
 //----------------------------------------------------------------------
 // AddrSpace::handleIPTMiss
 // 	populate the TLB from pageTable
@@ -232,7 +294,9 @@ int AddrSpace::handleIPTMiss(int currentVPN) {
 	if(table2[currentVPN].state == EXECUTABLE) {
 		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table[currentVPN].byteOffset);
 	} else if (table2[currentVPN].state == SWAP){
+		swapFileLock->Acquire();
 		swapFile -> ReadAt(&(machine -> mainMemory[pageIndex*PageSize]), PageSize, currentThread->space->pageTable2[currentVPN].pageAddrOffset);
+		swapFileLock->Release();
 	}
 	
 	table[currentVPN].physicalPage = pageIndex;
