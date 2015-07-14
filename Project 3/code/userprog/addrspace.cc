@@ -229,7 +229,7 @@ int AddrSpace::handleIPTMiss(int currentVPN) {
 		iptLock->Release();
 	}
 	
-	pageTableLock->Acquire();
+	currentThread->space->pageTableLock->Acquire();
 	TranslationEntry** table = currentThread->space->pageTable;
 	
 	table[currentVPN].physicalPage = pageIndex;
@@ -241,7 +241,7 @@ int AddrSpace::handleIPTMiss(int currentVPN) {
 	} else {
 		
 	}
-	pageTableLock->Release();
+	currentThread->space->pageTableLock->Release();
 	
 	iptLock->Acquire();
 	ipt[pageIndex].physicalPage = pageIndex;
