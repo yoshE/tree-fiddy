@@ -31,6 +31,7 @@
 #include <cstdio>
 #include <cstring>
 
+#define NameSize 30
 using namespace std;
 
 Lock* syscallLock = new Lock("Syscall");
@@ -248,6 +249,43 @@ int rand_Syscall(){
 	return rand();
 }
 
+
+#ifdef NETWORK
+void send(char *syscall, clientPacket packet){
+	PacketHeader packet_From_Client;
+	MailHeader mail_From_Client;
+	int len = sizeof(packet);
+	char* data = new char[len + 1];
+	memcpy((void *)data, (void *)&packet, len);
+	data[len] = '\0';
+	
+	packet_From_Client.to = 0;
+	mail_From_Client.to = 0;
+	mail_From_Client.from = 0;
+	mail_From_Client.length = len + 1;
+	
+	bool s = postOffice->send(packet_From_Client, mail_From_Client, data);
+	if (!s){
+		printf("COULDN'T SEND DATA\n");
+		interrupt->Halt();
+	}
+}
+
+int receive(char *syscall){
+	PacketHeader packet_From_Server;
+	MailHeader mail_From_Server;
+	serverPacket packet;
+	
+	int len = sizeof(packet);
+	char *data = new char[len + 1];
+	
+	postOffice->Receive(0, &packet_From_Server, &mail_From_Server, data);
+	memcpy((void *)&packet, (void *)data, len);
+	if (!packet.status) return -1;
+	return packet.value;
+}
+#endif
+
 void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that corresponds to lock (in their tables)
 	#ifdef NETWORK
 		clientPacket packet;
@@ -276,19 +314,35 @@ void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that 
 }
 
 void Release_Syscall(int n){		// Syscall to release a lock... takes an int that corresponds to lock (in their tables)
-	LockTableLock->Acquire();
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_Release;
+		packet.index = n;
+		
+		send("RELEASE", packet);
+		n = receive("RELEASE");
+		
+		if(n == -1){
+			printf("LOCK RELEASE ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("LOCK RELEASE SUCCESSFUL\n");
+		}
+	#else
+		LockTableLock->Acquire();
 	
-	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
-		printf("%s", "Invalid Lock Table Number in Release.\n");
+		if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
+			printf("%s", "Invalid Lock Table Number in Release.\n");
+			LockTableLock->Release();
+			return;		// If the int entered is wrong, print error and return
+		}
+		LockTable[n].Kernel_Lock->Release();		// Releases said lock
 		LockTableLock->Release();
-		return;		// If the int entered is wrong, print error and return
-	}
-	LockTable[n].Kernel_Lock->Release();		// Releases said lock
-	LockTableLock->Release();
 	
-	if (LockTable[n].IsDeleted && LockTable[n].Kernel_Lock->waitingThreads->IsEmpty()){		// If Lock is set for deletion and there are no threads waiting...
-		LockTable[n].Kernel_Lock = NULL;		// Delete this lock
-	}
+		if (LockTable[n].IsDeleted && LockTable[n].Kernel_Lock->waitingThreads->IsEmpty()){		// If Lock is set for deletion and there are no threads waiting...
+			LockTable[n].Kernel_Lock = NULL;		// Delete this lock
+		}
+	#endif
 }
 
 void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for position of CV, second is for position of Lock (in their tables)
@@ -335,45 +389,85 @@ void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int 
 	CVTableLock->Release();
 }
 
-int CreateLock_Syscall(char* name){		// Creates a new lock syscall
-    DEBUG('a',"%s: CreateLock_Syscall initiated.\n", currentThread->getName());
-	LockTableLock->Acquire();
+int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
+	char *name = new char[NameSize];
 	
-	KernelLock new_Lock;		// Creates a new lock struct
-	Lock* tempLock = new Lock(name);		// Creates a new lock
-	new_Lock.Kernel_Lock = tempLock;		// Places lock into struct
-	new_Lock.Owner = NULL;		// Sets Owner of lock to NULL (default)
-	new_Lock.IsDeleted = false;		// Lock has not been deleted and is functional
+	if (copyin(vaddr, NameSize, name) == -1){
+		DEBUG('a', bad pointer passed to create lock\n);
+		delete[] name;
+		return -2;
+	}
+
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_CreateLock;
+		strncpy(packet.name, name, sizeof(name));
+		
+		send("CREATELOCK", packet);
+		int n = receive("CREATELOCK");
+		
+		if (n == -1){
+			printf("CREATE LOCK ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("CREATE LOCK SUCCESSFUL\n");
+		}
+	#else
+		DEBUG('a',"%s: CreateLock_Syscall initiated.\n", currentThread->getName());
+		LockTableLock->Acquire();
 	
-	LockTable.push_back(new_Lock);		// Adds lock struct to vector
-	int x = LockTable.size() - 1;		// Finds index value of newly created lock
+		KernelLock new_Lock;		// Creates a new lock struct
+		Lock* tempLock = new Lock(name);		// Creates a new lock
+		new_Lock.Kernel_Lock = tempLock;		// Places lock into struct
+		new_Lock.Owner = NULL;		// Sets Owner of lock to NULL (default)
+		new_Lock.IsDeleted = false;		// Lock has not been deleted and is functional
 	
-	LockTableLock->Release();		
-	DEBUG('a', "%s: Created Lock with number %d\n", currentThread->getName(), x);
-	return x;		// Return that value to the thread so they can acquire/release the new lock
+		LockTable.push_back(new_Lock);		// Adds lock struct to vector
+		int x = LockTable.size() - 1;		// Finds index value of newly created lock
+	
+		LockTableLock->Release();		
+		DEBUG('a', "%s: Created Lock with number %d\n", currentThread->getName(), x);
+		return x;		// Return that value to the thread so they can acquire/release the new lock
+	#endif
 }
 
 void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
-	LockTableLock->Acquire();
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_DestroyLock;
+		packet.index = n;
+		
+		send("DESTROYLOCK", packet);
+		n = receive("DESTROYLOCK");
+		
+		if (n == -1){
+			printf("DESTROY LOCK ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("DESTROY LOCK SUCCESSFUL\n");
+		}
+	#else
+		LockTableLock->Acquire();
 	
-	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].Kernel_Lock == NULL ){		// Check if data exists for entered value
-		printf("%s", "Invalid Lock Table Number.\n");
-		LockTableLock->Release();		// If Lock doesn't exist (or is already deleted) return failure
-		return;
-	}
-	
-	if (!LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && !LockTable[n].IsDeleted){		// If threads are waiting for Lock and Deleted hasn't been set
-		LockTable[n].IsDeleted = true;		// Set the lock for deletion
-		printf("%s", "Lock has waiting Threads, setting Delete\n");
-	} else if (LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && !LockTable[n].IsDeleted){			// If no threads are waiting for Lock and Deleted hasn't been set
-		LockTable[n].IsDeleted = true;		// Set the lock for deletion
-		LockTable[n].Kernel_Lock = NULL;		// Delete the lock
-		printf("%s", "Lock has no waiting Threads, setting Delete and Lock\n");
-	} else if (LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && LockTable[n].IsDeleted){		// If no threads are waiting for Lock and Deleted has been set
-		LockTable[n].Kernel_Lock = NULL;		// Delete the lock
-		printf("%s", "Lock has waiting Threads, now setting Lock to NULL\n");
-	}
-	LockTableLock->Release();
+		if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].Kernel_Lock == NULL ){		// Check if data exists for entered value
+			printf("%s", "Invalid Lock Table Number.\n");
+			LockTableLock->Release();		// If Lock doesn't exist (or is already deleted) return failure
+			return;
+		}
+		
+		if (!LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && !LockTable[n].IsDeleted){		// If threads are waiting for Lock and Deleted hasn't been set
+			LockTable[n].IsDeleted = true;		// Set the lock for deletion
+			printf("%s", "Lock has waiting Threads, setting Delete\n");
+		} else if (LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && !LockTable[n].IsDeleted){			// If no threads are waiting for Lock and Deleted hasn't been set
+			LockTable[n].IsDeleted = true;		// Set the lock for deletion
+			LockTable[n].Kernel_Lock = NULL;		// Delete the lock
+			printf("%s", "Lock has no waiting Threads, setting Delete and Lock\n");
+		} else if (LockTable[n].Kernel_Lock->waitingThreads->IsEmpty() && LockTable[n].IsDeleted){		// If no threads are waiting for Lock and Deleted has been set
+			LockTable[n].Kernel_Lock = NULL;		// Delete the lock
+			printf("%s", "Lock has waiting Threads, now setting Lock to NULL\n");
+		}
+		LockTableLock->Release();
+	#endif
 }
 
 int CreateCV_Syscall(char* name){		// Creates a new CV in CVTable

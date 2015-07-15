@@ -176,22 +176,22 @@ void destroy(int index, int machineID, int mailBoxID){
 	
 	if(index < 0 || index > MAX_LOCK){
 		printf("LOCK TO BE DESTROYED IS INVALID\n");
-		send("DESTROY", false, -1, machineID, mailBoxID);
+		send("DESTROYLOCK", false, -1, machineID, mailBoxID);
 		return;
 	} else if (!ServerLocks[index].valid){
 		printf("LOCK TO BE DESTROYED IS NULL\n");
-		send("DESTROY", false, -2, machineID, mailBoxID);
+		send("DESTROYLOCK", false, -2, machineID, mailBoxID);
 		return;
 	}else if (!ServerLocks[index].waitingQueue->IsEmpty() || ServerLocks[index].count > 0){
 		printf("LOCK HAS WAITING CLIENTS\n");
 		ServerLocks[index].IsDeleted = true;
-		send("DESTROY", false, 1, machineID, mailBoxID);
+		send("DESTROYLOCK", false, 1, machineID, mailBoxID);
 	} else if (ServerLocks[index].count == 0){
 		printf("DESTROYING LOCK!\n");
 		ServerLocks[index].valid = false;
 		delete ServerLocks[index].name;
 		delete ServerLocks[index].waitingQueue;
-		send("DESTROY", true, index, machineID, mailBoxID);
+		send("DESTROYLOCK", true, index, machineID, mailBoxID);
 	}
 }
 
