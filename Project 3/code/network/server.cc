@@ -161,7 +161,6 @@ void release(int index, int machineID, int mailBoxID, int syscall){
 	}
 }
 
-
 //----------------------------------------------------------------------
 //  Destroy
 //  Destroy a lock
