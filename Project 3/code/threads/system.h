@@ -65,8 +65,8 @@ struct ServerMV{
 };
 
 struct clientPacket{
-	char name[10];
-	char name2[10];
+	char name[30];
+	char name2[30];
 	int syscall;
 	int index1;
 	int index2;

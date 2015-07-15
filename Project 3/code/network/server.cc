@@ -56,26 +56,21 @@ void send(char *type, bool statue, int ID, int machineID, int mailBoxID){
 //  Creates a new lock and adds it to the serverLock vector
 //----------------------------------------------------------------------
 void createLock(char *name, int machineID, int mailBoxID){
-	bool flag = false;
 	int lockID = -1;
 	for (int i = 0; i < ServerLocks.size(); i++){
-		if (ServerLocks[i].Server_Lock->getName() == name) flag = true;
-		lockID = i;
-		break;
-	}
-	
-	if (flag){
-		send("CREATELOCK", true,lockID, machineID, mailBoxID);
-		return;
+		if (ServerLocks[i].name == name){
+			send("CREATELOCK", true,lockID, machineID, mailBoxID);
+			return;
+		}
 	}
 	
 	lockID = (signed)ServerLocks.size();
-	if (lockID == MAX_LOCK || lockID = -1){
+	if (lockID == MAX_LOCK || lockID == -1){
 		send("CREATELOCK", false, lockID, machineID, mailBoxID);
 		return;
 	}
 	
-	lockID -= 1;
+	lockID--;
 	ServerLocks[lockID].name = new char[sizeof(name)+1];
 	strcpy(ServerLocks[lockID].name, name);
 	ServerLocks[lockID].count = 0;
