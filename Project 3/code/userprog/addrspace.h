@@ -25,6 +25,7 @@
 
 enum State {EXECUTABLE, EMPTY, SWAP};
 extern BitMap *memMap;		// To ensure addrspace can access memMap
+extern BitMap *swapMap;
 
 struct PageTableExtend{
 	State state;

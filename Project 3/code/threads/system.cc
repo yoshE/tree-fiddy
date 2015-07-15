@@ -21,6 +21,7 @@ Timer *timer;				// the hardware timer device,
 					
 Table *processTable;
 BitMap *memMap;
+BitMap *swapMap;
 Lock *memoryLock;			// for memory bitmap
 Lock *iptLock;	//IPT lock
 Lock *QueueLock;
@@ -91,7 +92,8 @@ Initialize(int argc, char **argv)
     bool randomYield = FALSE;
 	
 	processTable = new Table(PROCESS_TABLE_MAX_SIZE);		// Initialize processTable to max number of process'
-	memMap = new BitMap(NumPhysPages);		// Initialize memMap to number of physical 
+	memMap = new BitMap(NumPhysPages);		// Initialize memMap to number of physical
+	swapMap = new BitMap(4096);
 	memory = new BitMap(NumPhysPages);
 	
 	iptLock = new Lock("IPTLock");
@@ -99,7 +101,7 @@ Initialize(int argc, char **argv)
 	swapFileLock = new Lock("SwapLock");
 	QueueLock = new Lock("QueueQLock");
 	sprintf(swapFileName, "../swapfile_%d\0", getpid());
-	fileSystem -> Create(swapFileName, (24096 * 128) );
+	fileSystem -> Create(swapFileName, (4096 * 128) );
 	swapFile = fileSystem -> Open(swapFileName);
 	evictQueue = new List();
 

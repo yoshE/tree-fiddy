@@ -26,6 +26,7 @@ extern BitMap *memMap;
 extern Lock *iptLock;		//IPT lock
 extern Lock *QueueLock;
 extern OpenFile *swapFile;
+extern BitMap *swapMap;
 extern Lock *swapFileLock;
 extern Lock *memoryLock;
 extern char swapFileName[100];		//swap file pointer
@@ -263,15 +264,14 @@ int Evict_IPT(int currentVPN){
 	}
 	
 	swapFileLock->Acquire();
-	// TODO: Find free location in swapFile
-	swapFileLock->Release();
+	int swapLocation = (int)swapMap->Find(); //find a free spot in the swap file
 	
 	if(ipt[ppn].dirty){
-		int swapLocation = 0; //Have to change and move this later
 		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize); //writing to swap file
 		ipt[ppn].space->pageTable2[vpn].pageAddrOffset = swapLocation * PageSize; //saving swap file location
 		ipt[ppn].space->pageTable2[vpn].state = SWAP; //changing location of page to swap file
 	}
+	swapFileLock->Release();
 	ipt[ppn].space->pageTableLock->Release();
 	return ppn;
 } 
