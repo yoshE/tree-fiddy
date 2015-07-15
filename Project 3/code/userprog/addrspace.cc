@@ -23,11 +23,12 @@
 #include "synch.h"
 
 extern BitMap *memMap;
-extern Lock *iptLock;	//IPT lock
+extern Lock *iptLock;		//IPT lock
 extern Lock *QueueLock;
 extern OpenFile *swapFile;
 extern Lock *swapFileLock;
 extern Lock *memoryLock;
+extern char swapFileName[100];		//swap file pointer
 
 extern "C" { int bzero(char *, int); };
 
