@@ -59,7 +59,7 @@ void createLock(char *name, int machineID, int mailBoxID){
 	int lockID = -1;
 	for (int i = 0; i < ServerLocks.size(); i++){
 		if (ServerLocks[i].name == name){
-			send("CREATELOCK", true,lockID, machineID, mailBoxID);
+			send("CREATELOCK", true, i, machineID, mailBoxID);
 			return;
 		}
 	}
@@ -162,7 +162,7 @@ void release(int index, int machineID, int mailBoxID, int syscall){
 }
 
 //----------------------------------------------------------------------
-//  Destroy
+//  DestroyLock
 //  Destroy a lock
 //----------------------------------------------------------------------
 void destroy(int index, int machineID, int mailBoxID){
@@ -187,6 +187,37 @@ void destroy(int index, int machineID, int mailBoxID){
 		delete ServerLocks[index].waitingQueue;
 		send("DESTROYLOCK", true, index, machineID, mailBoxID);
 	}
+}
+
+//----------------------------------------------------------------------
+//  CreateCV
+//  create CVs
+//----------------------------------------------------------------------
+void createCV(char *name, int machineID, int mailBoxID){
+	int cvID = -1;
+	for (int i = 0; i < ServerCVs.size(); i++){
+		if (ServerCVs[i].name == name){
+			send("CREATECV", true, i, machineID, mailBoxID);
+			return;
+		}
+	}
+	
+	cvID = (signed)ServerCVs.size();
+	if (cvID == MAX_CV || cvID < 0){
+		send("CREATECV", false, lockID, machineID, mailBoxID);
+		return;
+	}
+	
+	cvID--;
+	ServerCVs[cvID].name = new char[sizeof(name)+1];
+	strcpy(ServerCVs[cvID].name, name);
+	ServerCVs[cvID].count = 0;
+	ServerCVs[cvID].valid = true;
+	ServerCVs[cvID].waitingQueue = new List;
+	ServerCVs[cvID].available = true;
+	ServerCVs[cvID].IsDeleted = false;
+	
+	send("CREATELOCK", true, cvID, machineID, mailBoxID);
 }
 
 //----------------------------------------------------------------------
@@ -228,6 +259,9 @@ void Run(){
 				createLock(packet.name,packet_From_Client.from, mail_From_Client.from);
 				break;
 			case SC_CreateCV:
+				printf("REQUEST: CREATE CV FROM CLIENT\n");
+				createCV(packet.name, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case SC_DestroyCV:
 			case SC_CreateMV:
 			case sc_SetMV:

@@ -423,12 +423,13 @@ int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
 		new_Lock.IsDeleted = false;		// Lock has not been deleted and is functional
 	
 		LockTable.push_back(new_Lock);		// Adds lock struct to vector
-		int x = LockTable.size() - 1;		// Finds index value of newly created lock
+		int n = LockTable.size() - 1;		// Finds index value of newly created lock
 	
 		LockTableLock->Release();		
-		DEBUG('a', "%s: Created Lock with number %d\n", currentThread->getName(), x);
-		return x;		// Return that value to the thread so they can acquire/release the new lock
+		DEBUG('a', "%s: Created Lock with number %d\n", currentThread->getName(), n);
 	#endif
+	
+	return n;		// Return that value to the thread so they can acquire/release the new lock
 }
 
 void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
@@ -479,39 +480,60 @@ int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
 		return -2;
 	}
 	
-	CVTableLock->Acquire();
-	KernelCV new_cv;		// New CV Struct
-	Condition* cv = new Condition(name);		// New CV
-	new_cv.CV = cv;		// Places new CV into struct
-	new_cv.IsDeleted = false;		// CV has not been deleted yet
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_CreateCV;
+		strncpy(packet.name, name, sizeof(name));
+		
+		send("CREATECV", packet);
+		int x = receive("CREATECV", packet);
+		
+		if (x == -1){
+			printf("CREATECV ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("CREATECV SUCCESSFUL\n");
+		}
+	#else
+		CVTableLock->Acquire();
+		KernelCV new_cv;		// New CV Struct
+		Condition* cv = new Condition(name);		// New CV
+		new_cv.CV = cv;		// Places new CV into struct
+		new_cv.IsDeleted = false;		// CV has not been deleted yet
 	
-	CVTable.push_back(new_cv);		// Adds new struct to CVTable
-	int x = CVTable.size() - 1;		// Finds index of newly created CV
-	CVTableLock->Release();
+		CVTable.push_back(new_cv);		// Adds new struct to CVTable
+		int x = CVTable.size() - 1;		// Finds index of newly created CV
+		CVTableLock->Release();
+	#endif
+	
 	return x;		// Returns said value to Thread to use new CV
 }
 
 void DestroyCV_Syscall(int n){		// Destroys an existing CV in CVTable
-	CVTableLock->Acquire();
+	#ifdef NETWORK
 	
-	if (n < 0 || n > (signed)CVTable.size() - 1 || CVTable[n].CV == NULL ){		// Check if data exists for entered value
-		printf("%s", "Invalid CV Table Number.\n");
+	#else
+		CVTableLock->Acquire();
+	
+		if (n < 0 || n > (signed)CVTable.size() - 1 || CVTable[n].CV == NULL ){		// Check if data exists for entered value
+			printf("%s", "Invalid CV Table Number.\n");
+			CVTableLock->Release();
+			return;		// If CV doesn't exist (or is already deleted) return failure
+		}
+	
+		if (!CVTable[n].CV->waitingCV->IsEmpty() && !CVTable[n].IsDeleted){		// If threads are waiting for CV and Delete isn't set
+			CVTable[n].IsDeleted = true;		// Set the CV for deletion
+			printf("%s", "CV has waiting Threads, setting Delete\n");
+		} else if (CVTable[n].CV->waitingCV->IsEmpty() && !CVTable[n].IsDeleted){		// If no threads are waiting for CV and Delete isn't set
+			CVTable[n].IsDeleted = true;		// Set the CV for deletion
+			CVTable[n].CV = NULL;		// Delete the CV	
+			printf("%s", "CV has no waiting Threads, setting Delete and Lock\n");
+		} else if (CVTable[n].CV->waitingCV->IsEmpty() && CVTable[n].IsDeleted){		// If no threads are waiting for CV and Delete was set
+			CVTable[n].CV = NULL;		// Delete the CV
+			printf("%s", "CV has waiting Threads, now setting Lock to NULL\n");
+		}
 		CVTableLock->Release();
-		return;		// If CV doesn't exist (or is already deleted) return failure
-	}
-	
-	if (!CVTable[n].CV->waitingCV->IsEmpty() && !CVTable[n].IsDeleted){		// If threads are waiting for CV and Delete isn't set
-		CVTable[n].IsDeleted = true;		// Set the CV for deletion
-		printf("%s", "CV has waiting Threads, setting Delete\n");
-	} else if (CVTable[n].CV->waitingCV->IsEmpty() && !CVTable[n].IsDeleted){		// If no threads are waiting for CV and Delete isn't set
-		CVTable[n].IsDeleted = true;		// Set the CV for deletion
-		CVTable[n].CV = NULL;		// Delete the CV	
-		printf("%s", "CV has no waiting Threads, setting Delete and Lock\n");
-	} else if (CVTable[n].CV->waitingCV->IsEmpty() && CVTable[n].IsDeleted){		// If no threads are waiting for CV and Delete was set
-		CVTable[n].CV = NULL;		// Delete the CV
-		printf("%s", "CV has waiting Threads, now setting Lock to NULL\n");
-	}
-	CVTableLock->Release();
+	#endif
 }
 
 void newProcess(int arg){		// Restores the thread

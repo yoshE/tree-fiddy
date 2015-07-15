@@ -49,12 +49,16 @@ struct ServerLock{
 	bool valid;
 	int count;
 	client Owner;
-	List *waitQueue;
+	List *waitingQueue;
 	bool IsDeleted;
 };
 
 struct ServerCV{
-	Condition* CV;
+	bool valid;
+	List *waitingQueue;
+	int LockID;
+	int count;
+	char *name;
 	bool IsDeleted;
 };
 
