@@ -21,7 +21,72 @@
 #include "../userprog/bitmap.h"
 
 #define PROCESS_TABLE_MAX_SIZE	32
+#define MAX_LOCK  200
+#define MAX_CV  200
+#define MAX_MV  200
 
+// Initialization and cleanup routines
+extern void Initialize(int argc, char **argv); 	// Initialization,
+						// called before anything else
+extern void Cleanup();				// Cleanup, called when
+						// Nachos is done.
+
+extern Thread *currentThread;			// the thread holding the CPU
+extern Thread *threadToBeDestroyed;  		// the thread that just finished
+extern Scheduler *scheduler;			// the ready list
+extern Interrupt *interrupt;			// interrupt status
+extern Statistics *stats;			// performance metrics
+extern Timer *timer;				// the hardware alarm clock
+
+struct ServerLock{
+	Lock* Server_Lock;
+	Thread *Owner;
+	bool IsDeleted;
+};
+
+struct ServerCV{
+	Condition* CV;
+	bool IsDeleted;
+};
+
+struct ServerMV{
+	int value;
+	int count;
+	bool valid;
+};
+
+struct client{
+	int machineID;
+	int mailBoxID;
+};
+
+struct clientPacket{
+	char name[10];
+	char name2[10];
+	int syscall;
+	int index1;
+	int index2;
+	int value;
+	
+	void print(){
+		printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index1,index2,value);
+	}
+};
+
+struct serverPacket{
+	bool status;
+	int value;
+	
+	void print(){
+		printf("Status: %d\tValue: %d\n",status,value);
+	}
+};
+
+//----------------------------------------------------------------------
+// USER_PROGRAM
+//----------------------------------------------------------------------
+#ifdef USER_PROGRAM
+#include "machine.h"
 struct Process {		// struct to hold thread count for processes
 	int id;		// ID of the process
 	int activeThreadCount;		// Number of threads currently running
@@ -39,27 +104,10 @@ struct KernelCV{		// struct to hold CVs for the CV table
 	bool IsDeleted;
 };
 
-// Initialization and cleanup routines
-extern void Initialize(int argc, char **argv); 	// Initialization,
-						// called before anything else
-extern void Cleanup();				// Cleanup, called when
-						// Nachos is done.
-
-extern Thread *currentThread;			// the thread holding the CPU
-extern Thread *threadToBeDestroyed;  		// the thread that just finished
-extern Scheduler *scheduler;			// the ready list
-extern Interrupt *interrupt;			// interrupt status
-extern Statistics *stats;			// performance metrics
-extern Timer *timer;				// the hardware alarm clock
-
 extern Table *processTable;		// Table of processes
 extern BitMap *memMap;		// BitMap of available pages for user programs
 extern BitMap *memory;			// BitMap for representing availability of memory
-
 extern List *evictQueue;
-
-#ifdef USER_PROGRAM
-#include "machine.h"
 extern Machine* machine;	// user program memory and registers
 #endif
 

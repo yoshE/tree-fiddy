@@ -18,7 +18,16 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
-					
+
+#ifdef FILESYS_NEEDED
+FileSystem  *fileSystem;
+#endif
+
+#ifdef FILESYS
+SynchDisk   *synchDisk;
+#endif
+
+#ifdef USER_PROGRAM	// requires either FILESYS or FILESYS_STUB
 Table *processTable;
 BitMap *memMap;
 BitMap *swapMap;
@@ -30,16 +39,6 @@ OpenFile *swapFile;
 Lock *swapFileLock;
 List *evictQueue;
 BitMap *memory;
-
-#ifdef FILESYS_NEEDED
-FileSystem  *fileSystem;
-#endif
-
-#ifdef FILESYS
-SynchDisk   *synchDisk;
-#endif
-
-#ifdef USER_PROGRAM	// requires either FILESYS or FILESYS_STUB
 Machine *machine;	// user program memory and registers
 #endif
 
