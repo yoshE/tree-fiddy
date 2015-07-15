@@ -38,9 +38,18 @@ extern Interrupt *interrupt;			// interrupt status
 extern Statistics *stats;			// performance metrics
 extern Timer *timer;				// the hardware alarm clock
 
+struct client{
+	int machineID;
+	int mailBoxID;
+};
+
 struct ServerLock{
-	Lock* Server_Lock;
-	Thread *Owner;
+	char *name;
+	bool available;
+	bool valid;
+	int count;
+	Client Owner;
+	List *waitQueue;
 	bool IsDeleted;
 };
 
@@ -53,11 +62,6 @@ struct ServerMV{
 	int value;
 	int count;
 	bool valid;
-};
-
-struct client{
-	int machineID;
-	int mailBoxID;
 };
 
 struct clientPacket{

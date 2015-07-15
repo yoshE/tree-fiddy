@@ -79,7 +79,7 @@ class Lock {
     List *waitingThreads;
 					
   private:
-    char* name;				// for debugging
+	char *name;
     bool available;
     Thread* owner;
     // plus some other stuff you'll need to define
@@ -125,9 +125,7 @@ class Condition {
     ~Condition();			// deallocate the condition
     char* getName() { return (name); }
 	Lock* getLock() { 
-		printf("TEST\n");
 		return waitingLock;
-		printf("TEST\n");
 	}
     
     void Wait(Lock *conditionLock); 	// these are the 3 operations on 

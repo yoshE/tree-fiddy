@@ -36,9 +36,9 @@ using namespace std;
 Lock* syscallLock = new Lock("Syscall");
 std::vector<KernelLock>LockTable;		// Table of all current Locks
 std::vector<KernelCV>CVTable;		// Table of all current Condition Variables
-Lock* PrintfLock = new Lock("");
-Lock* LockTableLock = new Lock("");		// Lock for accessing the LockTable
-Lock* CVTableLock = new Lock("");		// Lock for accessing the CVTable
+Lock* PrintfLock = new Lock("PrintfLock");
+Lock* LockTableLock = new Lock("LockTableLock");		// Lock for accessing the LockTable
+Lock* CVTableLock = new Lock("CVTableLock");		// Lock for accessing the CVTable
 
 bool PopulateTLB_IPT(int currentVPN);
 
@@ -249,14 +249,30 @@ int rand_Syscall(){
 }
 
 void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that corresponds to lock (in their tables)
-	LockTableLock->Acquire();
-	if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
-		printf("%s", "Invalid Lock Table Number in Acquire.\n");
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_Acquire;
+		packet.index = n;
+		
+		send("ACQUIRE", packet);
+		n = receive("ACQUIRE");
+		
+		if(n == -1){
+			printf("LOCK ACQUIRE ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("LOCK ACQUIRE SUCCESSFUL\n");
+		}
+	#else
+		LockTableLock->Acquire();
+		if (n < 0 || n > (signed)LockTable.size() - 1 || LockTable[n].IsDeleted || LockTable[n].Kernel_Lock == NULL){		// Check if data exists for entered value
+			printf("%s", "Invalid Lock Table Number in Acquire.\n");
+			LockTableLock->Release();
+			return;		// If the int entered is wrong, print error and return
+		}
+		LockTable[n].Kernel_Lock->Acquire();		// Acquire said lock
 		LockTableLock->Release();
-		return;		// If the int entered is wrong, print error and return
-	}
-	LockTable[n].Kernel_Lock->Acquire();		// Acquire said lock
-	LockTableLock->Release();
+	#endif
 }
 
 void Release_Syscall(int n){		// Syscall to release a lock... takes an int that corresponds to lock (in their tables)
@@ -324,7 +340,7 @@ int CreateLock_Syscall(char* name){		// Creates a new lock syscall
 	LockTableLock->Acquire();
 	
 	KernelLock new_Lock;		// Creates a new lock struct
-	Lock* tempLock = new Lock("");		// Creates a new lock
+	Lock* tempLock = new Lock(name);		// Creates a new lock
 	new_Lock.Kernel_Lock = tempLock;		// Places lock into struct
 	new_Lock.Owner = NULL;		// Sets Owner of lock to NULL (default)
 	new_Lock.IsDeleted = false;		// Lock has not been deleted and is functional
@@ -363,7 +379,7 @@ void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
 int CreateCV_Syscall(char* name){		// Creates a new CV in CVTable
 	CVTableLock->Acquire();
 	KernelCV new_cv;		// New CV Struct
-	Condition* cv = new Condition("");		// New CV
+	Condition* cv = new Condition(name);		// New CV
 	new_cv.CV = cv;		// Places new CV into struct
 	new_cv.IsDeleted = false;		// CV has not been deleted yet
 	
