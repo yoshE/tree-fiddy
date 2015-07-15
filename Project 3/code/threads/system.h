@@ -48,7 +48,7 @@ struct ServerLock{
 	bool available;
 	bool valid;
 	int count;
-	Client Owner;
+	client Owner;
 	List *waitQueue;
 	bool IsDeleted;
 };

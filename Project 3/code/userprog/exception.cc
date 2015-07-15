@@ -393,7 +393,7 @@ int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
 	char *name = new char[NameSize];
 	
 	if (copyin(vaddr, NameSize, name) == -1){
-		DEBUG('a', bad pointer passed to create lock\n);
+		DEBUG('a', "bad pointer passed to create lock\n");
 		delete[] name;
 		return -2;
 	}
@@ -470,7 +470,15 @@ void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
 	#endif
 }
 
-int CreateCV_Syscall(char* name){		// Creates a new CV in CVTable
+int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
+	char *name = new char[NameSize];
+	
+	if (copyin(vaddr, NameSize, name) == -1){
+		DEBUG('a', "bad pointer passed to create CV\n");
+		delete[] name;
+		return -2;
+	}
+	
 	CVTableLock->Acquire();
 	KernelCV new_cv;		// New CV Struct
 	Condition* cv = new Condition(name);		// New CV
@@ -739,7 +747,7 @@ void ExceptionHandler(ExceptionType which) {
 				break;
 			case SC_CreateLock:		// Syscall for creating locks
 				DEBUG('a', "Create Lock Syscall.\n");
-				rv = CreateLock_Syscall((char*)machine->ReadRegister(4));		// Calls CreateLock_Syscall with no parameters
+				rv = CreateLock_Syscall(machine->ReadRegister(4));		// Calls CreateLock_Syscall with no parameters
 				break;
 			case SC_DestroyLock:		// Syscall for deleting locks
 				DEBUG('a', "Destroy Lock Syscall.\n");
@@ -747,7 +755,7 @@ void ExceptionHandler(ExceptionType which) {
 				break;
 			case SC_CreateCV:		// Syscall for creating CVs
 				DEBUG('a', "Create CV Syscall.\n");
-				rv = CreateCV_Syscall((char*)machine->ReadRegister(4));		// Calls CreateCV_Syscall with entered parameters (int)
+				rv = CreateCV_Syscall(machine->ReadRegister(4));		// Calls CreateCV_Syscall with entered parameters (int)
 				break;
 			case SC_DestroyCV:		// Syscall for destroying CVs
 				DEBUG('a', "Destroy CV Syscall.\n");
