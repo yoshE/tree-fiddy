@@ -228,6 +228,7 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 			virtAddr, pageTableSize);
 	    return PageFaultException;
 	}
+	
 	entry = &pageTable[vpn];
     } else {
         for (entry = NULL, i = 0; i < TLBSize; i++)
@@ -235,14 +236,14 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 		entry = &tlb[i];			// FOUND!
 		break;
 	    }
-	if (entry == NULL) {				// not found
+		if (entry == NULL) {				// not found
     	    DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
     	    return PageFaultException;		// really, this is a TLB fault,
 						// the page may be in memory,
 						// but not in the TLB
-	}
+		}
     }
-
+	
     if (entry->readOnly && writing) {	// trying to write to a read-only page
 	DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
 	return ReadOnlyException;

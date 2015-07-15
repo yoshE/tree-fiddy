@@ -287,7 +287,7 @@ int AddrSpace::handleIPTMiss(int currentVPN) {
 	pageIndex = memory->Find();
 	memoryLock->Release();
 	
-	if (pageIndex == -1){
+	if (pageIndex == -1) {
 		pageIndex = Evict_IPT(currentVPN); // TODO: Create Evict_IPT
 	}
 	
@@ -345,6 +345,7 @@ bool PopulateTLB_IPT(int currentVPN){
 
 	// If there is a IPT miss
 	if(physicalPage == -1){
+		
 		physicalPage = currentThread->space->handleIPTMiss(currentVPN);		// Handle IPT miss NEED TO IMPLEMENT
 	}	else {	// Populate TLB from IPT
 		foundInIPT = true;
@@ -367,6 +368,7 @@ bool PopulateTLB_IPT(int currentVPN){
 	iptLock -> Acquire();
 	ipt[physicalPage].use = FALSE;
 	iptLock -> Release(); 
+	
 	return foundInIPT;
 }
 
@@ -423,8 +425,8 @@ void AddrSpace::SaveState()
 
 void AddrSpace::RestoreState() 
 {
-    machine->pageTable = pageTable;
-    machine->pageTableSize = numPages;
+    //machine->pageTable = pageTable;
+    //machine->pageTableSize = numPages;
 	
 	int i = 0;
 	IntStatus oldLevel = interrupt->SetLevel(IntOff);
