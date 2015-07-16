@@ -42,6 +42,10 @@
 #define SC_DestroyCV 	 19
 #define SC_printf		 20
 #define SC_rand			 21
+#define SC_CreateMV		22
+#define SC_SetMV		23
+#define SC_GetMV		24
+#define SC_DestroyMV	25
 
 #define MAXFILENAME 256
 
@@ -151,6 +155,13 @@ int CreateLock(char* name);
 void DestroyLock(int i);
 int CreateCV(char* name);
 void DestroyCV(int j);
+
+/* Syscall for MVs */
+int CreateMV_Syscall(int vaddr,int len,int initialValue);
+void SetMV_Syscall(int id,int value);
+int GetMV_Syscall(int id);
+void DestroyMV_Syscall(int id);
+
 
 /* Syscall for user printf */
 void printf(unsigned int vaddr, int len, int k, int l);

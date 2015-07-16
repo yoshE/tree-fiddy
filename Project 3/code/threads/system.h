@@ -24,6 +24,7 @@
 #define MAX_LOCK  200
 #define MAX_CV  200
 #define MAX_MV  200
+#define MAX_CHAR 50
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv); 	// Initialization,
@@ -72,12 +73,12 @@ struct clientPacket{
 	char name[30];
 	char name2[30];
 	int syscall;
-	int index1;
+	int index;
 	int index2;
 	int value;
 	
 	void print(){
-		printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index1,index2,value);
+		printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index,index2,value);
 	}
 };
 
