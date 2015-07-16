@@ -70,7 +70,6 @@ void createLock(char *name, int machineID, int mailBoxID){
 		return;
 	}
 	
-	lockID--;
 	ServerLocks[lockID].name = new char[sizeof(name)+1];
 	strcpy(ServerLocks[lockID].name, name);
 	ServerLocks[lockID].count = 0;
@@ -208,7 +207,6 @@ void createCV(char *name, int machineID, int mailBoxID){
 		return;
 	}
 	
-	cvID--;
 	ServerCVs[cvID].name = new char[sizeof(name)+1];
 	strcpy(ServerCVs[cvID].name, name);
 	ServerCVs[cvID].count = 0;
@@ -219,6 +217,39 @@ void createCV(char *name, int machineID, int mailBoxID){
 	
 	send("CREATELOCK", true, cvID, machineID, mailBoxID);
 }
+
+//----------------------------------------------------------------------
+//  destroyCV
+//  destroy CVs
+//----------------------------------------------------------------------
+void destroyCV(int index, int machineID, int mailBoxID){
+	serverPacket packet;
+	
+	if(index < 0 || index > MAX_CV){
+		printf("CV TO BE DESTROYED IS INVALID\n");
+		send("DESTROYCV", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerCVs[index].valid){
+		printf("CV TO BE DESTROYED IS NULL\n");
+		send("DESTROYCV", false, -2, machineID, mailBoxID);
+		return;
+	}else if (!ServerCVs[index].waitingQueue->IsEmpty() || ServerCVs[index].count > 0){
+		printf("CV HAS WAITING CLIENTS\n");
+		ServerCVs[index].IsDeleted = true;
+		send("DESTROYCV", false, 1, machineID, mailBoxID);
+	} else if (ServerCVs[index].count == 0){
+		printf("DESTROYING CV!\n");
+		ServerCVs[index].valid = false;
+		delete ServerCVs[index].name;
+		delete ServerCVs[index].waitingQueue;
+		send("DESTROYCV", true, index, machineID, mailBoxID);
+	}
+}
+
+//----------------------------------------------------------------------
+//  Wait
+//  Call Wait on a CV
+//----------------------------------------------------------------------
 
 //----------------------------------------------------------------------
 //  Run
