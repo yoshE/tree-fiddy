@@ -672,7 +672,7 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {		// Creates a new pr
 	t->setPID(p->id);		// Sets the process ID of the thread to the process ID
 	t->setID(1);		// Sets ID of the thread to 1 (First thread of the new process)
 	
-	delete file;		// Delete the used files
+	//delete file;		// Delete the used files
 	delete[] filename;
 	syscallLock->Release();		// Release the lock
 	
