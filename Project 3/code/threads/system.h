@@ -59,6 +59,7 @@ struct ServerCV{
 	List *waitingQueue;
 	int LockID;
 	int count;
+	int cvID;
 	char *name;
 	bool IsDeleted;
 };

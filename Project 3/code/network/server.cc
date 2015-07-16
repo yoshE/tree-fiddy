@@ -210,6 +210,8 @@ void createCV(char *name, int machineID, int mailBoxID){
 	ServerCVs[cvID].name = new char[sizeof(name)+1];
 	strcpy(ServerCVs[cvID].name, name);
 	ServerCVs[cvID].count = 0;
+	ServerCVs[cvID].cvID = cvID;
+	ServerCVs[cvID].lockID = -1;
 	ServerCVs[cvID].valid = true;
 	ServerCVs[cvID].waitingQueue = new List;
 	ServerCVs[cvID].available = true;
@@ -250,6 +252,35 @@ void destroyCV(int index, int machineID, int mailBoxID){
 //  Wait
 //  Call Wait on a CV
 //----------------------------------------------------------------------
+void wait(int lockID, int index, int machineID, int mailBoxID){
+	serverPacket packet;
+	client *waitingClient = NULL;
+		
+	if(lockID < 0 || lockID > MAX_LOCK){
+		printf("LOCK TO WAIT ON IS INVALID\n");
+		send("WAIT", false, -1, machineID, mailBoxID);
+		return;
+	} else if(index < 0 || index > MAX_CV){
+		printf("CV TO WAIT ON IS INVALID\n");
+		send("WAIT", false, -1, machineID, mailBoxID);
+		return;
+	}  else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
+		printf("CV AND LOCK ARE INVALID\n");
+		send ("WAITCV", false, 1, machineID, mailBoxID);
+		return;
+	}
+	
+	if (ServerCVs[index].lockID == -1){
+		ServerCVs[index].lockID = lockID;
+	}
+	
+	releaseLock(lockID, machineID, mailBoxID, 1);
+	ServerCVs[index].count++;
+	waitingClient = new client;
+	waitingClient -> machineID = machineID;
+	waitingClient -> mailBoxID = mailBoxID;
+	ServerCVs[index].waitingQueue->Append((void *)waitingClient);
+}
 
 //----------------------------------------------------------------------
 //  Run
@@ -279,6 +310,9 @@ void Run(){
 				release(packet.index, packet_From_Client.from, mail_From_Client.from, SC_Release);
 				break;
 			case SC_Wait:
+				printf("REQUEST: WAIT FROM CLIENT\n");
+				wait(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case SC_Signal:
 			case SC_Broadcast:
 			case SC_CreateLock:
@@ -294,6 +328,9 @@ void Run(){
 				createCV(packet.name, packet_From_Client.from, mail_From_Client.from);
 				break;
 			case SC_DestroyCV:
+				printf("REQUEST: DESTROY CV FROM CLIENT\n");
+				destroyCV(packet.index, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case SC_CreateMV:
 			case sc_SetMV:
 			case SC_GetMV:
