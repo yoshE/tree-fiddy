@@ -360,6 +360,24 @@ void Release_Syscall(int n){		// Syscall to release a lock... takes an int that 
 }
 
 void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for position of CV, second is for position of Lock (in their tables)
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_Signal;
+		//strncpy(packet.name, name, sizeof(name));
+		packet.index = lock;
+		packet.index2 = x;
+		
+		SendToPO("BROADCAST", packet);
+		int n = ReceiveFromPO("BROADCAST");
+		
+		if (n == -1){
+			printf("BROADCAST ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("BROADCAST SUCCESSFUL\n");
+		}
+	#else
+	
 	CVTableLock->Acquire();
 	
 	if (x < 0 || x > (signed)CVTable.size() - 1 || CVTable[x].CV == NULL || lock < 0 || lock > (signed)LockTable.size() - 1 || LockTable[lock].Kernel_Lock == NULL ){		// Check if data exists for entered value
@@ -371,9 +389,28 @@ void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for 
 	CVTableLock->Release();
 	CVTable[x].CV->Wait(LockTable[lock].Kernel_Lock);		// Wait on said lock
 	LockTable[lock].Kernel_Lock->Release();
+	#endif
 }
 
 void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is for position of CV, second is for position of Lock (in their tables)	
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_Signal;
+		//strncpy(packet.name, name, sizeof(name));
+		packet.index = a;
+		packet.index2 = y;
+		
+		SendToPO("BROADCAST", packet);
+		int n = ReceiveFromPO("BROADCAST");
+		
+		if (n == -1){
+			printf("BROADCAST ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("BROADCAST SUCCESSFUL\n");
+		}
+	#else
+	
 	CVTableLock->Acquire();
 	if (y < 0 || y > (signed)CVTable.size() - 1 || CVTable[y].CV == NULL || a < 0 || a > (signed)LockTable.size() - 1 || LockTable[a].Kernel_Lock == NULL  ){		// Check if data exists for entered value
 		printf("%s", "Invalid CV Table Number and/or Invalid Lock Table Number.\n");
@@ -387,9 +424,27 @@ void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is f
 		CVTable[y].CV = NULL;		// Delete the CV
 	}
 	CVTableLock->Release();
+	#endif
 }
 
 void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int is for position of CV, second is for position of Lock (in their tables)
+	#ifdef NETWORK
+		clientPacket packet;
+		packet.syscall = SC_Broadcast;
+		//strncpy(packet.name, name, sizeof(name));
+		packet.index = b;
+		packet.index2 = z;
+		
+		SendToPO("BROADCAST", packet);
+		int n = ReceiveFromPO("BROADCAST");
+		
+		if (n == -1){
+			printf("BROADCAST ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("BROADCAST SUCCESSFUL\n");
+		}
+	#else
 	CVTableLock->Acquire();
 	
 	if (z < 0 || z > (signed)CVTable.size() - 1 || CVTable[z].CV == NULL || b < 0 || b > (signed)LockTable.size() - 1 || LockTable[b].Kernel_Lock == NULL ){		// Check if data exists for entered value
@@ -401,6 +456,7 @@ void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int 
 	
 	CVTable[z].CV->Broadcast(LockTable[b].Kernel_Lock);		// Broadcast on said lock
 	CVTableLock->Release();
+	#endif
 }
 
 int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
@@ -525,7 +581,19 @@ int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
 
 void DestroyCV_Syscall(int n){		// Destroys an existing CV in CVTable
 	#ifdef NETWORK
-	
+		clientPacket packet;
+		packet.syscall = SC_DestroyCV;
+		//strncpy(packet.name, name, sizeof(name));
+		
+		SendToPO("DESTROYCV", packet);
+		int x = ReceiveFromPO("DESTROYCV");
+		
+		if (x == -1){
+			printf("DESTROYCV ERROR\n");
+			interrupt->Halt();
+		} else {
+			printf("DESTROYCV SUCCESSFUL\n");
+		}
 	#else
 		CVTableLock->Acquire();
 	
