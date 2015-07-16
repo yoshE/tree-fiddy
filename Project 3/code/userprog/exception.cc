@@ -251,7 +251,7 @@ int rand_Syscall(){
 
 
 #ifdef NETWORK
-void send(char *syscall, clientPacket packet){
+void SendToPO(char *syscallType,clientPacket packet){
 	PacketHeader packet_From_Client;
 	MailHeader mail_From_Client;
 	int len = sizeof(packet);
@@ -264,14 +264,14 @@ void send(char *syscall, clientPacket packet){
 	mail_From_Client.from = 0;
 	mail_From_Client.length = len + 1;
 	
-	bool s = postOffice->send(packet_From_Client, mail_From_Client, data);
+	bool s = postOffice->Send(packet_From_Client, mail_From_Client, data);
 	if (!s){
 		printf("COULDN'T SEND DATA\n");
 		interrupt->Halt();
 	}
 }
 
-int receive(char *syscall){
+int ReceiveFromPO(char *syscallType){
 	PacketHeader packet_From_Server;
 	MailHeader mail_From_Server;
 	serverPacket packet;
@@ -283,6 +283,20 @@ int receive(char *syscall){
 	memcpy((void *)&packet, (void *)data, len);
 	if (!packet.status) return -1;
 	return packet.value;
+} 
+
+serverPacket ReceivePacket(char *syscallType){			/*Function that performs PostOffice->Receive , which is mainly used for handling Monitor Variables*/
+	PacketHeader pFromSToC;									/*Creating an object of type PacketHeader, which has the information about the data in the packet*/		
+	MailHeader mFromSToC;									/*Creating an object of type MailHeader, which has the mail ID*/
+	serverPacket tempPacketReceive;
+	
+	int len=sizeof(tempPacketReceive);
+	char *data=new char[len+1];
+
+	postOffice->Receive(0,&pFromSToC,&mFromSToC,data); 		/*Performing the "ReceiveFromPO" function, that receives the data from server to client*/
+	memcpy((void *)&tempPacketReceive,(void*)data,len);		/*Performing copy function into a packet structure*/
+	
+	return tempPacketReceive;
 }
 #endif
 
@@ -292,8 +306,8 @@ void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that 
 		packet.syscall = SC_Acquire;
 		packet.index = n;
 		
-		send("ACQUIRE", packet);
-		n = receive("ACQUIRE");
+		SendToPO("ACQUIRE", packet);
+		n = ReceiveFromPO("ACQUIRE");
 		
 		if(n == -1){
 			printf("LOCK ACQUIRE ERROR\n");
@@ -319,8 +333,8 @@ void Release_Syscall(int n){		// Syscall to release a lock... takes an int that 
 		packet.syscall = SC_Release;
 		packet.index = n;
 		
-		send("RELEASE", packet);
-		n = receive("RELEASE");
+		SendToPO("RELEASE", packet);
+		n = ReceiveFromPO("RELEASE");
 		
 		if(n == -1){
 			printf("LOCK RELEASE ERROR\n");
@@ -403,8 +417,8 @@ int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
 		packet.syscall = SC_CreateLock;
 		strncpy(packet.name, name, sizeof(name));
 		
-		send("CREATELOCK", packet);
-		int n = receive("CREATELOCK");
+		SendToPO("CREATELOCK", packet);
+		int n = ReceiveFromPO("CREATELOCK");
 		
 		if (n == -1){
 			printf("CREATE LOCK ERROR\n");
@@ -438,8 +452,8 @@ void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
 		packet.syscall = SC_DestroyLock;
 		packet.index = n;
 		
-		send("DESTROYLOCK", packet);
-		n = receive("DESTROYLOCK");
+		SendToPO("DESTROYLOCK", packet);
+		n = ReceiveFromPO("DESTROYLOCK");
 		
 		if (n == -1){
 			printf("DESTROY LOCK ERROR\n");
@@ -485,8 +499,8 @@ int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
 		packet.syscall = SC_CreateCV;
 		strncpy(packet.name, name, sizeof(name));
 		
-		send("CREATECV", packet);
-		int x = receive("CREATECV", packet);
+		SendToPO("CREATECV", packet);
+		int x = ReceiveFromPO("CREATECV");
 		
 		if (x == -1){
 			printf("CREATECV ERROR\n");
@@ -692,6 +706,91 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
     PrintfLock->Release();
 
 }
+
+#ifdef NETWORK
+
+int CreateMV_Syscall(int vaddr,int len,int initialValue){		/*System call for creating a monitor variable*/
+	int id;
+	syscallLock->Acquire();
+	
+	if (len < 0 || len > MAX_CHAR)
+	{
+		printf("CREATEMV INVALID MV LENGTH \n");		
+		syscallLock->Release();
+		interrupt->Halt();
+		return -1;
+	}
+	
+	if(vaddr<0 || (vaddr+len)>currentThread->space->getNumPages()*PageSize){
+		printf("CREATEMV INVALID MV VIRTUAL ADDRESS \n");		
+		syscallLock->Release();
+		interrupt->Halt();
+		return -1;
+	}
+	
+	char *buf;													/*Creating a char array to store name*/
+	buf=new char[len+1];
+	buf[len]='\0';
+	copyin(vaddr,len,buf);										
+	
+	clientPacket tempPacketSend;									/*Creating a packet on the client side*/
+	strncpy(tempPacketSend.name,buf,len);						/*Putting data in the packet*/
+	tempPacketSend.syscall = SC_CreateMV;							
+	tempPacketSend.value = initialValue;
+	SendToPO("CREATEMV",tempPacketSend);							
+	id = ReceiveFromPO("CREATEMV");
+	if(id == -1){												/*Halts the program if the id received is -1*/
+		printf("CREATEMV ERROR CREATING MV\n");
+		interrupt->Halt();
+	}
+	printf("CREATEMV MV %d CREATED \n",id);					/*The MV is created if the program comes to this else part*/
+	syscallLock->Release();
+	return id;
+}
+
+void SetMV_Syscall(int id,int value){							/*System call for setting a monitor variable*/
+	clientPacket tempPacketSend;									/*Creating a packet in the client side*/
+	tempPacketSend.syscall = SC_SetMV;                            /*Assigning the required data in the packet*/
+	tempPacketSend.index = id;                                 
+	tempPacketSend.value = value;                                 
+	SendToPO("SETMV",tempPacketSend);                                 /*calls the send function which will perform postoffice->send*/
+	serverPacket receivedPacket = ReceivePacket("SETMV");    /*Receives the index and stores it in a variable*/
+	if(receivedPacket.status == true)                           
+		return;                                                 
+		                                                        
+	printf("SETMV ERROR SETTING MV\n");
+	interrupt->Halt();                                          
+}
+
+int GetMV_Syscall(int id){									/*System call for getting a monitor variable*/
+	clientPacket tempPacketSend;									/*Creating a packet in the client side*/
+	tempPacketSend.syscall = SC_GetMV;                            /*Assigning the required datea in the packet*/
+	tempPacketSend.index = id;                                 
+	SendToPO("GETMV",tempPacketSend);                                 /*calls the send function which will perform postoffice->send*/
+	serverPacket receivedPacket = ReceivePacket("GETMV");    /*Receives the index and stores it in a variable*/
+	if(receivedPacket.status == true)                           
+		return receivedPacket.value;
+	printf("SETMV ERROR GETTING MV\n");
+	interrupt->Halt();
+}
+
+void DestroyMV_Syscall(int id){
+	clientPacket tempPacketSend;									/*Creating a packet in the client side*/
+	tempPacketSend.syscall = SC_DestroyMV;                        /*Assigning the required data in the packet*/
+	tempPacketSend.index = id;                                 
+	SendToPO("DESTROYMV",tempPacketSend);                             /*calls the send function which will perform postoffice->send*/
+	id = ReceiveFromPO("DESTROYMV");                                  /*Receives the index and stores it in a variable*/
+	
+	if(id == -1){
+		printf("DESTROYMV ERROR DESTROYING MV\n");
+		interrupt->Halt();
+	}
+	else 
+		printf("MV DESTROYED\n");
+		return;
+}
+
+#endif
 
 void ExceptionHandler(ExceptionType which) {
     int type = machine->ReadRegister(2); // Which syscall?
