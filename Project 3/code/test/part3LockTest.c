@@ -11,4 +11,5 @@ int main(){
 	DestroyLock(testLock);
 	printf((int)"Destroyed lock.\n", sizeof("Destroyed lock.\n"), 0, 0);
 	Exit(0);
+/* changed file so i can push */
 }
