@@ -34,5 +34,6 @@ main()
             for (k = 0; k < Dim; k++)
 		 C[i][j] += A[i][k] * B[k][j];
 
+	printf("Exiting with code: %d\n", sizeof("Exiting with code: %d\n"), C[Dim-1][Dim-1], 0);
     Exit(C[Dim-1][Dim-1]);		/* and then we're done */
 }
