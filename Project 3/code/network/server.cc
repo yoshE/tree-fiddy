@@ -89,7 +89,6 @@ void createLock(char *name, int machineID, int mailBoxID){
 //----------------------------------------------------------------------
 
 void acquire(int index, int machineID, int mailBoxID){
-	serverPacket packet;
 	client *waitingClient = NULL;
 	
 	if(index < 0 || index > MAX_LOCK){
@@ -126,8 +125,6 @@ void acquire(int index, int machineID, int mailBoxID){
 //  Release a lock
 //----------------------------------------------------------------------
 void release(int index, int machineID, int mailBoxID, int syscall){
-	serverPacket packet;
-	
 	if(index < 0 || index > MAX_LOCK){
 		printf("LOCK TO BE RELEASED IS INVALID\n");
 		send("RELEASE", false, -1, machineID, mailBoxID);
@@ -166,8 +163,6 @@ void release(int index, int machineID, int mailBoxID, int syscall){
 //  Destroy a lock
 //----------------------------------------------------------------------
 void destroy(int index, int machineID, int mailBoxID){
-	serverPacket packet;
-	
 	if(index < 0 || index > MAX_LOCK){
 		printf("LOCK TO BE DESTROYED IS INVALID\n");
 		send("DESTROYLOCK", false, -1, machineID, mailBoxID);
@@ -228,8 +223,6 @@ void createCV(char *name, int machineID, int mailBoxID){
 //  destroy CVs
 //----------------------------------------------------------------------
 void destroyCV(int index, int machineID, int mailBoxID){
-	serverPacket packet;
-	
 	if(index < 0 || index > MAX_CV){
 		printf("CV TO BE DESTROYED IS INVALID\n");
 		send("DESTROYCV", false, -1, machineID, mailBoxID);
@@ -256,7 +249,6 @@ void destroyCV(int index, int machineID, int mailBoxID){
 //  Call Signal on a CV
 //----------------------------------------------------------------------
 void signal(int lockID, int index, int machineID, int mailBoxID){
-	serverPacket packet;
 	client signalClient;
 	
 	if(lockID < 0 || index > MAX_LOCK){
@@ -299,7 +291,6 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 //  Call Wait on a CV
 //----------------------------------------------------------------------
 void wait(int lockID, int index, int machineID, int mailBoxID){
-	serverPacket packet;
 	client *waitingClient = NULL;
 		
 	if(lockID < 0 || lockID > MAX_LOCK){
@@ -333,7 +324,6 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 //  Call Broadcast on a CV
 //----------------------------------------------------------------------
 void broadcast(int lockID, int index, int machineID, int mailBoxID){
-	serverPacket packet;
 	client signalClient;
 	
 	if(lockID < 0 || lockID > MAX_LOCK){
@@ -362,8 +352,6 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 //  Create a new monitor variable
 //----------------------------------------------------------------------
 void createMV(char *name, int value, int machineID, int mailBoxID){
-		serverPacket packet;
-		
 		for(int i = 0; i < ServerMVs.size(); i++){
 			if (ServerMVs[i].name = name){
 				send("CREATEMV", true, i, machineID, mailBoxID);
@@ -374,6 +362,7 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 		if(mvID >= MAX_MV || mvID < 0){
 			printf("TOO MANY MVs\n");
 			send("CREATEMV", false, -1, machineID, mailBoxID);
+			return;
 		} else {
 			ServerMV temp;
 			temp.name = new char[sizeof(name)+1];
@@ -385,6 +374,27 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 			ServerMVs[mvID] = temp;
 			send("CREATEMV", true, mvID, machineID, mailBoxID);
 		}
+}
+
+//----------------------------------------------------------------------
+//  Set MV
+//  Set a new monitor variable
+//----------------------------------------------------------------------
+void setMV(int index, int value, int machineID, int mailBoxID){
+	serverPacket packet;
+
+	if(index >= MAX_MV || index < 0){
+		printf("TOO MANY MVs\n");
+		send("SETMV", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerMVs[index].valid){
+		printf("MV ISN'T VALID\n");
+		send("SETMV", false, -2, machineID, mailBoxID);
+		return;
+	}
+	
+	ServerMVs[index].value = value;
+	send("SETMV", true, ServerMVs[index].value, machineID, mailBoxID);
 }
 
 //----------------------------------------------------------------------
@@ -448,7 +458,7 @@ void Run(){
 				break;
 			case sc_SetMV:
 				printf("REQUEST: SET MV FROM CLIENT\n");
-				setMV(packet.index, packet.index2, packet_From_Client.form, mail_From_Client.from);
+				setMV(packet.index, packet.value, packet_From_Client.form, mail_From_Client.from);
 				break;
 			case SC_GetMV:
 				printf("REQUEST: GET MV FROM CLIENT\n");
