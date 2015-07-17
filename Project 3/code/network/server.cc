@@ -283,8 +283,15 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 		send("SIGNAL", false, -2, machineID, mailBoxID)
 	}
 	
+	signalClient = *((client *)ServerCVs[index].waitingQueue->Remove());
+	if (ServerCVs[index].waitingQueue->IsEmpty()){
+		ServerCVs[index].lockID = -1;
+	}
+	
+	ServerCVs[index].count--;
+	acquireLock(index, signalClient.machineID, signalClient.mailBoxID);
+	send("SIGNAL", true, index, machineID, mailBoxID);
 }
-
 
 //----------------------------------------------------------------------
 //  Wait
@@ -318,6 +325,14 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 	waitingClient -> machineID = machineID;
 	waitingClient -> mailBoxID = mailBoxID;
 	ServerCVs[index].waitingQueue->Append((void *)waitingClient);
+}
+
+//----------------------------------------------------------------------
+//  Broadcast
+//  Call Broadcast on a CV
+//----------------------------------------------------------------------
+void broadcast(int lockID, int index, int machineID, int mailBoxID){
+	
 }
 
 //----------------------------------------------------------------------
