@@ -249,6 +249,44 @@ void destroyCV(int index, int machineID, int mailBoxID){
 }
 
 //----------------------------------------------------------------------
+//  Signal
+//  Call Signal on a CV
+//----------------------------------------------------------------------
+void signal(int lockID, int index, int machineID, int mailBoxID){
+	serverPacket packet;
+	client signalClient;
+	
+	if(lockID < 0 || index > MAX_LOCK){
+		printf("LOCK TO SIGNAL IS INVALID\n");
+		send("SIGNAL", false, -2, machineID, mailBoxID);
+		return;
+	} else if (index < 0 || index > MAX_CV){
+		printf("SIGNAL INVALID INDEX\n");
+		send("SIGNAL", false, -2, machineID, mailBoxID);
+		return;
+	} else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
+		printf("LOCK WITH CV IS INVALID\n");
+		send("SIGNAL", false, -2, machineID, mailBoxID);
+		return;
+	} else if (ServerLocks[lockID].Owner.machineID != machineID || ServerLocks[lockID].Owner.mailBoxID != mailBoxID){
+		printf(" CLIENT DOESN'T HAVE THE LOCK\n");
+		send("SIGNAL", false, -2, machineID, mailBoxID);
+		return;
+	} else if (ServerCVs[index].lockID != lockID){
+		printf("LOCK DOESN'T MATCH FOR SIGNAL\n");
+		send("SIGNAL", false, -2, machineID, mailBoxID);
+		return;
+	}
+	
+	if (ServerCVs[index].waitingQueue->IsEmpty()){
+		printf("QUEUE IS EMPTY\n");
+		send("SIGNAL", false, -2, machineID, mailBoxID)
+	}
+	
+}
+
+
+//----------------------------------------------------------------------
 //  Wait
 //  Call Wait on a CV
 //----------------------------------------------------------------------
