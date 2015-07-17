@@ -157,10 +157,10 @@ int CreateCV(char* name);
 void DestroyCV(int j);
 
 /* Syscall for MVs */
-int CreateMV_Syscall(int vaddr,int len,int initialValue);
-void SetMV_Syscall(int id,int value);
-int GetMV_Syscall(int id);
-void DestroyMV_Syscall(int id);
+int CreateMV(int vaddr,int len,int initialValue);
+void SetMV(int id,int value);
+int GetMV(int id);
+void DestroyMV(int id);
 
 
 /* Syscall for user printf */
