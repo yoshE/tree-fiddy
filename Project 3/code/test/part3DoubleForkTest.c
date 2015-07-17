@@ -35,25 +35,21 @@ int matmult2() {
 
     for (i = 0; i < Dim; i++)		/* first initialize the matrices */
 	for (j = 0; j < Dim; j++) {
-	     A[i][j] = Dim-i;
-	     B[i][j] = Dim-j;
-	     C[i][j] = 0;
+	     D[i][j] = Dim-i;
+	     E[i][j] = Dim-j;
+	     F[i][j] = 0;
 	}
 
     for (i = 0; i < Dim; i++)		/* then multiply them together */
 	for (j = 0; j < Dim; j++)
             for (k = 0; k < Dim; k++)
-		 C[i][j] += A[i][k] * B[k][j];
+		 F[i][j] += D[i][k] * E[k][j];
 
-    printf("Forked MatMult2 Answer = %d\n", sizeof("Forked MatMult2 Answer = %d\n"), C[Dim-1][Dim-1], 0);		/* and then we're done */
-}
-
-void execSingleProcess() {
-	Exec("../test/matmult", sizeof("../test/matmult"));
+    printf("Forked MatMult2 Answer = %d\n", sizeof("Forked MatMult2 Answer = %d\n"), F[Dim-1][Dim-1], 0);		/* and then we're done */
 }
 
 int main() {
-	Write("forkSingleProcess()\n", sizeof("forkSingleProcess()\n"), ConsoleOutput);
+	Write("Forking 2 different matmult functions\n", sizeof("Forking 2 different matmult functions\n"), ConsoleOutput);
 	
 	Fork(matmult);
 	Fork(matmult2);

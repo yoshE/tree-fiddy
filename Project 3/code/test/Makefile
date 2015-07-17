@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult sort testfiles forktest Exec_Test exectest runsim Airport memoryTest part3LockTest
+all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim Airport part3LockTest part3DoubleForkTest part3DoubleExecTest
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -56,6 +56,12 @@ matmult: matmult.o start.o
 	$(LD) $(LDFLAGS) start.o matmult.o -o matmult.coff
 	../bin/coff2noff matmult.coff matmult
 
+matmult2.o: matmult2.c
+	$(CC) $(CFLAGS) -c matmult2.c
+matmult2: matmult2.o start.o
+	$(LD) $(LDFLAGS) start.o matmult2.o -o matmult2.coff
+	../bin/coff2noff matmult2.coff matmult2
+	
 testfiles.o: testfiles.c
 	$(CC) $(CFLAGS) -c testfiles.c
 testfiles: testfiles.o start.o
@@ -93,11 +99,17 @@ Airport: Airport.o start.o
 	$(LD) $(LDFLAGS) start.o Airport.o -o Airport.coff
 	../bin/coff2noff Airport.coff Airport
 	
-memoryTest.o: memoryTest.c
-	$(CC) $(CFLAGS) -c memoryTest.c
-memoryTest: memoryTest.o start.o
-	$(LD) $(LDFLAGS) start.o memoryTest.o -o memoryTest.coff
-	../bin/coff2noff memoryTest.coff memoryTest
+part3DoubleExecTest.o: part3DoubleExecTest.c
+	$(CC) $(CFLAGS) -c part3DoubleExecTest.c
+part3DoubleExecTest: part3DoubleExecTest.o start.o
+	$(LD) $(LDFLAGS) start.o part3DoubleExecTest.o -o part3DoubleExecTest.coff
+	../bin/coff2noff part3DoubleExecTest.coff part3DoubleExecTest
+	
+part3DoubleForkTest.o: part3DoubleForkTest.c
+	$(CC) $(CFLAGS) -c part3DoubleForkTest.c
+part3DoubleForkTest: part3DoubleForkTest.o start.o
+	$(LD) $(LDFLAGS) start.o part3DoubleForkTest.o -o part3DoubleForkTest.coff
+	../bin/coff2noff part3DoubleForkTest.coff part3DoubleForkTest
 	
 part3LockTest.o: part3LockTest.c
 	$(CC) $(CFLAGS) -c part3LockTest.c
@@ -107,5 +119,5 @@ part3LockTest: part3LockTest.o start.o
 	
 clean:
 	rm -f *.o *.coff
-	rm halt sort matmult testfiles forktest exectest runsim Airport memoryTest
+	rm halt sort matmult matmult2 testfiles forktest exectest runsim Airport part3DoubleExecTest part3DoubleForkTest
 	rm *~
