@@ -955,6 +955,22 @@ void ExceptionHandler(ExceptionType which) {
 				DEBUG('a', "rand Syscall.\n");
 				rv = rand_Syscall();
 				break;
+			case SC_CreateMV:
+				DEBUG('a', "CreateMV Syscall.\n");
+				rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+				break;
+			case SC_SetMV:
+				DEBUG('a', "SetMV Syscall.\n");
+				SetMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+				break;
+			case SC_GetMV:
+				DEBUG('a', "GetMV Syscall.\n");
+				rv = GetMV_Syscall(machine->ReadRegister(4));
+				break;
+			case SC_DestroyMV:
+				DEBUG('a', "DestroyMV Syscall.\n");
+				DestroyMV_Syscall(machine->ReadRegister(4));
+				break;
 		}		
 		// Put in the return value and increment the PC
 		machine->WriteRegister(2,rv);
