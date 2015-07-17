@@ -311,7 +311,7 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 		return;
 	}  else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
 		printf("CV AND LOCK ARE INVALID\n");
-		send ("WAITCV", false, 1, machineID, mailBoxID);
+		send ("WAITCV", false, -2, machineID, mailBoxID);
 		return;
 	}
 	
@@ -332,7 +332,28 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 //  Call Broadcast on a CV
 //----------------------------------------------------------------------
 void broadcast(int lockID, int index, int machineID, int mailBoxID){
+	serverPacket packet;
+	client signalClient;
 	
+	if(lockID < 0 || lockID > MAX_LOCK){
+		printf("LOCK TO WAIT ON IS INVALID\n");
+		send("WAIT", false, -1, machineID, mailBoxID);
+		return;
+	} else if(index < 0 || index > MAX_CV){
+		printf("CV TO WAIT ON IS INVALID\n");
+		send("WAIT", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
+		printf("CV AND LOCK ARE INVALID\n");
+		send ("WAITCV", false, -2, machineID, mailBoxID);
+		return;
+	}
+	
+	while(!ServerCVs[index].waitingQueue->IsEmpty()){
+		signal(lockID, index, machineID, mailBoxID);
+	}
+	
+	send("BROADCAST", true, index, machineID, mailBoxID);
 }
 
 //----------------------------------------------------------------------
