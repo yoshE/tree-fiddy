@@ -255,14 +255,14 @@ void SendToPO(char *syscallType,clientPacket packet){		// Sends a packet from th
 	PacketHeader packet_From_Client;		// Packet to send
 	MailHeader mail_From_Client;
 	int len = sizeof(packet);		// Find size of given packet
-	char* data = new char[len + 1];		// Creates a char array data that contains the packet
+	char* data = new char[len];		// Creates a char array data that contains the packet
 	memcpy((void *)data, (void *)&packet, len);		// Copy in the data
 	data[len] = '\0';
 	
 	packet_From_Client.to = 0;		
 	mail_From_Client.to = 0;
 	mail_From_Client.from = 0;
-	mail_From_Client.length = len + 1;
+	mail_From_Client.length = len;
 	
 	bool s = postOffice->Send(packet_From_Client, mail_From_Client, data);		// Sends the data from the client to the server
 	if (!s){		// If send returned as a failure
@@ -394,8 +394,8 @@ void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for 
 void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is for position of CV, second is for position of Lock (in their tables)	
 	#ifdef NETWORK
 		clientPacket packet;
-		packet.syscall = SC_Signal;
-		packet.index = a;
+		packet.syscall = SC_Signal;		// Syscall is SC_Signal
+		packet.index = a;		// First value is index of lock
 		packet.index2 = y;
 		
 		SendToPO("SIGNAL", packet);
@@ -644,7 +644,7 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {		// Creates a new pr
 	if(!file) {		// Open the file
 		printf("File (filename = %s) could not be opened!\n", filename);
 		delete[] filename;
-		delete file;
+		//delete file;
 		return -1;
 	}
 	
@@ -660,7 +660,7 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {		// Creates a new pr
 	if(processID == -1) {		// If i failed to be placed into the processTable
 		printf("Could not add process to Process Table!\n");
 		delete[] filename;
-		delete file;
+		//delete file;
 		delete p;
 		return -1;		// Return failure
 	}

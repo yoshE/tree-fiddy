@@ -57,7 +57,7 @@ struct ServerLock{
 struct ServerCV{
 	bool valid;
 	List *waitingQueue;
-	int LockID;
+	int lockID;
 	int count;
 	int cvID;
 	char *name;

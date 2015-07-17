@@ -8,8 +8,8 @@
 # All rights reserved.  See copyright.h for copyright notice and limitation 
 # of liability and disclaimer of warranty provisions.
 
-DEFINES = -DUSER_PROGRAM -DFILESYS_NEEDED -DFILESYS_STUB -DNETWORK
-INCPATH = -I../filesys -I../bin -I../userprog -I../threads -I../machine -I../network 
+DEFINES = -DUSER_PROGRAM -DFILESYS_NEEDED -DFILESYS_STUB -DNETWORK -DVM -DUSE_TLB
+INCPATH = -I../filesys -I../bin -I../vm -I../userprog -I../threads -I../machine -I../network 
 HFILES = $(THREAD_H) $(USERPROG_H) $(VM_H) $(NETWORK_H)
 CFILES = $(THREAD_C) $(USERPROG_C) $(VM_C) $(NETWORK_C)
 C_OFILES = $(THREAD_O) $(USERPROG_O) $(VM_O) $(NETWORK_O)

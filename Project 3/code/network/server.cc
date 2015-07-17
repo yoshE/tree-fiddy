@@ -25,15 +25,15 @@
 
 std::vector<ServerLock> ServerLocks;
 std::vector<ServerCV> ServerCVs;
-std::vector<<ServerMV> ServerMVs;
+std::vector<ServerMV> ServerMVs;
 
-void send(char *type, bool statue, int ID, int machineID, int mailBoxID){
+void send(char *type, bool status, int ID, int machineID, int mailBoxID){
 	serverPacket packet_Send;
 	PacketHeader packet_From_Server;
 	MailHeader mail_From_Server;
 	
 	packet_Send.value = ID;
-	packet_Send.statue = statue;
+	packet_Send.status = status;
 	
 	int len = sizeof(packet_Send);
 	char *data = new char[len + 1];
@@ -57,7 +57,7 @@ void send(char *type, bool statue, int ID, int machineID, int mailBoxID){
 //----------------------------------------------------------------------
 void createLock(char *name, int machineID, int mailBoxID){
 	int lockID = -1;
-	for (int i = 0; i < ServerLocks.size(); i++){
+	for (int i = 0; i < (signed)ServerLocks.size(); i++){
 		if (ServerLocks[i].name == name){
 			send("CREATELOCK", true, i, machineID, mailBoxID);
 			return;
@@ -76,7 +76,6 @@ void createLock(char *name, int machineID, int mailBoxID){
 	temp.valid = true;
 	temp.waitingQueue = new List;
 	temp.available = true;
-	temp.Owner = NULL;
 	temp.IsDeleted = false;
 	ServerLocks[lockID] = temp;
 	
@@ -104,7 +103,7 @@ void acquire(int index, int machineID, int mailBoxID){
 		send("ACQUIRE", false, -3, machineID, mailBoxID);
 	}
 	
-	Server_Lock[index].count++;
+	ServerLocks[index].count++;
 	if(ServerLocks[index].available){
 		ServerLocks[index].available = false;
 		ServerLocks[index].Owner.machineID = machineID;
@@ -143,15 +142,15 @@ void release(int index, int machineID, int mailBoxID, int syscall){
 		} else {
 			ServerLocks[index].Owner = *((client*)ServerLocks[index].waitingQueue->Remove());
 			ServerLocks[index].count--;
-			printf("CLIENT (%d, %d) IS NOW THE LOCK OWNER\n", ServerLocks[index].machineID, ServerLocks[index].mailBoxID);
-			send("RELEASE", true, index, ServerLocks[index].machineID, ServerLocks[index].mailBoxID);
+			printf("CLIENT (%d, %d) IS NOW THE LOCK OWNER\n", ServerLocks[index].Owner.machineID, ServerLocks[index].Owner.mailBoxID);
+			send("RELEASE", true, index, ServerLocks[index].Owner.machineID, ServerLocks[index].Owner.mailBoxID);
 		}
 	} else {
 		printf("YOU AREN'T THE LOCK OWNER\n");
 		send("RELEASE", false, -2, machineID, mailBoxID);
 	}
 	
-	if(ServerLocks[index].IsDeleted && ServerLock[index].count == 0){
+	if(ServerLocks[index].IsDeleted && ServerLocks[index].count == 0){
 		delete ServerLocks[index].name;
 		delete ServerLocks[index].waitingQueue;
 		ServerLocks[index].valid = false;
@@ -190,7 +189,7 @@ void destroy(int index, int machineID, int mailBoxID){
 //----------------------------------------------------------------------
 void createCV(char *name, int machineID, int mailBoxID){
 	int cvID = -1;
-	for (int i = 0; i < ServerCVs.size(); i++){
+	for (int i = 0; i < (signed)ServerCVs.size(); i++){
 		if (ServerCVs[i].name == name){
 			send("CREATECV", true, i, machineID, mailBoxID);
 			return;
@@ -199,7 +198,7 @@ void createCV(char *name, int machineID, int mailBoxID){
 	
 	cvID = (signed)ServerCVs.size();
 	if (cvID == MAX_CV || cvID < 0){
-		send("CREATECV", false, lockID, machineID, mailBoxID);
+		send("CREATECV", false, cvID, machineID, mailBoxID);
 		return;
 	}
 	
@@ -211,7 +210,6 @@ void createCV(char *name, int machineID, int mailBoxID){
 	temp.lockID = -1;
 	temp.valid = true;
 	temp.waitingQueue = new List;
-	temp.available = true;
 	temp.IsDeleted = false;
 	ServerCVs[cvID] = temp;
 	
@@ -273,7 +271,7 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 		return;
 	} else if (ServerCVs[index].waitingQueue->IsEmpty()){
 		printf("QUEUE IS EMPTY\n");
-		send("SIGNAL", false, -2, machineID, mailBoxID)
+		send("SIGNAL", false, -2, machineID, mailBoxID);
 	}
 	
 	signalClient = *((client *)ServerCVs[index].waitingQueue->Remove());
@@ -282,7 +280,7 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 	}
 	
 	ServerCVs[index].count--;
-	acquireLock(index, signalClient.machineID, signalClient.mailBoxID);
+	acquire(index, signalClient.machineID, signalClient.mailBoxID);
 	send("SIGNAL", true, index, machineID, mailBoxID);
 }
 
@@ -311,7 +309,7 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 		ServerCVs[index].lockID = lockID;
 	}
 	
-	releaseLock(lockID, machineID, mailBoxID, 1);
+	release(lockID, machineID, mailBoxID, 1);
 	ServerCVs[index].count++;
 	waitingClient = new client;
 	waitingClient -> machineID = machineID;
@@ -352,7 +350,7 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 //  Create a new monitor variable
 //----------------------------------------------------------------------
 void createMV(char *name, int value, int machineID, int mailBoxID){
-		for(int i = 0; i < ServerMVs.size(); i++){
+		for(int i = 0; i < (signed)ServerMVs.size(); i++){
 			if (ServerMVs[i].name = name){
 				send("CREATEMV", true, i, machineID, mailBoxID);
 			}
@@ -374,6 +372,14 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 			ServerMVs[mvID] = temp;
 			send("CREATEMV", true, mvID, machineID, mailBoxID);
 		}
+}
+
+void getMV(int index, int machineID, int mailBoxID){
+	
+}
+
+void destroyMV(int index, int machineID, int mailBoxID){
+	
 }
 
 //----------------------------------------------------------------------
@@ -454,11 +460,11 @@ void RunServer(){
 				break;
 			case SC_CreateMV:
 				printf("REQUEST: CREATE MV FROM CLIENT\n");
-				createMV(packet.name, packet.value, packet_From_Client.form, mail_From_Client.from);
+				createMV(packet.name, packet.value, packet_From_Client.from, mail_From_Client.from);
 				break;
-			case sc_SetMV:
+			case SC_SetMV:
 				printf("REQUEST: SET MV FROM CLIENT\n");
-				setMV(packet.index, packet.value, packet_From_Client.form, mail_From_Client.from);
+				setMV(packet.index, packet.value, packet_From_Client.from, mail_From_Client.from);
 				break;
 			case SC_GetMV:
 				printf("REQUEST: GET MV FROM CLIENT\n");
@@ -468,7 +474,7 @@ void RunServer(){
 				printf("REQUEST: DELETE MV FROM CLIENT\n");
 				destroyMV(packet.index, packet_From_Client.from, mail_From_Client.from);
 				break;
-			case default:
+			default:
 				printf("SERVER: INVALID SYSCALL %d\n", packet.syscall);
 		}
 	}	
