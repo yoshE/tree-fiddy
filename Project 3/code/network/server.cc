@@ -388,7 +388,13 @@ void Run(){
 				wait(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
 				break;
 			case SC_Signal:
+				printf("REQUEST: SIGNAL FROM CLIENT\n");
+				signal(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case SC_Broadcast:
+				printf("REQUEST: BROADCAST FROM CLIENT\n");
+				broadcast(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case SC_CreateLock:
 				printf("REQUEST: CREATE LOCK FROM CLIENT\n");
 				createLock(packet.name,packet_From_Client.from, mail_From_Client.from);
