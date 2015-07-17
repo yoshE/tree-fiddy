@@ -955,6 +955,8 @@ void ExceptionHandler(ExceptionType which) {
 				DEBUG('a', "rand Syscall.\n");
 				rv = rand_Syscall();
 				break;
+				
+			#ifdef NETWORK
 			case SC_CreateMV:
 				DEBUG('a', "CreateMV Syscall.\n");
 				rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
@@ -971,6 +973,7 @@ void ExceptionHandler(ExceptionType which) {
 				DEBUG('a', "DestroyMV Syscall.\n");
 				DestroyMV_Syscall(machine->ReadRegister(4));
 				break;
+			#endif
 		}		
 		// Put in the return value and increment the PC
 		machine->WriteRegister(2,rv);
