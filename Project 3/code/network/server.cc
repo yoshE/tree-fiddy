@@ -264,7 +264,7 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 		printf("SIGNAL INVALID INDEX\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
+	} else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){
 		printf("LOCK WITH CV IS INVALID\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
@@ -276,9 +276,7 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 		printf("LOCK DOESN'T MATCH FOR SIGNAL\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	}
-	
-	if (ServerCVs[index].waitingQueue->IsEmpty()){
+	} else if (ServerCVs[index].waitingQueue->IsEmpty()){
 		printf("QUEUE IS EMPTY\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID)
 	}
@@ -309,7 +307,7 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 		printf("CV TO WAIT ON IS INVALID\n");
 		send("WAIT", false, -1, machineID, mailBoxID);
 		return;
-	}  else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
+	}  else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){
 		printf("CV AND LOCK ARE INVALID\n");
 		send ("WAITCV", false, -2, machineID, mailBoxID);
 		return;
@@ -343,7 +341,7 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 		printf("CV TO WAIT ON IS INVALID\n");
 		send("WAIT", false, -1, machineID, mailBoxID);
 		return;
-	} else if (!ServerLocks[lockID].valid && !ServerCVs[index].valid){
+	} else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){
 		printf("CV AND LOCK ARE INVALID\n");
 		send ("WAITCV", false, -2, machineID, mailBoxID);
 		return;
