@@ -2671,7 +2671,7 @@ network.o: ../machine/network.cc ../threads/copyright.h \
   ../machine/timer.h ../filesys/filesys.h ../network/post.h \
   ../threads/copyright.h ../machine/network.h ../threads/synchlist.h \
   ../threads/synch.h
-Server.o: ../network/Server.cc ../threads/system.h ../threads/copyright.h \
+server.o: ../network/server.cc ../threads/system.h ../threads/copyright.h \
   ../threads/utility.h ../threads/bool.h ../machine/sysdep.h \
   ../threads/copyright.h \
   /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/include/stdio.h \
