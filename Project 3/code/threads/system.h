@@ -65,10 +65,12 @@ struct ServerCV{
 };
 
 struct ServerMV{
+	char *name;
+	int mvID;
 	int value;
 	int count;
 	bool valid;
-};
+}; 
 
 struct clientPacket{
 	char name[30];

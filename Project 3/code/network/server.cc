@@ -69,15 +69,16 @@ void createLock(char *name, int machineID, int mailBoxID){
 		send("CREATELOCK", false, lockID, machineID, mailBoxID);
 		return;
 	}
-	
-	ServerLocks[lockID].name = new char[sizeof(name)+1];
-	strcpy(ServerLocks[lockID].name, name);
-	ServerLocks[lockID].count = 0;
-	ServerLocks[lockID].valid = true;
-	ServerLocks[lockID].waitingQueue = new List;
-	ServerLocks[lockID].available = true;
-	ServerLocks[lockID].Owner = NULL;
-	ServerLocks[lockID].IsDeleted = false;
+	ServerLock temp;
+	temp.name = new char[sizeof(name)+1];
+	strcpy(temp.name, name);
+	temp.count = 0;
+	temp.valid = true;
+	temp.waitingQueue = new List;
+	temp.available = true;
+	temp.Owner = NULL;
+	temp.IsDeleted = false;
+	ServerLocks[lockID] = temp;
 	
 	send("CREATELOCK", true, lockID, machineID, mailBoxID);
 }
@@ -207,15 +208,17 @@ void createCV(char *name, int machineID, int mailBoxID){
 		return;
 	}
 	
-	ServerCVs[cvID].name = new char[sizeof(name)+1];
-	strcpy(ServerCVs[cvID].name, name);
-	ServerCVs[cvID].count = 0;
-	ServerCVs[cvID].cvID = cvID;
-	ServerCVs[cvID].lockID = -1;
-	ServerCVs[cvID].valid = true;
-	ServerCVs[cvID].waitingQueue = new List;
-	ServerCVs[cvID].available = true;
-	ServerCVs[cvID].IsDeleted = false;
+	ServerCV temp;
+	temp.name = new char[sizeof(name)+1];
+	strcpy(temp.name, name);
+	temp.count = 0;
+	temp.cvID = cvID;
+	temp.lockID = -1;
+	temp.valid = true;
+	temp.waitingQueue = new List;
+	temp.available = true;
+	temp.IsDeleted = false;
+	ServerCVs[cvID] = temp;
 	
 	send("CREATELOCK", true, cvID, machineID, mailBoxID);
 }
@@ -355,6 +358,36 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 }
 
 //----------------------------------------------------------------------
+//  Create MV
+//  Create a new monitor variable
+//----------------------------------------------------------------------
+void createMV(char *name, int value, int machineID, int mailBoxID){
+		serverPacket packet;
+		
+		for(int i = 0; i < ServerMVs.size(); i++){
+			if (ServerMVs[i].name = name){
+				send("CREATEMV", true, i, machineID, mailBoxID);
+			}
+		}
+		
+		int mvID = ServerMVs.size();
+		if(mvID >= MAX_MV || mvID < 0){
+			printf("TOO MANY MVs\n");
+			send("CREATEMV", false, -1, machineID, mailBoxID);
+		} else {
+			ServerMV temp;
+			temp.name = new char[sizeof(name)+1];
+			strcpy(temp.name, name);
+			temp.count = 0;
+			temp.mvID = mvID;
+			temp.valid = true;
+			temp.value = value;
+			ServerMVs[mvID] = temp;
+			send("CREATEMV", true, mvID, machineID, mailBoxID);
+		}
+}
+
+//----------------------------------------------------------------------
 //  Run
 //  Runs the server using a switch statement to handle incoming messages
 //----------------------------------------------------------------------
@@ -410,9 +443,21 @@ void Run(){
 				destroyCV(packet.index, packet_From_Client.from, mail_From_Client.from);
 				break;
 			case SC_CreateMV:
+				printf("REQUEST: CREATE MV FROM CLIENT\n");
+				createMV(packet.name, packet.value, packet_From_Client.form, mail_From_Client.from);
+				break;
 			case sc_SetMV:
+				printf("REQUEST: SET MV FROM CLIENT\n");
+				setMV(packet.index, packet.index2, packet_From_Client.form, mail_From_Client.from);
+				break;
 			case SC_GetMV:
+				printf("REQUEST: GET MV FROM CLIENT\n");
+				getMV(packet.index, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case SC_DestroyMV:
+				printf("REQUEST: DELETE MV FROM CLIENT\n");
+				destroyMV(packet.index, packet_From_Client.from, mail_From_Client.from);
+				break;
 			case default:
 				printf("SERVER: INVALID SYSCALL %d\n", packet.syscall);
 		}
