@@ -398,10 +398,10 @@ void setMV(int index, int value, int machineID, int mailBoxID){
 }
 
 //----------------------------------------------------------------------
-//  Run
+//  RunServer
 //  Runs the server using a switch statement to handle incoming messages
 //----------------------------------------------------------------------
-void Run(){
+void RunServer(){
 	PacketHeader packet_From_Client;
 	MailHeader mail_From_Client;
 	clientPacket packet;
