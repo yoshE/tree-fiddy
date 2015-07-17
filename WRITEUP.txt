@@ -52,10 +52,14 @@ V. Testing: (For each test case, you must show)
     + How to test
 
     -Test for Part 1:
-		
+		To show that part 1 is working, you can run matmult and sort as Nachos
+		user programs from the vm directory. You can also run part3DoubleExecTest
+		as a user program, which will exec 2 different matmult programs.
 		
 	-Tests for Part 2
-		
+		To show that part 2 is working, you can run part3DoubleForkTest as a user
+		program, which will fork 2 different matmult functions and print out
+		their end values.
       
 VI. Discussion:
     + Experiment expectation. 
