@@ -6,6 +6,7 @@ int main(){
 	int testCV;
 	
 	/*Creating and destroying a lock*/
+	printf((int)"SUP\n", sizeof("SUP\n"), 0, 0);
 	testLock = CreateLock("testLock Create Destroy");
 	printf((int)"Created lock %d.\n", sizeof("Created lock %d.\n"), testLock, 0);
 	/* Creating, Acquiring, Releasing, and Destroying a lock */
@@ -19,7 +20,7 @@ int main(){
 	Signal(testCV, testLock);
 	printf((int)"Signalled CV %d.\n", sizeof("Signalled CV %d.\n"), testCV, 0);
 	Broadcast(testCV, testLock);
-	ReleaseLock(testLock);
+	Release(testLock);
 	printf((int)"Released lock %d.\n", sizeof("Released lock $d.\n"), testLock, 0);
 	DestroyCV(testCV);
 	printf((int)"Destroyed CV.\n", sizeof("Destroyed CV.\n"), 0, 0);

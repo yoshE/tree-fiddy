@@ -150,6 +150,7 @@ main(int argc, char **argv)
             MailTest(atoi(*(argv + 1)));
             argCount = 2;
         } else if(!strcmp(*argv,"-Server")){
+			printf("SUP\n");
 			RunServer();
 			argCount = 1;
 		}

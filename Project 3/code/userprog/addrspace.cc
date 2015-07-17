@@ -23,12 +23,12 @@
 #include "synch.h"
 
 extern BitMap *memMap;
-extern Lock *iptLock;		//IPT lock
-extern Lock *QueueLock;
-extern OpenFile *swapFile;
-extern BitMap *swapMap;
-extern Lock *swapFileLock;
-extern Lock *memoryLock;
+extern Lock *iptLock;		// IPT lock
+extern Lock *QueueLock;		// Lock for Queue of IPT files
+extern OpenFile *swapFile;	// File that is swapped if IPT is full
+extern BitMap *swapMap;		// Map of available swap files
+extern Lock *swapFileLock;	// Lock for SwapFile
+extern Lock *memoryLock;	// Lock for accessing memory
 extern char swapFileName[100];		//swap file pointer
 
 extern "C" { int bzero(char *, int); };
@@ -164,7 +164,7 @@ AddrSpace::AddrSpace(OpenFile *tempExecutable) : fileTable(MaxOpenFiles) {
 					
 	// first, set up the translation 
     pageTable = new TranslationEntry[numPages];
-	pageTable2 = new PageTableExtend[numPages];
+	pageTable2 = new PageTableExtend[numPages];		// Extend the pageTable so it can include state and addrspace byte offset
 	
     for (i = 0; i < numPages; i++) {
 		pageTable[i].virtualPage = i;		// for now, virtual page # = phys page #
@@ -203,8 +203,8 @@ AddrSpace::~AddrSpace()
 
 int currentTLBIndex = 0;
 void AddrSpace::PopulateTLB(int n){
-	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	currentTLBIndex = (currentTLBIndex + 1) % TLBSize;
+	IntStatus oldLevel = interrupt->SetLevel(IntOff);		// Disable interrupts
+	currentTLBIndex = (currentTLBIndex + 1) % TLBSize;		// Covert index to memory addr space
 	
 	machine->tlb[currentTLBIndex].virtualPage = pageTable[n].virtualPage;
 	machine->tlb[currentTLBIndex].virtualPage = pageTable[n].virtualPage;
@@ -228,37 +228,37 @@ int Evict_IPT(int currentVPN){
 	
 	while(true){
 		QueueLock->Acquire();
-		if(!evictQueue->IsEmpty()) ppn = (int)evictQueue->Remove();
+		if(!evictQueue->IsEmpty()) ppn = (int)evictQueue->Remove();		// If there is a file to be evicted, add it to ppn
 		QueueLock->Release();
 		
-		if (ppn >= 0){
+		if (ppn >= 0){		// If there was a file...
 			iptLock->Acquire();
-			if (!ipt[ppn].use){
+			if (!ipt[ppn].use){		// If the IPT file at that index wasn't in use
 				ipt[ppn].use = true;
-				if (ipt[ppn].space == currentThread->space){
+				if (ipt[ppn].space == currentThread->space){		// If the addrspace of the File at index in IPT is the same as the current thread
 					IntStatus oldLevel = interrupt->SetLevel(IntOff);
-					for(i = 0; i <= TLBSize; i++){
-						if(machine->tlb[i].valid && ppn == machine->tlb[i].physicalPage){
-							ipt[ppn].dirty = machine->tlb[i].dirty;
+					for(i = 0; i <= TLBSize; i++){		// Iterate through the TLB
+						if(machine->tlb[i].valid && ppn == machine->tlb[i].physicalPage){		// If the index at set TLB is valid and same phys page
+							ipt[ppn].dirty = machine->tlb[i].dirty;		// Propagate the dirty bit
 							machine->tlb[i].valid = false;
 							break;
 						}
 					}
 					interrupt->SetLevel(oldLevel);
 				}
-				vpn = ipt[ppn].virtualPage;
+				vpn = ipt[ppn].virtualPage;		// Keep track of the virtual page of the IPT file at index ppn
 				ipt[ppn].virtualPage = currentVPN;
 				QueueLock->Acquire();
-				evictQueue->Append((void *)ppn);
+				evictQueue->Append((void *)ppn);		// Add ppn to the Queue for eviction
 				QueueLock->Release();
 				ipt[ppn].space->pageTableLock->Acquire(); 
 				iptLock->Release();
-				break;
+				break;		// End the while loop
 			}else {
 				QueueLock->Acquire();
-				evictQueue->Prepend((void *)ppn);		//then prepend it to fifo queue.
+				evictQueue->Prepend((void *)ppn);		//then prepend it to FIFO queue.
 				QueueLock->Release();
-				iptLock->Release();		//ipt lock is released
+				iptLock->Release();		// IPT lock is released
 			}
 		}
 	}
@@ -278,33 +278,33 @@ int Evict_IPT(int currentVPN){
 
 //----------------------------------------------------------------------
 // AddrSpace::handleIPTMiss
-// 	populate the TLB from pageTable
+// 	populate the TLB from pageTable if IPT doesn't have the File
 //----------------------------------------------------------------------
 
 int AddrSpace::handleIPTMiss(int currentVPN) {
 	memoryLock->Acquire();
 	int pageIndex = -1;
-	pageIndex = memory->Find();
+	pageIndex = memory->Find();		// Find available spot in memory
 	memoryLock->Release();
 	
-	if (pageIndex == -1) {
-		pageIndex = Evict_IPT(currentVPN); // TODO: Create Evict_IPT
+	if (pageIndex == -1) {		// If there are no available files
+		pageIndex = Evict_IPT(currentVPN); // Evict a file and return its new empty location
 	}
 	
 	currentThread->space->pageTableLock->Acquire();
 	TranslationEntry* table = currentThread->space->pageTable;		// QOL method instead of calling pageTable
 	PageTableExtend* table2 = currentThread->space->pageTable2;	
 	
-	if(table2[currentVPN].state == EXECUTABLE) {
-		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);
-	} else if (table2[currentVPN].state == SWAP){
+	if(table2[currentVPN].state == EXECUTABLE) {		// If the File is EXECUTABLE
+		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);		// Put the file into executable
+	} else if (table2[currentVPN].state == SWAP){		// If the FIle is SWAP (it was evicted)
 		swapFileLock->Acquire();
-		swapFile -> ReadAt(&(machine -> mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);
+		swapFile -> ReadAt(&(machine -> mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);		// Put the file into swapFile
 		swapFileLock->Release();
 	}
 	
-	table[currentVPN].physicalPage = pageIndex;
-	table[currentVPN].valid = true;
+	table[currentVPN].physicalPage = pageIndex;		// Set index of file to pageIndex
+	table[currentVPN].valid = true;	
 	currentThread->space->pageTableLock->Release();
 	
 	iptLock->Acquire();
@@ -315,7 +315,7 @@ int AddrSpace::handleIPTMiss(int currentVPN) {
 	ipt[pageIndex].readOnly = table[currentVPN].readOnly;
 	ipt[pageIndex].space = currentThread->space;
 	
-	evictQueue->Append((void *)pageIndex);
+	evictQueue->Append((void *)pageIndex);		// Add pageIndex to the eviction Queue
 	iptLock->Release();
 	
 	return pageIndex;

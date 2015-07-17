@@ -250,28 +250,28 @@ int rand_Syscall(){
 }
 
 
-#ifdef NETWORK
-void SendToPO(char *syscallType,clientPacket packet){
-	PacketHeader packet_From_Client;
+#ifdef NETWORK		// If we are running from network then use these receive and send functions
+void SendToPO(char *syscallType,clientPacket packet){		// Sends a packet from the client to the server
+	PacketHeader packet_From_Client;		// Packet to send
 	MailHeader mail_From_Client;
-	int len = sizeof(packet);
-	char* data = new char[len + 1];
-	memcpy((void *)data, (void *)&packet, len);
+	int len = sizeof(packet);		// Find size of given packet
+	char* data = new char[len + 1];		// Creates a char array data that contains the packet
+	memcpy((void *)data, (void *)&packet, len);		// Copy in the data
 	data[len] = '\0';
 	
-	packet_From_Client.to = 0;
+	packet_From_Client.to = 0;		
 	mail_From_Client.to = 0;
 	mail_From_Client.from = 0;
 	mail_From_Client.length = len + 1;
 	
-	bool s = postOffice->Send(packet_From_Client, mail_From_Client, data);
-	if (!s){
+	bool s = postOffice->Send(packet_From_Client, mail_From_Client, data);		// Sends the data from the client to the server
+	if (!s){		// If send returned as a failure
 		printf("COULDN'T SEND DATA\n");
 		interrupt->Halt();
 	}
 }
 
-int ReceiveFromPO(char *syscallType){
+int ReceiveFromPO(char *syscallType){		// Receive packets from the server to the client
 	PacketHeader packet_From_Server;
 	MailHeader mail_From_Server;
 	serverPacket packet;
@@ -279,10 +279,10 @@ int ReceiveFromPO(char *syscallType){
 	int len = sizeof(packet);
 	char *data = new char[len + 1];
 	
-	postOffice->Receive(0, &packet_From_Server, &mail_From_Server, data);
-	memcpy((void *)&packet, (void *)data, len);
-	if (!packet.status) return -1;
-	return packet.value;
+	postOffice->Receive(0, &packet_From_Server, &mail_From_Server, data);		// Receive the packet from the server
+	memcpy((void *)&packet, (void *)data, len);		// Copy the data into the packet
+	if (!packet.status) return -1;		// If packet had status failure, then return error
+	return packet.value;		// Return value of packet
 } 
 
 serverPacket ReceivePacket(char *syscallType){			/*Function that performs PostOffice->Receive , which is mainly used for handling Monitor Variables*/
@@ -303,16 +303,16 @@ serverPacket ReceivePacket(char *syscallType){			/*Function that performs PostOf
 void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that corresponds to lock (in their tables)
 	#ifdef NETWORK
 		clientPacket packet;
-		packet.syscall = SC_Acquire;
-		packet.index = n;
+		packet.syscall = SC_Acquire;		// The syscall you want is SC_Acquire
+		packet.index = n;		// You want to acquire a lock at index n
 		
-		SendToPO("ACQUIRE", packet);
-		n = ReceiveFromPO("ACQUIRE");
+		SendToPO("ACQUIRE", packet);		// Send packet with request to server
+		n = ReceiveFromPO("ACQUIRE");		// retrieve returned value (index of lock if acquired)
 		
-		if(n == -1){
+		if(n == -1){		// If lock wasn't acquired due to out of index error
 			printf("LOCK ACQUIRE ERROR\n");
 			interrupt->Halt();
-		} else {
+		} else {		// Otherwise acquired the lock!
 			printf("LOCK ACQUIRE SUCCESSFUL\n");
 		}
 	#else
@@ -330,13 +330,13 @@ void Acquire_Syscall(int n){		// Syscall to acquire a lock... takes an int that 
 void Release_Syscall(int n){		// Syscall to release a lock... takes an int that corresponds to lock (in their tables)
 	#ifdef NETWORK
 		clientPacket packet;
-		packet.syscall = SC_Release;
-		packet.index = n;
+		packet.syscall = SC_Release;		// Syscall you want is SC_Release
+		packet.index = n;		// Add index of lock you want to release to packet
 		
-		SendToPO("RELEASE", packet);
-		n = ReceiveFromPO("RELEASE");
+		SendToPO("RELEASE", packet);		// send packet to Server
+		n = ReceiveFromPO("RELEASE");		// Receive packet from the Server
 		
-		if(n == -1){
+		if(n == -1){		// If release was a failure
 			printf("LOCK RELEASE ERROR\n");
 			interrupt->Halt();
 		} else {
@@ -362,9 +362,9 @@ void Release_Syscall(int n){		// Syscall to release a lock... takes an int that 
 void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for position of CV, second is for position of Lock (in their tables)
 	#ifdef NETWORK
 		clientPacket packet;
-		packet.syscall = SC_Signal;
-		packet.index = lock;
-		packet.index2 = x;
+		packet.syscall = SC_Signal;		// syscall is SC_Signal
+		packet.index = lock;		// Add value of lockID you want to wait on
+		packet.index2 = x;		// Add value of CV you want to wait on
 		
 		SendToPO("WAIT", packet);
 		int n = ReceiveFromPO("WAIT");
