@@ -782,22 +782,10 @@ int CreateMV_Syscall(unsigned int vaddr, int initialValue){		/*System call for c
 	}
 	
 	int id;
-	syscallLock->Acquire();
-	
-	if(vaddr<0 || (vaddr+len)>currentThread->space->getNumPages()*PageSize){
-		printf("CREATEMV INVALID MV VIRTUAL ADDRESS \n");		
-		syscallLock->Release();
-		interrupt->Halt();
-		return -1;
-	}
-	
-	char *buf;													/*Creating a char array to store name*/
-	buf=new char[len+1];
-	buf[len]='\0';
-	copyin(vaddr,len,buf);										
+	syscallLock->Acquire();									
 	
 	clientPacket tempPacketSend;									/*Creating a packet on the client side*/
-	strncpy(tempPacketSend.name,buf,len);						/*Putting data in the packet*/
+	strncpy(tempPacketSend.name,name,sizeof(name));
 	tempPacketSend.syscall = SC_CreateMV;							
 	tempPacketSend.value = initialValue;
 	SendToPO("CREATEMV",tempPacketSend);							
@@ -957,7 +945,7 @@ void ExceptionHandler(ExceptionType which) {
 			#ifdef NETWORK
 			case SC_CreateMV:
 				DEBUG('a', "CreateMV Syscall.\n");
-				rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
+				rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
 				break;
 			case SC_SetMV:
 				DEBUG('a', "SetMV Syscall.\n");

@@ -15,7 +15,7 @@ int main(){
 	testCV = CreateCV("testCV Create Destroy");
 	printf((int)"Created CV %d.\n", sizeof("Created CV %d.\n"), testCV, 0);
 	/* Create MV, Get MV, Destroy MV*/
-	testMV = createMV("mv", 0);
+	testMV = CreateMV("mv", 0);
 	printf((int)"Create MV %d.\n", sizeof("Create MV %d.\n"), testMV, 0);
 	GetMV(testMV);
 	printf((int)"Get MV %d.\n", sizeof("Get MV %d.\n"), testMV, 0);

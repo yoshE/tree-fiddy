@@ -69,7 +69,8 @@ void createLock(char *name, int machineID, int mailBoxID){
 		send("CREATELOCK", false, lockID, machineID, mailBoxID);
 		return;
 	}
-	printf("NAMEEEEE IS \"%s\"\n", name);
+	
+	printf("Name is: %s\n", name);
 	ServerLock temp;		// new struct ServerLock that will be added to ServerLocks[]
 	temp.name = new char[sizeof(name)];
 	strcpy(temp.name, name);		// copy in the name
@@ -391,6 +392,7 @@ void getMV(int index, int machineID, int mailBoxID){
 		return;
 	}
 	
+	printf("MV at index %d is value %d\n", index, ServerMVs[index].value);
 	int x = ServerMVs[index].value;		// Find value of MV
 	send("GETMV", true, x, machineID, mailBoxID);		// Return value of MV
 	return;
