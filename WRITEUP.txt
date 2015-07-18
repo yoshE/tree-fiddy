@@ -302,8 +302,11 @@ V. Testing: (For each test case, you must show)
 			nachos -x ../test/part3DoubleForkTest
 	
 	-Tests for Part 3
-		To show that part 3 (locks and CVs) are working, you can run part3LockTests as a network program. This test will
-		try to create locks and CVs as well as use wait, signal, acquire, and release to ensure optimal capabilities.
+		To show that part 3 (locks, CVs, MVs) are working, you can run part3LockTests as a network program. This test will
+		try to create locks and CVs as well as use wait, signal, acquire, and release to ensure optimal capabilities. It will
+		also create an MV, show that a different client can access and modify that MV, and eventually delete that MV. Since we
+		want to ensure deletion wont delete the same MV twice, one of the deleteMV calls will create an error (since that MV
+		has already been deleted).
 		
 		To run, go to Network directory with 3 separate shells, then use:
 			1. nachos -m 0 -Server
