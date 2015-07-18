@@ -121,8 +121,16 @@ III. Design:
 				any waiting clients. If it doesn't, then the lock will be deleted.
 			
 			wait
+				This function takes in two indexes, a lockID index and a cvID index. The function will check if the lockId and cvID are valid, and if the
+				indexes are valid as well. If they pass, the function checks if the lockID of the cv is -1 (empty) and if it is, sets the lockId to the
+				cvID lockId. Afterwards, it releases the lock, increases CV usage count, and makes a new client based upon the requesting client and adds
+				it to the waitingQueue.
 			
 			signal
+				This function takes in two indexes, a lockID index and a cvID index. The function will check if the lockId and cvID are valid, and if the
+				indexes are valid as well. Then it checks if the CV owns the lock, if the lock matches the cvId lockid, and if the waitingQueue is empty. If
+				everything passes, then it decrements cv usage count and removes a client from the waitingQueue. If there are no more clients in the
+				waitingQueue, then reset the cvid lockid to -1.
 			
 			broadcast
 			
