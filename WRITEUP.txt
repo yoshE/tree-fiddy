@@ -133,12 +133,23 @@ III. Design:
 				waitingQueue, then reset the cvid lockid to -1.
 			
 			broadcast
+				This function takes in two indexes, a lockID index and a cvID index. The function will check if the lockId and cvID are valid, and if the
+				indexes are valid as well. Then it checks if there are any waiting Clients. If there are, then it uses a while loop to call signal on 
+				everyone of those clients.
 			
 			destroyLock, destroyCV, destroyMV
+				These functions will take an index of the object to be destroyed. For Locks and CVs, it will first verify that the index and the object are 
+				valid. Then it will check if there are waiting Clients (count > 0). If there aren't any, then it will delete the object. If there are, then
+				it will set that object for deletion at a future date (release and signal). For MVs, it will verify that the index and object are valid. Then
+				it will check if count is 0, and if it is, it will delete the MV. If count is not 0, it will return a failure.
 			
 			setMV
+				This function takes in two values, the index of the MV and the value to set it to. The function first checks if the MV index and MV are valid. 
+				If they are, then the function will set the value of the MV to the parameter requested value and return the new value.
 			
 			getMV
+				This function takes in the index of the MV whose value needs to be returned. The function checks if the MV and the index are valid. If they are
+				then the function returns the value of that MV.
 		
 IV. Implementation:
 
@@ -160,6 +171,7 @@ IV. Implementation:
 		../test/part3DoubleExecTest
 		../test/part3DoubleForkTest
 		../test/part3LockTest
+		../test/part3LockTest2
 		
     + Data Structures added, and the file they were added to.
 		../network/server.cc
