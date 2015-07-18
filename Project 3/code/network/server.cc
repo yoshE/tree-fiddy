@@ -77,7 +77,7 @@ void createLock(char *name, int machineID, int mailBoxID){
 	temp.waitingQueue = new List;
 	temp.available = true;
 	temp.IsDeleted = false;
-	ServerLocks[lockID] = temp;		// add struct into vector
+	ServerLocks.push_back(temp);		// add struct into vector
 	
 	send("CREATELOCK", true, lockID, machineID, mailBoxID);		// send msg back to client that action was successful
 }
@@ -212,7 +212,7 @@ void createCV(char *name, int machineID, int mailBoxID){
 	temp.valid = true;
 	temp.waitingQueue = new List;
 	temp.IsDeleted = false;
-	ServerCVs[cvID] = temp;
+	ServerCVs.push_back(temp);
 	
 	send("CREATELOCK", true, cvID, machineID, mailBoxID);
 }
@@ -370,7 +370,7 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 		temp.mvID = mvID;
 		temp.valid = true;
 		temp.value = value;		// Value is set to initial value of requesting syscall client
-		ServerMVs[mvID] = temp;
+		ServerMVs.push_back(temp);
 		send("CREATEMV", true, mvID, machineID, mailBoxID);		// send success msg
 	}
 }

@@ -101,10 +101,24 @@ III. Design:
 				syscall the client is requesting.
 		
 			createLock, createCV, createMV
+				These functions will take in a char *name (and an initial value for MV). They will first check if an index already exists for said
+				name. If there is, then the function will return the index of the existing object and return. If not, then the system will check if
+				there are already more than 200 objects of said type. If there is still space, then a new object will be created with all initial
+				values set accordingly. Afterwards, the index of the newly created object is returned to the the server which is set back to the
+				client.
 		
 			acquire
+				This function will take in an index of the Lock that the client wants to acquire. The function will first check if the lock index is 
+				valid, if the lock itself is valid, and then check to see if the client already owns the lock. If these all pass, then the function 
+				will see if the lock is available. If not, then the client is added to a waiting Queue. If it is available, then the lock is assigned
+				to that client and the function returns with a success message.
 			
 			release
+				This function will take in an index of the Lock that the client wants to release. The function will first check if the lock index is
+				valid, if the lock itself is valid, and then check to see if the client owns the lock. If these all pass, then the function will remove
+				the client as the owner and check the lock's waitingQueue. If there are clients waiting, then it will remove a client and assign it 
+				as the owner of the lock. At the end of the function, if the lock was marked for deletion, then the function will check if the lock has
+				any waiting clients. If it doesn't, then the lock will be deleted.
 			
 			wait
 			
@@ -121,17 +135,134 @@ III. Design:
 IV. Implementation:
 
     + Files Modified
-        
+        ../userprog/
+			progtest.cc
+			syscall.h
+			exception.cc
+			addrspace.cc
+			addrspace.h
+			
+		../threads/
+			system.cc
+			system.h
+			main.cc
+			
     + Files added
-
+		../network/server.cc
+		../test/part3DoubleExecTest
+		../test/part3DoubleForkTest
+		../test/part3LockTest
+		
     + Data Structures added, and the file they were added to.
+		../network/server.cc
+			vector<ServerLock> ServerLocks;
+			vector<ServerCV> ServerCVS;
+			vector<ServerMV> ServerMVs;
+			
+		../threads/system.h
+			struct client{
+				int machineID;
+				int mailBoxID;
+			};
+
+			struct ServerLock{
+				char *name;
+				bool available;
+				bool valid;
+				int count;
+				client Owner;
+				List *waitingQueue;
+				bool IsDeleted;
+			};
+
+			struct ServerCV{
+				bool valid;
+				List *waitingQueue;
+				int lockID;
+				int count;
+				int cvID;
+				char *name;
+				bool IsDeleted;
+			};
+
+			struct ServerMV{
+				char *name;
+				int mvID;
+				int value;
+				int count;
+				bool valid;
+			}; 
+
+			struct clientPacket{
+				char name[30];
+				char name2[30];
+				int syscall;
+				int index;
+				int index2;
+				int value;
+			
+				void print(){
+					printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index,index2,value);
+				}
+			};
+
+			struct serverPacket{
+				bool status;
+				int value;
+	
+				void print(){
+					printf("Status: %d\tValue: %d\n",status,value);
+				}
+			};
             
     + Data Structures modified, and the file they were added to.  
 
     + Functions added and in which file.
+		../network/server.cc
+			RunServer()
+			setMV()
+			getMV()
+			createMV()
+			destroyMV()
+			createLock()
+			destroyLock()
+			createCV()
+			destroyCV()
+			signal()
+			wait()
+			broadcast()
+			send()
+		
+		../userprog/exception.cc
+			createMV_Syscall()
+			destroyMV_Syscall()
+			setMV_Syscall()
+			getMV_Syscall()
+			SendToPO()
+			ReceivePacket()
+			ReceiveFromPO()
+			
+		../userprog/addrspace.cc
+			PopulateTLB()
+			Evict_IPT()
+			handleIPTMiss()
+			PopulateTLB_IPT()
 
     + Functions modified and in which file.
+		../userprog/addrspace.cc
+			RestoreState()
 		
+		../userprog/exception.cc
+			CreateLock_Syscall()
+			DestroyLock_Syscall()
+			Acquire_Syscall()
+			Release_Syscall()
+			Broadcast_Syscall()
+			Signal_Syscall()
+			Wait_Syscall()
+			CreateCV_Syscall()
+			DestroyCV_Syscall()
+			
 V. Testing: (For each test case, you must show)
     + How to test
 
@@ -147,9 +278,18 @@ V. Testing: (For each test case, you must show)
 		To show that part 2 is working, you can run part3DoubleForkTest as a user program, which will fork 2 different 
 		matmult functions and print out their end values.
 		
-		To run, go to VM directory, the use:
+		To run, go to VM directory, then use:
 			nachos -x ../test/part3DoubleForkTest
-      
+	
+	-Tests for Part 3
+		To show that part 3 (locks and CVs) are working, you can run part3LockTests as a network program. This test will
+		try to create locks and CVs as well as use wait, signal, acquire, and release to ensure optimal capabilities.
+		
+		To run, go to Network directory with 3 separate shells, then use:
+			1. nachos -m 0 -Server
+			2. nachos -m 1 -x ../test/part3LockTest
+			3. nachos -m 2 -x ../test/part3LockTest2
+	  
 VI. Discussion:
     + Experiment expectation. 
         We expect our tests to all complete successfully and our code to fully accomplish all requirements.
