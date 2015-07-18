@@ -257,13 +257,12 @@ void SendToPO(char *syscallType,clientPacket packet){		// Sends a packet from th
 	int len = sizeof(packet);		// Find size of given packet
 	char* data = new char[len];		// Creates a char array data that contains the packet
 	memcpy((void *)data, (void *)&packet, len);		// Copy in the data
-	data[len] = '\0';
+	// data[len - 1] = '\0';
 	
-	packet_From_Client.to = 0;		
+	packet_From_Client.to = 0;
 	mail_From_Client.to = 0;
 	mail_From_Client.from = 0;
 	mail_From_Client.length = len;
-	
 	bool s = postOffice->Send(packet_From_Client, mail_From_Client, data);		// Sends the data from the client to the server
 	if (!s){		// If send returned as a failure
 		printf("COULDN'T SEND DATA\n");
@@ -362,7 +361,7 @@ void Release_Syscall(int n){		// Syscall to release a lock... takes an int that 
 void Wait_Syscall(int x, int lock){		// Syscall for CV Wait... first int is for position of CV, second is for position of Lock (in their tables)
 	#ifdef NETWORK
 		clientPacket packet;
-		packet.syscall = SC_Signal;		// syscall is SC_Signal
+		packet.syscall = SC_Wait;		// syscall is SC_Signal
 		packet.index = lock;		// Add value of lockID you want to wait on
 		packet.index2 = x;		// Add value of CV you want to wait on
 		
@@ -469,7 +468,6 @@ int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
 		clientPacket packet;
 		packet.syscall = SC_CreateLock;
 		strncpy(packet.name, name, sizeof(name));
-		
 		SendToPO("CREATELOCK", packet);
 		int n = ReceiveFromPO("CREATELOCK");
 		

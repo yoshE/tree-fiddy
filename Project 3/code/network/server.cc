@@ -58,7 +58,9 @@ void send(char *type, bool status, int ID, int machineID, int mailBoxID){
 void createLock(char *name, int machineID, int mailBoxID){
 	int lockID = -1;
 	for (int i = 0; i < (signed)ServerLocks.size(); i++){
-		if (ServerLocks[i].name == name){
+		printf("SERVERLOCKS[i] IS \"%s\"\n", ServerLocks[i].name);
+		printf("NAME IS \"%s\"\n", name);
+		if (strncmp(ServerLocks[i].name, name, 30)){
 			send("CREATELOCK", true, i, machineID, mailBoxID);
 			return;
 		}
@@ -70,6 +72,7 @@ void createLock(char *name, int machineID, int mailBoxID){
 		return;
 	}
 	ServerLock temp;
+	printf("NAMEEEEE IS \"%s\"\n", name);
 	temp.name = new char[sizeof(name)+1];
 	strcpy(temp.name, name);
 	temp.count = 0;
@@ -77,7 +80,7 @@ void createLock(char *name, int machineID, int mailBoxID){
 	temp.waitingQueue = new List;
 	temp.available = true;
 	temp.IsDeleted = false;
-	ServerLocks[lockID] = temp;
+	ServerLocks.push_back(temp);
 	
 	send("CREATELOCK", true, lockID, machineID, mailBoxID);
 }
@@ -211,7 +214,7 @@ void createCV(char *name, int machineID, int mailBoxID){
 	temp.valid = true;
 	temp.waitingQueue = new List;
 	temp.IsDeleted = false;
-	ServerCVs[cvID] = temp;
+	ServerCVs.push_back(temp);
 	
 	send("CREATELOCK", true, cvID, machineID, mailBoxID);
 }
