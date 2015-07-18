@@ -257,7 +257,7 @@ void SendToPO(char *syscallType,clientPacket packet){		// Sends a packet from th
 	int len = sizeof(packet);		// Find size of given packet
 	char* data = new char[len];		// Creates a char array data that contains the packet
 	memcpy((void *)data, (void *)&packet, len);		// Copy in the data
-	data[len] = '\0';
+	//data[len] = '\0';
 	
 	packet_From_Client.to = 0;		
 	mail_From_Client.to = 0;
