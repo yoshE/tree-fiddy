@@ -23,29 +23,29 @@
 #define SC_GetMV		 24
 #define SC_DestroyMV	 25
 
-std::vector<ServerLock> ServerLocks;
-std::vector<ServerCV> ServerCVs;
-std::vector<ServerMV> ServerMVs;
+std::vector<ServerLock> ServerLocks;		// vector of server locks
+std::vector<ServerCV> ServerCVs;		// vector of server cvs
+std::vector<ServerMV> ServerMVs;		// vector of server mvs
 
-void send(char *type, bool status, int ID, int machineID, int mailBoxID){
-	serverPacket packet_Send;
+void send(char *type, bool status, int ID, int machineID, int mailBoxID){		// Send a file from the server to the client
+	serverPacket packet_Send;		// packet that will be sent to the client
 	PacketHeader packet_From_Server;
 	MailHeader mail_From_Server;
 	
-	packet_Send.value = ID;
-	packet_Send.status = status;
+	packet_Send.value = ID;		// set the ID of the packet to the value that we want to return to the client
+	packet_Send.status = status;		// Set the status equal to the success of the syscall action
 	
-	int len = sizeof(packet_Send);
-	char *data = new char[len + 1];
+	int len = sizeof(packet_Send);		// find size of packet to send
+	char *data = new char[len];		// put it into data
 	data[len] = '\0';
 	memcpy((void *)data, (void *)&packet_Send, len);
 	
-	packet_From_Server.to = machineID;
+	packet_From_Server.to = machineID;	
 	mail_From_Server.to = mailBoxID;
 	mail_From_Server.from = 0;
-	mail_From_Server.length = len + 1;
+	mail_From_Server.length = len;
 	
-	if(!postOffice->Send(packet_From_Server, mail_From_Server, data)){
+	if(!postOffice->Send(packet_From_Server, mail_From_Server, data)){		// Send the packet to the client
 		printf("SEND FAILED\n");
 		interrupt->Halt();
 	}
@@ -60,29 +60,32 @@ void createLock(char *name, int machineID, int mailBoxID){
 	for (int i = 0; i < (signed)ServerLocks.size(); i++){
 		printf("SERVERLOCKS[i] IS \"%s\"\n", ServerLocks[i].name);
 		printf("NAME IS \"%s\"\n", name);
-		if (strncmp(ServerLocks[i].name, name, 30)){
+		if (strncmp(ServerLocks[i].name, name, 30)){	// If lock already exists in the server then return that ID
+			send("CREATELOCK", true, i, machineID, mailBoxID);
+			return;
+		} else if (ServerLocks[i].name == name){		// If lock already exists in the server then return that ID
 			send("CREATELOCK", true, i, machineID, mailBoxID);
 			return;
 		}
 	}
 	
-	lockID = (signed)ServerLocks.size();
-	if (lockID == MAX_LOCK || lockID == -1){
+	lockID = (signed)ServerLocks.size();		// new ID is equal to the size of vector
+	if (lockID == MAX_LOCK || lockID == -1){		// If vector is "full" (over 200) then fail
 		send("CREATELOCK", false, lockID, machineID, mailBoxID);
 		return;
 	}
-	ServerLock temp;
 	printf("NAMEEEEE IS \"%s\"\n", name);
+	ServerLock temp;		// new struct ServerLock that will be added to ServerLocks[]
 	temp.name = new char[sizeof(name)+1];
-	strcpy(temp.name, name);
+	strcpy(temp.name, name);		// copy in the name
 	temp.count = 0;
-	temp.valid = true;
+	temp.valid = true;		// Lock is valid
 	temp.waitingQueue = new List;
 	temp.available = true;
 	temp.IsDeleted = false;
-	ServerLocks.push_back(temp);
+	ServerLocks.push_back(temp);		// add struct into vector
 	
-	send("CREATELOCK", true, lockID, machineID, mailBoxID);
+	send("CREATELOCK", true, lockID, machineID, mailBoxID);		// send msg back to client that action was successful
 }
 
 //----------------------------------------------------------------------
@@ -93,31 +96,31 @@ void createLock(char *name, int machineID, int mailBoxID){
 void acquire(int index, int machineID, int mailBoxID){
 	client *waitingClient = NULL;
 	
-	if(index < 0 || index > MAX_LOCK){
+	if(index < 0 || index > MAX_LOCK){		// if lock to be acquired has an incorrect index (under 0 or over 200)
 		printf("LOCK TO BE ACQUIRED IS INVALID\n");
 		send("ACQUIRE", false, -1, machineID, mailBoxID);
 		return;
-	} else if (!ServerLocks[index].valid){
+	} else if (!ServerLocks[index].valid){		// If lock is no longer valid (it was deleted)
 		printf("LOCK TO BE ACQUIRED IS NULL\n");
 		send("ACQUIRE", false, -2, machineID, mailBoxID);
 		return;
-	} else if (ServerLocks[index].Owner.machineID == machineID && ServerLocks[index].Owner.mailBoxID == mailBoxID){
+	} else if (ServerLocks[index].Owner.machineID == machineID && ServerLocks[index].Owner.mailBoxID == mailBoxID){		// If client already owns lock
 		printf("YOU ALREADY OWN THIS LOCK!\n");
 		send("ACQUIRE", false, -3, machineID, mailBoxID);
 	}
 	
-	ServerLocks[index].count++;
-	if(ServerLocks[index].available){
-		ServerLocks[index].available = false;
-		ServerLocks[index].Owner.machineID = machineID;
+	ServerLocks[index].count++;		// increase lock usage count
+	if(ServerLocks[index].available){		// if Lock is available
+		ServerLocks[index].available = false;		// it is no longer available
+		ServerLocks[index].Owner.machineID = machineID;		// set owner of lock to requesting client
 		ServerLocks[index].Owner.mailBoxID = mailBoxID;
 		printf("LOCK ACQUIRED: CLIENT (%d, %d) IS NOW THE OWNER\n", machineID, mailBoxID);
-		send("ACQUIRE", true, index, machineID, mailBoxID);
+		send("ACQUIRE", true, index, machineID, mailBoxID);		// send msg back to client with success
 	} else {
-		waitingClient = new client;
+		waitingClient = new client;		// Create new waiting client and add to waiting queue for said lock
 		waitingClient->machineID = machineID;
 		waitingClient->mailBoxID = mailBoxID;
-		ServerLocks[index].waitingQueue->Append((void*)waitingClient);
+		ServerLocks[index].waitingQueue->Append((void*)waitingClient);		// add to queue
 		printf("LOCK ISN'T FREE, CLIENT (%d, %d) APPEND TO WAIT QUEUE\n", machineID, mailBoxID);
 	}	
 }
@@ -135,26 +138,26 @@ void release(int index, int machineID, int mailBoxID, int syscall){
 		printf("LOCK TO BE RELEASED IS NULL\n");
 		send("RELEASE", false, -2, machineID, mailBoxID);
 		return;
-	} else if (ServerLocks[index].Owner.machineID == machineID && ServerLocks[index].Owner.mailBoxID == mailBoxID){
+	} else if (ServerLocks[index].Owner.machineID == machineID && ServerLocks[index].Owner.mailBoxID == mailBoxID){		// If client owns this lock
 		printf("CLIENT (%d, %d) RELEASED THE LOCK, WAITING CLIENTS: %d\n", machineID, mailBoxID, ServerLocks[index].count);
-		if (syscall == SC_Release) send("RELEASE", true, index, machineID, mailBoxID);
-		if (ServerLocks[index].waitingQueue->IsEmpty()){
-			ServerLocks[index].available = true;
-			ServerLocks[index].Owner.machineID = -1;
+		if (syscall == SC_Release) send("RELEASE", true, index, machineID, mailBoxID);	// If request was for release and not signal, send msg back to client
+		if (ServerLocks[index].waitingQueue->IsEmpty()){	// If waiting queue is empty
+			ServerLocks[index].available = true;		// lock is now available
+			ServerLocks[index].Owner.machineID = -1;	// lock as no owner
 			ServerLocks[index].Owner.mailBoxID = -1;
 		} else {
-			ServerLocks[index].Owner = *((client*)ServerLocks[index].waitingQueue->Remove());
-			ServerLocks[index].count--;
+			ServerLocks[index].Owner = *((client*)ServerLocks[index].waitingQueue->Remove());		// remove a client from waiting queue
+			ServerLocks[index].count--;		// remove count of waiting clients
 			printf("CLIENT (%d, %d) IS NOW THE LOCK OWNER\n", ServerLocks[index].Owner.machineID, ServerLocks[index].Owner.mailBoxID);
-			send("RELEASE", true, index, ServerLocks[index].Owner.machineID, ServerLocks[index].Owner.mailBoxID);
+			send("RELEASE", true, index, ServerLocks[index].Owner.machineID, ServerLocks[index].Owner.mailBoxID);		// send success msg
 		}
-	} else {
+	} else {		// If client doesn't own lock
 		printf("YOU AREN'T THE LOCK OWNER\n");
 		send("RELEASE", false, -2, machineID, mailBoxID);
 	}
 	
-	if(ServerLocks[index].IsDeleted && ServerLocks[index].count == 0){
-		delete ServerLocks[index].name;
+	if(ServerLocks[index].IsDeleted && ServerLocks[index].count == 0){		// If lock is marked for deletion and there are no waiting clients
+		delete ServerLocks[index].name;		// delete EVERYTHING
 		delete ServerLocks[index].waitingQueue;
 		ServerLocks[index].valid = false;
 	}
@@ -173,16 +176,16 @@ void destroy(int index, int machineID, int mailBoxID){
 		printf("LOCK TO BE DESTROYED IS NULL\n");
 		send("DESTROYLOCK", false, -2, machineID, mailBoxID);
 		return;
-	}else if (!ServerLocks[index].waitingQueue->IsEmpty() || ServerLocks[index].count > 0){
+	}else if (!ServerLocks[index].waitingQueue->IsEmpty() || ServerLocks[index].count > 0){		// If lock has waiting clients
 		printf("LOCK HAS WAITING CLIENTS\n");
-		ServerLocks[index].IsDeleted = true;
+		ServerLocks[index].IsDeleted = true;		// mark the lock for later deletion
 		send("DESTROYLOCK", false, 1, machineID, mailBoxID);
-	} else if (ServerLocks[index].count == 0){
+	} else if (ServerLocks[index].count == 0){		// If lock has no waiting clients
 		printf("DESTROYING LOCK!\n");
-		ServerLocks[index].valid = false;
+		ServerLocks[index].valid = false;		// DELETE EVERYTHING
 		delete ServerLocks[index].name;
 		delete ServerLocks[index].waitingQueue;
-		send("DESTROYLOCK", true, index, machineID, mailBoxID);
+		send("DESTROYLOCK", true, index, machineID, mailBoxID);		// send success msg
 	}
 }
 
@@ -192,13 +195,14 @@ void destroy(int index, int machineID, int mailBoxID){
 //----------------------------------------------------------------------
 void createCV(char *name, int machineID, int mailBoxID){
 	int cvID = -1;
-	for (int i = 0; i < (signed)ServerCVs.size(); i++){
+	for (int i = 0; i < (signed)ServerCVs.size(); i++){	// Check if CV already exists
 		if (ServerCVs[i].name == name){
 			send("CREATECV", true, i, machineID, mailBoxID);
 			return;
 		}
 	}
 	
+	// OTHERWISE SAME AS CREATELOCK
 	cvID = (signed)ServerCVs.size();
 	if (cvID == MAX_CV || cvID < 0){
 		send("CREATECV", false, cvID, machineID, mailBoxID);
@@ -210,7 +214,7 @@ void createCV(char *name, int machineID, int mailBoxID){
 	strcpy(temp.name, name);
 	temp.count = 0;
 	temp.cvID = cvID;
-	temp.lockID = -1;
+	temp.lockID = -1;		// starts with no lock
 	temp.valid = true;
 	temp.waitingQueue = new List;
 	temp.IsDeleted = false;
@@ -221,7 +225,7 @@ void createCV(char *name, int machineID, int mailBoxID){
 
 //----------------------------------------------------------------------
 //  destroyCV
-//  destroy CVs
+//  destroy CVs (same as destroyLock)
 //----------------------------------------------------------------------
 void destroyCV(int index, int machineID, int mailBoxID){
 	if(index < 0 || index > MAX_CV){
@@ -250,41 +254,41 @@ void destroyCV(int index, int machineID, int mailBoxID){
 //  Call Signal on a CV
 //----------------------------------------------------------------------
 void signal(int lockID, int index, int machineID, int mailBoxID){
-	client signalClient;
+	client signalClient;	// client that will be signalled
 	
-	if(lockID < 0 || index > MAX_LOCK){
+	if(lockID < 0 || index > MAX_LOCK){		// Is lock index invalid?
 		printf("LOCK TO SIGNAL IS INVALID\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (index < 0 || index > MAX_CV){
+	} else if (index < 0 || index > MAX_CV){		// Is CV index invalid?
 		printf("SIGNAL INVALID INDEX\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){
+	} else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){		// Are both lock and CV valid?
 		printf("LOCK WITH CV IS INVALID\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (ServerLocks[lockID].Owner.machineID != machineID || ServerLocks[lockID].Owner.mailBoxID != mailBoxID){
+	} else if (ServerLocks[lockID].Owner.machineID != machineID || ServerLocks[lockID].Owner.mailBoxID != mailBoxID){		// Does client own lock?
 		printf(" CLIENT DOESN'T HAVE THE LOCK\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (ServerCVs[index].lockID != lockID){
+	} else if (ServerCVs[index].lockID != lockID){		// Does lock match CV lock?
 		printf("LOCK DOESN'T MATCH FOR SIGNAL\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (ServerCVs[index].waitingQueue->IsEmpty()){
+	} else if (ServerCVs[index].waitingQueue->IsEmpty()){		// Are there clients waiting on the CV?
 		printf("QUEUE IS EMPTY\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 	}
 	
-	signalClient = *((client *)ServerCVs[index].waitingQueue->Remove());
-	if (ServerCVs[index].waitingQueue->IsEmpty()){
-		ServerCVs[index].lockID = -1;
+	signalClient = *((client *)ServerCVs[index].waitingQueue->Remove());		// Remove a client from the waiting queue
+	if (ServerCVs[index].waitingQueue->IsEmpty()){		// If queue is empty...
+		ServerCVs[index].lockID = -1;		// Reset Lock associated with CV
 	}
 	
-	ServerCVs[index].count--;
-	acquire(index, signalClient.machineID, signalClient.mailBoxID);
-	send("SIGNAL", true, index, machineID, mailBoxID);
+	ServerCVs[index].count--;		// Decrement usage count of CV
+	acquire(index, signalClient.machineID, signalClient.mailBoxID);		// acquire the lock for the client
+	send("SIGNAL", true, index, machineID, mailBoxID);		// send success msg
 }
 
 //----------------------------------------------------------------------
@@ -292,32 +296,32 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 //  Call Wait on a CV
 //----------------------------------------------------------------------
 void wait(int lockID, int index, int machineID, int mailBoxID){
-	client *waitingClient = NULL;
+	client *waitingClient = NULL;		// client that will be appended to wait queue
 		
-	if(lockID < 0 || lockID > MAX_LOCK){
+	if(lockID < 0 || lockID > MAX_LOCK){		// Is lock index invalid?
 		printf("LOCK TO WAIT ON IS INVALID\n");
 		send("WAIT", false, -1, machineID, mailBoxID);
 		return;
-	} else if(index < 0 || index > MAX_CV){
+	} else if(index < 0 || index > MAX_CV){		// Is CV index invalid?
 		printf("CV TO WAIT ON IS INVALID\n");
 		send("WAIT", false, -1, machineID, mailBoxID);
 		return;
-	}  else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){
+	}  else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){		// Are both CV and Lock valid?
 		printf("CV AND LOCK ARE INVALID\n");
 		send ("WAITCV", false, -2, machineID, mailBoxID);
 		return;
 	}
 	
-	if (ServerCVs[index].lockID == -1){
-		ServerCVs[index].lockID = lockID;
+	if (ServerCVs[index].lockID == -1){		// If lockID of CV is unset
+		ServerCVs[index].lockID = lockID;		// Set lockID of CV to current lock
 	}
 	
-	release(lockID, machineID, mailBoxID, 1);
-	ServerCVs[index].count++;
+	release(lockID, machineID, mailBoxID, 1);		// release the lock
+	ServerCVs[index].count++;		// add CV usage count
 	waitingClient = new client;
 	waitingClient -> machineID = machineID;
 	waitingClient -> mailBoxID = mailBoxID;
-	ServerCVs[index].waitingQueue->Append((void *)waitingClient);
+	ServerCVs[index].waitingQueue->Append((void *)waitingClient);		// add current client to waiting queue for CV
 }
 
 //----------------------------------------------------------------------
@@ -341,11 +345,11 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 		return;
 	}
 	
-	while(!ServerCVs[index].waitingQueue->IsEmpty()){
-		signal(lockID, index, machineID, mailBoxID);
+	while(!ServerCVs[index].waitingQueue->IsEmpty()){		// Until there are no more waiting Clients
+		signal(lockID, index, machineID, mailBoxID);		// Signal all clients
 	}
 	
-	send("BROADCAST", true, index, machineID, mailBoxID);
+	send("BROADCAST", true, index, machineID, mailBoxID);		// send success msg
 }
 
 //----------------------------------------------------------------------
@@ -353,45 +357,81 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 //  Create a new monitor variable
 //----------------------------------------------------------------------
 void createMV(char *name, int value, int machineID, int mailBoxID){
-		for(int i = 0; i < (signed)ServerMVs.size(); i++){
-			if (ServerMVs[i].name = name){
-				send("CREATEMV", true, i, machineID, mailBoxID);
-			}
+	for(int i = 0; i < (signed)ServerMVs.size(); i++){		// Check if MV already exists
+		if (ServerMVs[i].name = name){
+			send("CREATEMV", true, i, machineID, mailBoxID);
 		}
+	}
 		
-		int mvID = ServerMVs.size();
-		if(mvID >= MAX_MV || mvID < 0){
-			printf("TOO MANY MVs\n");
-			send("CREATEMV", false, -1, machineID, mailBoxID);
-			return;
-		} else {
-			ServerMV temp;
-			temp.name = new char[sizeof(name)+1];
-			strcpy(temp.name, name);
-			temp.count = 0;
-			temp.mvID = mvID;
-			temp.valid = true;
-			temp.value = value;
-			ServerMVs[mvID] = temp;
-			send("CREATEMV", true, mvID, machineID, mailBoxID);
-		}
+	int mvID = ServerMVs.size();
+	if(mvID >= MAX_MV || mvID < 0){
+		printf("TOO MANY MVs\n");
+		send("CREATEMV", false, -1, machineID, mailBoxID);
+		return;
+	} else {
+		ServerMV temp;
+		temp.name = new char[sizeof(name)+1];
+		strcpy(temp.name, name);
+		temp.count = 0;
+		temp.mvID = mvID;
+		temp.valid = true;
+		temp.value = value;		// Value is set to initial value of requesting syscall client
+		ServerMVs.push_back(temp);
+		send("CREATEMV", true, mvID, machineID, mailBoxID);		// send success msg
+	}
 }
 
+//----------------------------------------------------------------------
+//  Get MV
+//  Get a monitor variable
+//----------------------------------------------------------------------
 void getMV(int index, int machineID, int mailBoxID){
+	if(index >= MAX_MV || index < 0){		// Is MV index invalid?
+		printf("TOO MANY MVs\n");
+		send("GETMV", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerMVs[index].valid){		// Is MV valid?
+		printf("MV ISN'T VALID\n");
+		send("GETMV", false, -2, machineID, mailBoxID);
+		return;
+	}
 	
+	int x = ServerMVs[index].value;		// Find value of MV
+	send("GETMV", true, x, machineID, mailBoxID);		// Return value of MV
+	return;
 }
 
+//----------------------------------------------------------------------
+//  Destroy MV
+//  Destroy a monitor variable
+//----------------------------------------------------------------------
 void destroyMV(int index, int machineID, int mailBoxID){
-	
+	if(index >= MAX_MV || index < 0){
+		printf("TOO MANY MVs\n");
+		send("DESTROYMV", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerMVs[index].valid){
+		printf("MV ISN'T VALID\n");
+		send("DESTROYMV", false, -2, machineID, mailBoxID);
+		return;
+	}
+		
+	if(serverMVs[index].count == 0){		// If there are no clients using MV
+		delete serverMV[index].name;		// delete EVERYTHING
+		serverMV[index].valid = false;	
+		printf("MV IS DESTROYED\n");
+		send("DESTROYMV",true,index,machineID,mailBoxID);
+	}else{		// If MV is in use, can't destroy it
+		printf("\nDESTROY MV : MV CANNOT BE DESTROYED");
+		send("DESTROYMV", false, -1, machineID, mailBoxID);
+	}
 }
 
 //----------------------------------------------------------------------
 //  Set MV
-//  Set a new monitor variable
+//  Set a monitor variable
 //----------------------------------------------------------------------
 void setMV(int index, int value, int machineID, int mailBoxID){
-	serverPacket packet;
-
 	if(index >= MAX_MV || index < 0){
 		printf("TOO MANY MVs\n");
 		send("SETMV", false, -1, machineID, mailBoxID);
@@ -402,8 +442,9 @@ void setMV(int index, int value, int machineID, int mailBoxID){
 		return;
 	}
 	
-	ServerMVs[index].value = value;
-	send("SETMV", true, ServerMVs[index].value, machineID, mailBoxID);
+	ServerMVs[index].value = value;		// Set MV value to requests value from syscall
+	send("SETMV", true, ServerMVs[index].value, machineID, mailBoxID);		// return success msg with new value
+	return;
 }
 
 //----------------------------------------------------------------------
@@ -415,16 +456,16 @@ void RunServer(){
 	MailHeader mail_From_Client;
 	clientPacket packet;
 	int len = sizeof(packet);
-	char *data = new char[len + 1];
-	data[len] = '\0';
+	char *data = new char[len];
+	//data[len] = '\0';
 	
-	while(true){
+	while(true){		// Run forever
 		printf("SERVER: WAITING FOR CLIENT REQUEST\n");
 		
-		postOffice->Receive(0,&packet_From_Client, &mail_From_Client, data);
+		postOffice->Receive(0,&packet_From_Client, &mail_From_Client, data);		// Receive packet from Clients
 		memcpy((void *)&packet, (void *)data, len);
 		
-		switch(packet.syscall){
+		switch(packet.syscall){		// Parse based on syscall requested
 			case SC_Acquire:
 				printf("REQUEST: ACQUIRE LOCK FROM CLIENT\n");
 				acquire(packet.index, packet_From_Client.from, mail_From_Client.from);
