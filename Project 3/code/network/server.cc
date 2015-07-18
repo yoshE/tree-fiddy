@@ -374,21 +374,57 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 		}
 }
 
+//----------------------------------------------------------------------
+//  Get MV
+//  Get a monitor variable
+//----------------------------------------------------------------------
 void getMV(int index, int machineID, int mailBoxID){
+	if(index >= MAX_MV || index < 0){
+		printf("TOO MANY MVs\n");
+		send("GETMV", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerMVs[index].valid){
+		printf("MV ISN'T VALID\n");
+		send("GETMV", false, -2, machineID, mailBoxID);
+		return;
+	}
 	
+	int x = ServerMVs[index].value;
+	send("GETMV", true, x, machineID, mailBoxID);
+	return;
 }
 
+//----------------------------------------------------------------------
+//  Destroy MV
+//  Destroy a monitor variable
+//----------------------------------------------------------------------
 void destroyMV(int index, int machineID, int mailBoxID){
-	
+	if(index >= MAX_MV || index < 0){
+		printf("TOO MANY MVs\n");
+		send("DESTROYMV", false, -1, machineID, mailBoxID);
+		return;
+	} else if (!ServerMVs[index].valid){
+		printf("MV ISN'T VALID\n");
+		send("DESTROYMV", false, -2, machineID, mailBoxID);
+		return;
+	}
+		
+	if(serverMVs[index].count == 0){
+		serverMV[index].name = NULL;
+		serverMV[index].valid = false;	
+		printf("MV IS DESTROYED\n");
+		send("DESTROYMV",true,index,machineID,mailBoxID);
+	}else{
+		printf("\nDESTROY MV : MV CANNOT BE DESTROYED");
+		send("DESTROYMV", false, -1, machineID, mailBoxID);
+	}
 }
 
 //----------------------------------------------------------------------
 //  Set MV
-//  Set a new monitor variable
+//  Set a monitor variable
 //----------------------------------------------------------------------
 void setMV(int index, int value, int machineID, int mailBoxID){
-	serverPacket packet;
-
 	if(index >= MAX_MV || index < 0){
 		printf("TOO MANY MVs\n");
 		send("SETMV", false, -1, machineID, mailBoxID);
@@ -401,6 +437,7 @@ void setMV(int index, int value, int machineID, int mailBoxID){
 	
 	ServerMVs[index].value = value;
 	send("SETMV", true, ServerMVs[index].value, machineID, mailBoxID);
+	return;
 }
 
 //----------------------------------------------------------------------

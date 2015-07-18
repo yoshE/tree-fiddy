@@ -428,9 +428,9 @@ void Signal_Syscall(int y, int a){		// Syscall call for Signal... first int is f
 void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int is for position of CV, second is for position of Lock (in their tables)
 	#ifdef NETWORK
 		clientPacket packet;
-		packet.syscall = SC_Broadcast;
-		packet.index = b;
-		packet.index2 = z;
+		packet.syscall = SC_Broadcast;		// Syscall is Broadcast
+		packet.index = b;		// first index is lockID
+		packet.index2 = z;		// Second index is CV ID
 		
 		SendToPO("BROADCAST", packet);
 		int n = ReceiveFromPO("BROADCAST");

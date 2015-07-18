@@ -1,6 +1,6 @@
 Title: Writeup for Project 3, Summer 2015
 
-Date: 7/15/2015
+Date: 7/17/2015
 
 Group Num 11: Name
               Vance Lindholm 
@@ -9,35 +9,119 @@ Group Num 11: Name
 
 I. Requirements:
     Part 1:
-        
+        In this part we had to implement the following extensions to the memory management scheme we implemented in 
+		project 2:
+			
+			Memory management using Translation Lookaside Buffer (TLB):
+				- Software implement for TLB
+				- Use Page Translation scheme to keep track of data
 
     Part 2:
-        
+        In this part we had to implement demand paged virtual memory
+		
+			- Implementation of Inverted Page Table to map virtual pages
+			- Implement handling of IPT misses (when required virtual page isn't in physical memory)
+			- Implement handing of IPT eviction if memory is full
+			- Implement swap file mechanism for tracking the modified memory
 
     Part 3:
-        
+		In this part we had to implement remote procedure calls:
+		
+			- Implement RPC for locks and CVs
+				- These include acquire, release, wait, signal, broadcast, create destroy
+			- Create and implement RPC for Monitor Variables
+				- These include create, destroy, set, and get
+			- Create a server that communicates with the User program (client)
 
 II. Assumptions:
 
     We assume:
-        -Functions provided by NACHOS are generally bug free and perform as
-         specified.
+        -Functions provided by NACHOS are generally bug free and perform as specified.
         -File system system calls are correct as provided.
         -Programs are provided with adequate stack space to avoid overflow
+		-Server runs with the machine id as 0 and the mail box id as 000
 
 III. Design:
 
-    Part 1:
-      
-    Part 2:
+	For Parts 1 & 2:
+	
+	In case of a TLB miss, we check whether the erroneous page is in the IPT (Inverted Page Table) or not.
+		If it is in the IPT, then we get the physical page number from there
+
+		However, if we get an IPT miss as well, then we:
+			We call find() on the bitmap to find an available page
+				If that bitmap returns us a -1 then no new pages are available
+					- We would need to evict a page from FIFO queue 
+					- We remove the entry and put its contents into the swap file that is on our filesystem
+					- We store the offset pointer of that swap file location in the page table
+					- At the page table we set the disklocation to be swapfile
+
+			If the page to be evicted belonged to same process that is now requesting a new page, we check for a 
+			valid TLB entry for the selected page. 
+	
+			We now propagate the dirty bit from the TLB to the IPT and invalidate the TLB entry
+	
+			If VPN is in the executable:
+				- Read from executable, load into TLB, and allocate physical page number
+	
+			If VPN is empty:
+				- Allocate a PPN and load it in TLB
+
+			If VPN is in the swap file:
+				- Read from the swap file, allocate physical page number, and load into TLB
+			
+			We also propagate the dirty bit on context switch
+			We copy the VPN data at IPT entry, and index PPN to the PPN page, which is found after the eviction
+			We propagate the dirty bit from TLB to IPT and copy the data to the TLB next current index
+	
+	Part 3:
+		We created a new class called server.cc in network that functions as our server. Additionally, we changed all the syscall functions
+		in exception.cc to function with a client server interactions. This means that each syscall has a ifdef NETWORK within them such that
+		each syscall will perform one of two actions depending on if the program is run as a user program or network program. If it is run
+		using a user program, then it performs the same way as Project 2. However, if it is run as a Network, then it will create a packet,
+		append the important info (depends on syscall) and send it to the server. The syscall will then receive back a packet with the return
+		value that it will use as normal. To accomplish this feat, the exception.cc class also has added functions SendToPO and ReceiveFromPO.
 		
-    Part 3:
+			SendToPO
+				This function takes as input a packet that it will parse (find length) and place into a char array called data. This array will
+				contain all important information (such as syscall type and index number). The array is then send to the server using the 
+				postOffice send() function as well as the return information for that specific client. 
+				
+			ReceiveFromPO/ RecievePacket
+				This function will use the postOffice receive() function to receive a packet from the Server. It will then parse the packet and 
+				extract the status of the packet (if the syscall was completed successfully or not) and the return value. The value is then 
+				returned at the end of the function back to the original exception.cc syscall.
+				
+		In server.cc we added in many new functions to handle each type of syscall. Then we have a RunServer() function in server.cc that uses a
+		while loop to forever wait for Client requests to appear.
+		
+			RunServer
+				This function uses a while true loop to forever wait for Client requests. Once a request comes in, the function will parse the 
+				packet and find which syscall the request is for. Then it uses a switch statement to call different functions depending on which
+				syscall the client is requesting.
+		
+			createLock, createCV, createMV
+		
+			acquire
+			
+			release
+			
+			wait
+			
+			signal
+			
+			broadcast
+			
+			destroyLock, destroyCV, destroyMV
+			
+			setMV
+			
+			getMV
 		
 IV. Implementation:
 
     + Files Modified
         
-
     + Files added
 
     + Data Structures added, and the file they were added to.
@@ -52,18 +136,24 @@ V. Testing: (For each test case, you must show)
     + How to test
 
     -Test for Part 1:
-		To show that part 1 is working, you can run matmult and sort as Nachos
-		user programs from the vm directory. You can also run part3DoubleExecTest
-		as a user program, which will exec 2 different matmult programs.
+		To show that part 1 is working, you can run matmult and sort as Nachos user programs from the vm directory. 
+		You can also run part3DoubleExecTest as a user program, which will exec 2 different matmult programs.
+		
+		To run, go to VM directory, then use:
+			nachos -x ../test/matmult
+			nachos -x ../test/part3DoubleExecTest
 		
 	-Tests for Part 2
-		To show that part 2 is working, you can run part3DoubleForkTest as a user
-		program, which will fork 2 different matmult functions and print out
-		their end values.
+		To show that part 2 is working, you can run part3DoubleForkTest as a user program, which will fork 2 different 
+		matmult functions and print out their end values.
+		
+		To run, go to VM directory, the use:
+			nachos -x ../test/part3DoubleForkTest
       
 VI. Discussion:
     + Experiment expectation. 
-            
+        We expect our tests to all complete successfully and our code to fully accomplish all requirements.
+			
     + Experiment result.
     
     + Explanation
