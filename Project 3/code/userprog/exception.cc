@@ -772,17 +772,17 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
 
 #ifdef NETWORK
 
-int CreateMV_Syscall(int vaddr,int len,int initialValue){		/*System call for creating a monitor variable*/
+int CreateMV_Syscall(unsigned int vaddr, int initialValue){		/*System call for creating a monitor variable*/
+	char *name = new char[NameSize];
+	
+	if (copyin(vaddr, NameSize, name) == -1){
+		DEBUG('a', "bad pointer passed to create lock\n");
+		delete[] name;
+		return -2;
+	}
+	
 	int id;
 	syscallLock->Acquire();
-	
-	if (len < 0 || len > MAX_CHAR)
-	{
-		printf("CREATEMV INVALID MV LENGTH \n");		
-		syscallLock->Release();
-		interrupt->Halt();
-		return -1;
-	}
 	
 	if(vaddr<0 || (vaddr+len)>currentThread->space->getNumPages()*PageSize){
 		printf("CREATEMV INVALID MV VIRTUAL ADDRESS \n");		

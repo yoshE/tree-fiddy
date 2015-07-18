@@ -58,15 +58,10 @@ void send(char *type, bool status, int ID, int machineID, int mailBoxID){		// Se
 void createLock(char *name, int machineID, int mailBoxID){
 	int lockID = -1;
 	for (int i = 0; i < (signed)ServerLocks.size(); i++){
-		printf("SERVERLOCKS[i] IS \"%s\"\n", ServerLocks[i].name);
-		printf("NAME IS \"%s\"\n", name);
-		if (strncmp(ServerLocks[i].name, name, 30)){	// If lock already exists in the server then return that ID
+		if (!strcmp(ServerLocks[i].name, name)){	// If lock already exists in the server then return that ID
 			send("CREATELOCK", true, i, machineID, mailBoxID);
 			return;
-		} else if (ServerLocks[i].name == name){		// If lock already exists in the server then return that ID
-			send("CREATELOCK", true, i, machineID, mailBoxID);
-			return;
-		}
+		} 
 	}
 	
 	lockID = (signed)ServerLocks.size();		// new ID is equal to the size of vector
@@ -76,7 +71,7 @@ void createLock(char *name, int machineID, int mailBoxID){
 	}
 	printf("NAMEEEEE IS \"%s\"\n", name);
 	ServerLock temp;		// new struct ServerLock that will be added to ServerLocks[]
-	temp.name = new char[sizeof(name)+1];
+	temp.name = new char[sizeof(name)];
 	strcpy(temp.name, name);		// copy in the name
 	temp.count = 0;
 	temp.valid = true;		// Lock is valid
@@ -196,7 +191,7 @@ void destroy(int index, int machineID, int mailBoxID){
 void createCV(char *name, int machineID, int mailBoxID){
 	int cvID = -1;
 	for (int i = 0; i < (signed)ServerCVs.size(); i++){	// Check if CV already exists
-		if (ServerCVs[i].name == name){
+		if (strcmp(ServerCVs[i].name, name) == 0){
 			send("CREATECV", true, i, machineID, mailBoxID);
 			return;
 		}
@@ -358,7 +353,7 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 //----------------------------------------------------------------------
 void createMV(char *name, int value, int machineID, int mailBoxID){
 	for(int i = 0; i < (signed)ServerMVs.size(); i++){		// Check if MV already exists
-		if (ServerMVs[i].name = name){
+		if (strcmp(ServerMVs[i].name, name) == 0){
 			send("CREATEMV", true, i, machineID, mailBoxID);
 		}
 	}
@@ -416,9 +411,9 @@ void destroyMV(int index, int machineID, int mailBoxID){
 		return;
 	}
 		
-	if(serverMVs[index].count == 0){		// If there are no clients using MV
-		delete serverMV[index].name;		// delete EVERYTHING
-		serverMV[index].valid = false;	
+	if(ServerMVs[index].count == 0){		// If there are no clients using MV
+		delete ServerMVs[index].name;		// delete EVERYTHING
+		ServerMVs[index].valid = false;	
 		printf("MV IS DESTROYED\n");
 		send("DESTROYMV",true,index,machineID,mailBoxID);
 	}else{		// If MV is in use, can't destroy it

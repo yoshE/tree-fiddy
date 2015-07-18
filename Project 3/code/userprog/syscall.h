@@ -157,7 +157,7 @@ int CreateCV(char* name);
 void DestroyCV(int j);
 
 /* Syscall for MVs */
-int CreateMV(int vaddr,int len,int initialValue);
+int CreateMV(char* name, int initialValue);
 void SetMV(int id,int value);
 int GetMV(int id);
 void DestroyMV(int id);
