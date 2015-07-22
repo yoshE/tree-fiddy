@@ -237,6 +237,8 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 	Acquire(liaisonLineLock);		/* Acquire lock to find shortest line */
 	simPassengers[name].myLine = 0;	
 
+printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai line\n"), 0, 0);		/* OFFICIAL OUTPUT STATEMENT */
+
 	for(i = 1; i < simNumOfLiaisons; i++){		/* Find shortest line */
 		if(liaisonLine[i] < liaisonLine[simPassengers[name].myLine]){
 			simPassengers[name].myLine = i;
@@ -449,15 +451,20 @@ int Liaison_getAirlineBaggageCount(int n){ /* For manager to get passenger bag c
 }
 
 void Liaison(){
+	int beforeShield[100];
 	int name;
-	Acquire(Liaison_ID_Lock);	
+	int afterShield[100];
+	Acquire(Liaison_ID_Lock);
 	name = Liaison_ID;
 	liaisonOfficers[name].number = name;
 	Liaison_ID++;
 	Release(Liaison_ID_Lock);
 	while(true){		/* Always be running, never go on break */
 		Acquire(liaisonLineLock);		/* Acquire lock for lining up in order to see if there is someone waiting in your line */
+				printf((int)"LiaiLine %d = %d\n", sizeof("LiaiLine %d = %d\n"), name, liaisonLine[name]);		/* OFFICIAL OUTPUT STATEMENT */
+
 		if (liaisonLine[name] > 0){		/* Check if passengers are in your line */
+		printf((int)"LiaiLine %d = %d\n", sizeof("LiaiLine %d = %d\n"), name, liaisonLine[name]);		/* OFFICIAL OUTPUT STATEMENT */
 			Signal(liaisonLineCV[name], liaisonLineLock);		/* Signal them if there are */
 			Acquire(liaisonLineLocks[name]);		
 			Release(liaisonLineLock);
@@ -1096,6 +1103,7 @@ void RunSim(){
 	setupBaggageAndCargo(simNumOfAirlines);
 	createCargoHandlers(simNumOfCargoHandlers);
 	createPassengers(simNumOfPassengers);
+	printf((int)"Created everything\n", sizeof("Created everything\n"), 0, 0);
 }
 
 void main() {

@@ -11,7 +11,7 @@
 #
 
 # If you are running on SunOS 5.x machines, uncomment the next line
-GCCDIR = 
+GCCDIR = ./
 LDFLAGS = -T newscript -N
 ASFLAGS = -mips1
 CPPFLAGS = $(INCDIR)
