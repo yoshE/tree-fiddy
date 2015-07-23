@@ -188,7 +188,9 @@ ScreenPassengerInfo_t SPInfo[MAX_SCREEN+1];		/* Array of Structs that contain in
 SecurityScreenInfo_t SSInfo[MAX_SCREEN];		/* Array of structs that contains info from security to screener */
 SecurityPassengerInfo_t SecPInfo[MAX_SCREEN];		/* Array of structs that contains info from security to passenger */
 
+int baggageShield[100];
 Baggage_t conveyor[PASSENGER_COUNT*2];		/* Conveyor queue that takes bags from the CheckIn and is removed by Cargo Handlers*/
+int baggageShiled2[100];
 int aircraftBaggageCount[MAX_AIRLINES];		/* Number of baggage on a single airline */
 int aircraftBaggageWeight[MAX_AIRLINES];		/* Weight of baggage on a single airline */
 
@@ -229,6 +231,7 @@ void Security_DoWork(int number);
 
 void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline */
 	int i, test, r, oldLine, name;
+	printf((int)"STARTED PASS\n", sizeof("STARTED PASS\n"), 0, 0);
 	Acquire(Passenger_ID_Lock);	
 	name = Passenger_ID;
 	simPassengers[name].name = name;
@@ -245,12 +248,14 @@ printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai lin
 		}
 	}
 
-	printf((int)"Passenger %d chose Liaison %d with a line of length %d\n", sizeof("Passenger %d chose Liaison %d with a line of length %d\n"), name, simPassengers[name].myLine + (100 * liaisonLine[simPassengers[name].myLine] + 100));		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Passenger %d chose Liaison %d ", sizeof("Passenger %d chose Liaison %d with a line of length %d\n"), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"with a line of length %d\n", sizeof("with a line of length %d\n"), liaisonLine[simPassengers[name].myLine], 0);
 	
 	liaisonLine[simPassengers[name].myLine] += 1;		/* Increment size of line you join*/
 	Wait(liaisonLineCV[simPassengers[name].myLine], liaisonLineLock);
-	Release(liaisonLineLock);		/* Release the lock you acquired from waking up */
 	Acquire(liaisonLineLocks[simPassengers[name].myLine]); /* New lock needed for liaison interaction */
+	Release(liaisonLineLock);		/* Release the lock you acquired from waking up */
+	printf((int)"PASS ACQUIRED %d\n", sizeof("PASS ACQUIRED %d\n"), liaisonLineLocks[simPassengers[name].myLine], 0);
 	LPInfo[simPassengers[name].myLine].passengerName = simPassengers[name].name;
 	LPInfo[simPassengers[name].myLine].baggageCount = simPassengers[name].baggageCount; /* Adds baggage Count to shared struct array */
 	Signal(liaisonOfficerCV[simPassengers[name].myLine], liaisonLineLocks[simPassengers[name].myLine]); /* Wakes up Liaison Officer */
@@ -281,7 +286,8 @@ printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai lin
 		for (i = (simPassengers[name].airline)*simNumOfCIOs; i < simPassengers[name].airline * simNumOfCIOs + simNumOfCIOs; i++){ /* Find shortest line for my airline */
 			if (CheckInLine[i] < CheckInLine[simPassengers[name].myLine]) simPassengers[name].myLine = i;
 		}
-		printf((int)"Passenger %d of Airline %d chose Airline Check-In staff %d with a line length %d\n", sizeof("Passenger %d of Airline %d chose Airline Check-In staff %d with a line length %d\n"), name, simPassengers[name].airline + (100*simPassengers[name].myLine + 100)/*, CheckInLine[simPassengers[name].myLine]*/);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"Passenger %d of Airline %d chose Airline Check-In staff ", sizeof("Passenger %d of Airline %d chose Airline Check-In staff "), name, simPassengers[name].airline/*, CheckInLine[simPassengers[name].myLine]*/);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"%d with a line length %d\n", sizeof("%d with a line length %d\n"), simPassengers[name].myLine, CheckInLine[simPassengers[name].myLine]);
 	}
 
 	CheckInLine[simPassengers[name].myLine] += 1;		/* Increment line when I enter line */
@@ -320,7 +326,8 @@ printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai lin
 	
 	if (CheckInLine[simPassengers[name].myLine] > 0) CheckInLine[simPassengers[name].myLine]--; /* Passenger left the line */
 	Signal(CheckInOfficerCV[simPassengers[name].myLine], CheckInLocks[simPassengers[name].myLine]); /* Wakes up CheckIn Officer to say I'm leaving */
-	printf((int)"Passenger %d of Airline %d was informed to board at gate %d\n", sizeof("Passenger %d of Airline %d was informed to board at gate %d\n"), name, simPassengers[name].airline + (100 * simPassengers[name].gate + 100));		/*OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Passenger %d of Airline %d ", sizeof("Passenger %d of Airline %d "), name, simPassengers[name].airline);		/*OFFICIAL OUTPUT STATEMENT */
+	printf((int)"was informed to board at gate %d\n", sizeof("was informed to board at gate %d\n"), simPassengers[name].gate, 0);
 	Release(CheckInLocks[simPassengers[name].myLine]); /* Passenger is now leaving to go to screening */
 	
 	Yield();	
@@ -433,11 +440,13 @@ printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai lin
 /* ----------------------------------------------------[ Going to Gate ]---------------------------------------- */
 	
 	Acquire(gateLocks[simPassengers[name].airline]);		/* Lock to control passenger flow to boarding lounge */
-	printf((int)"Passenger %d of Airline %d reached the gate %d\n", sizeof("Passenger %d of Airline %d reached the gate %d\n"), name, simPassengers[name].airline + (100 * simPassengers[name].gate + 100));		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Passenger %d of Airline %d ", sizeof("Passenger %d of Airline %d "), name, simPassengers[name].airline);		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"reached the gate %d\n", sizeof("reached the gate %d\n"), simPassengers[name].gate, 0);
 	boardingLounges[simPassengers[name].airline]++;
 
 	Wait(gateLocksCV[simPassengers[name].airline], gateLocks[simPassengers[name].airline]);		/* Airline can only leave when all passengers have arrived */
-	printf((int)"Passenger %d of Airline %d boarded airline %d\n", sizeof("Passenger %d of Airline %d boarded airline %d\n"), name, simPassengers[name].airline + (100 * simPassengers[name].airline + 100));		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Passenger %d of Airline %d ", sizeof("Passenger %d of Airline %d "), name, simPassengers[name].airline);		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"boarded airline %d\n", sizeof("boarded airline %d\n"), simPassengers[name].airline,0);
 	Release(gateLocks[simPassengers[name].airline]);
 }
 
@@ -468,6 +477,8 @@ void Liaison(){
 			Signal(liaisonLineCV[name], liaisonLineLock);		/* Signal them if there are */
 			Acquire(liaisonLineLocks[name]);		
 			Release(liaisonLineLock);
+			printf((int)"LIAI ACQUIRED %d\n", sizeof("LIAI ACQUIRED %d\n"), liaisonLineLocks[name], 0);
+			
 			Wait(liaisonOfficerCV[name], liaisonLineLocks[name]);		/* Wait for passenger to give you baggage info */
 			
 			/* Passenger has given bag Count info and woken up the Liaison Officer */
@@ -486,7 +497,8 @@ void Liaison(){
 			liaisonBaggageCount[liaisonOfficers[name].airline] += LPInfo[liaisonOfficers[name].number].baggageCount;
 			Signal(liaisonOfficerCV[name], liaisonLineLocks[name]); /* Wakes up passenger */
 			Wait(liaisonOfficerCV[name], liaisonLineLocks[name]); /* Waits for Passenger to say they are leaving */
-			printf((int)"Airport Liaison %d directed passenger %d of airline %d\n", sizeof("Airport Liaison %d directed passenger %d of airline %d\n"), name, LPInfo[name].passengerName + (100 * liaisonOfficers[name].airline + 100));		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"Airport Liaison %d directed passenger %d ", sizeof("Airport Liaison %d directed passenger %d "), name, LPInfo[name].passengerName);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"of airline %d\n", sizeof("of airline %d\n"), liaisonOfficers[name].airline,0);
 			Signal(liaisonOfficerCV[name], liaisonLineLocks[name]);	/*Let the passenger leave */
 			Release(liaisonLineLocks[name]);
 		}
@@ -534,12 +546,14 @@ void CheckIn_DoWork(int number){
 			CPInfo[x].line = CheckIn[number].number;
 			CheckInLine[x]--;
 			Signal(CheckInCV[x], CheckInLock);
-			printf((int)"Airline check-in staff %d of airline %d serves an executive class passenger and economy class line length = %d\n", sizeof("Airline check-in staff %d of airline %d serves an executive class passenger and economy class line length = %d\n"), number, CheckIn[number].airline + (100 * CheckInLine[CheckIn[number].number] + 100));		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"Airline check-in staff %d of airline %d serves an executive class passenger and economy class line length = ", sizeof("Airline check-in staff %d of airline %d serves an executive class passenger and economy class line length = "), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"%d\n", sizeof("%d\n"), CheckInLine[CheckIn[number].number], 0);
 			CheckInLine[CheckIn[number].number]++;
 			/* execLineCV[info.airline]->Wait(execLineLocks[info.airline]); */
 		} else if (CheckInLine[CheckIn[number].number] > 0){		/* If no executive, then check your normal line */
 			Signal(CheckInCV[CheckIn[number].number], CheckInLock);
-			printf((int)"Airline check-in staff %d of airline %d serves an economy class passenger and executive class line length = %d\n", sizeof("Airline check-in staff %d of airline %d serves an economy class passenger and executive class line length = %d\n"), number, CheckIn[number].airline + (100 * CheckInLine[x] + 100));		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"Airline check-in staff %d of airline %d serves an economy class passenger and executive class line length = ", sizeof("Airline check-in staff %d of airline %d serves an economy class passenger and executive class line length = "), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"%d\n", sizeof("%d\n"), CheckInLine[x], 0);
 		}else {		/* Else, there are no passengers waiting and you can go on break */
 			/* if(execLineLocks[info.airline]->isHeldByCurrentThread()){
 				// execLineLocks[info.airline]->Release();
@@ -586,9 +600,11 @@ void CheckIn_DoWork(int number){
 		printf((int)"Airline check-in staff %d of airline %d dropped bags to the conveyor system\n", sizeof("Airline check-in staff %d of airline %d dropped bags to the conveyor system\n"), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
 		CPInfo[CheckIn[number].number].gate = gates[CheckIn[number].airline];		/* Tell Passenger Gate Number*/
 		if (!CPInfo[CheckIn[number].number].IsEconomy){
-			printf((int)"Airline check-in staff %d of airline %d informs executive class passenger %d to board at gate %d\n", sizeof("Airline check-in staff %d of airline %d informs executive class passenger %d to board at gate %d\n"), number, CheckIn[number].airline + (100 * CPInfo[number].passenger + 100) /*, gates[CheckIn[number].airline]*/);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"Airline check-in staff %d of airline %d ", sizeof("Airline check-in staff %d of airline %d "), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"informs executive class passenger %d to board at gate %d\n", sizeof("informs executive class passenger %d to board at gate %d\n"), CPInfo[number].passenger, gates[CheckIn[number].airline]);
 		} else {
-			printf((int)"Airline check-in staff %d of airline %d informs economy class passenger %d to board at gate %d\n", sizeof("Airline check-in staff %d of airline %d informs economy class passenger %d to board at gate %d\n"), number, CheckIn[number].airline + (100 * CPInfo[number].passenger + 100)/*, gates[CheckIn[number].airline]*/);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"Airline check-in staff %d of airline %d ", sizeof("Airline check-in staff %d of airline %d "), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
+			printf((int)"informs economy class passenger %d to board at gate %d\n", sizeof("informs economy class passenger %d to board at gate %d\n"), CPInfo[number].passenger, gates[CheckIn[number].airline]);
 		}
 		Signal(CheckInOfficerCV[CheckIn[number].number], CheckInLocks[CheckIn[number].number]);
 		Wait(CheckInOfficerCV[CheckIn[number].number], CheckInLocks[CheckIn[number].number]);		/* Passenger will wake up you when they leave, starting the loop over again */
@@ -632,7 +648,8 @@ void Cargo(){
 		Release(CargoHandlerLock);
 		aircraftBaggageCount[temp.airline]++;		/* Increase baggage count of airline */
 		aircraftBaggageWeight[temp.airline] += temp.weight;		/* Increase baggage weight of airline */
-		printf((int)"Cargo Handler %d picked bag of airline %d with weighing %d lbs\n", sizeof("Cargo Handler %d picked bag of airline %d with weighing %d lbs\n"), n, temp.airline + (100 * temp.weight + 100));		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"Cargo Handler %d picked bag of airline %d ", sizeof("Cargo Handler %d picked bag of airline %d "), n, temp.airline);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"with weighing %d lbs\n", sizeof("with weighing %d lbs\n"), temp.weight, 0);
 		printf((int)"ID is: %d\n", sizeof("ID is: %d\n"), Cargo_ID, -1);
 		printf((int)"number is: %d\n", sizeof("number is: %d\n"), n, -1);
 		cargoHandlers[n].weight[temp.airline] += temp.weight;		/* Increment total weight of baggage this handler has dealt with */
@@ -817,7 +834,8 @@ void Screening_DoWork(int n){
 				Yield();
 			}
 		}
-		printf((int)"Screening officer %d directs passenger %d to security inspector %d\n", sizeof("Screening officer %d directs passenger %d to security inspector %d\n"), Screen[n].number, z + (100 * SPInfo[Screen[n].number].SecurityOfficer + 100));		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"Screening officer %d directs passenger %d ", sizeof("Screening officer %d directs passenger %d "), Screen[n].number, z);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"to security inspector %d\n", sizeof("to security inspector %d\n"), SPInfo[Screen[n].number].SecurityOfficer, 0);
 		Signal(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);		/* Signal Passenger that they should move on */
 		Wait(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);
 		Release(ScreenLocks[Screen[n].number]);
@@ -963,6 +981,7 @@ void createPassengers(int quantity) {
 		if(rand() % 3 == 1){		/* 25% of being executive class */
 			simPassengers[i].economy = false;
 		}
+		printf((int)"PASS CREATED\n", sizeof("PASS CREATED\n"), 0, 0);
 	}
 }
 
@@ -1146,4 +1165,6 @@ void main() {
 	for(i = 0; i < simNumOfPassengers; i++) {
 		Fork(Passenger);
 	}
+	
+	printf((int)"FORK YOU\n", sizeof("FORK YOU\n"), 0, 0);
 }
