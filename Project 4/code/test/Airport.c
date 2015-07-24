@@ -240,7 +240,7 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 	Acquire(liaisonLineLock);		/* Acquire lock to find shortest line */
 	simPassengers[name].myLine = 0;	
 
-printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai line\n"), 0, 0);		/* OFFICIAL OUTPUT STATEMENT */
+printf((int)"Passenger choosing liai line\n", sizeof("Passenger choosing liai line\n"), 0, 0);		/* OFFICIAL OUTPUT STATEMENT */
 
 	for(i = 1; i < simNumOfLiaisons; i++){		/* Find shortest line */
 		if(liaisonLine[i] < liaisonLine[simPassengers[name].myLine]){
@@ -248,7 +248,7 @@ printf((int)"Passenger choosing lia line\n", sizeof("Passenger choosing liai lin
 		}
 	}
 
-	printf((int)"Passenger %d chose Liaison %d ", sizeof("Passenger %d chose Liaison %d with a line of length %d\n"), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Passenger %d chose Liaison %d ", sizeof("Passenger %d chose Liaison %d "), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
 	printf((int)"with a line of length %d\n", sizeof("with a line of length %d\n"), liaisonLine[simPassengers[name].myLine], 0);
 	
 	liaisonLine[simPassengers[name].myLine] += 1;		/* Increment size of line you join*/

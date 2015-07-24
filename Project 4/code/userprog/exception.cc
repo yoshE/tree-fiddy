@@ -702,6 +702,9 @@ void Fork_Syscall(int funcAddr){		// Creates a new thread to run
 	t->setPID(processID);		// Set process ID of thread to process ID
 	t->space = currentThread->space;		// Sets addrspace of thread to current thread addrspace
 	
+	printf("FORK THREAD ID IS %d\n", currentThread->getID());
+	
+	
     t->Fork((VoidFunctionPtr) kernelRun, funcAddr);		// Runs the new thread
     currentThread->space->RestoreState();		// Restores state of currentThread
     syscallLock->Release();
@@ -709,6 +712,7 @@ void Fork_Syscall(int funcAddr){		// Creates a new thread to run
 
 void Exit_Syscall(int code) {		// Ends threads and process'
 	printf("EXITING WITH CODE = %d\n", code);
+	printf("EXIT THREAD ID IS %d\n", currentThread->getID());
 	
 	syscallLock->Acquire();
 	
