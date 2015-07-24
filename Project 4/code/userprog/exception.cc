@@ -675,12 +675,47 @@ int Exec_Syscall(unsigned int vaddr, unsigned int length) {		// Creates a new pr
 	return processID;
 }
 
+int allocateForkSpace(){
+	int i, nextPage;
+	TranslationEntry *newPageTable = new TranslationEntry[currentThread->space->getNumPages() + 8];
+	for (i = 0; i < currentThread->space->getNumPages(); i++){
+		newPageTable[i].virtualPage = currentThread->space->pageTable[i].virtualPage;
+		newPageTable[i].physicalPage = currentThread->space->pageTable[i].physicalPage;
+		newPageTable[i].valid = currentThread->space->pageTable[i].valid;
+		newPageTable[i].use = currentThread->space->pageTable[i].use;
+		newPageTable[i].dirty = currentThread->space->pageTable[i].dirty;
+		newPageTable[i].readOnly = currentThread->space->pageTable[i].readOnly;
+	}
+	for (i = currentThread->space->getNumPages(); i < currentThread->space->getNumPages() + 8; i++){
+		newPageTable[i].virtualPage = i;		// for now, virtual page # = phys page #
+		memMapLock -> Acquire();
+		nextPage = memMap -> Find();
+		if(nextPage == -1)
+		{
+			printf("\nNachos ran out of memory : It will now halt\n");
+			interrupt -> Halt(); // Halt nachos and exit 
+		}
+		memMapLock -> Release();
+		newPageTable[i].physicalPage = nextPage;
+		newPageTable[i].valid = true;
+		newPageTable[i].use = false;
+		newPageTable[i].dirty = false;
+		newPageTable[i].readOnly = false;
+	}
+	delete currentThread->space->pageTable;
+	currentThread->space->pageTable = newPageTable;
+	currentThread->space->setNumPages();
+	currentThread->space->RestoreState();
+	return currentThread->space->getNumPages();
+}
+
 void kernelRun(int vaddr) {		// Set up new thread
 	machine->WriteRegister(PCReg, (unsigned int)vaddr);
 	machine->WriteRegister(NextPCReg, (unsigned int)vaddr+4);
-	currentThread->space->RestoreState();
-	int stackPosition = currentThread->space->getNumPages()*PageSize-8;		// Allocate space for new thread
-	machine->WriteRegister(StackReg, stackPosition);
+	
+	int stackPosition = allocateForkSpace();
+	printf("StackPosition = %d\n", stackPosition);
+	machine->WriteRegister(StackReg, stackPosition * PageSize - 16);
 
 	machine->Run();		// Run the thread
 	ASSERT(false);
@@ -971,12 +1006,6 @@ void ExceptionHandler(ExceptionType which) {
 		machine->WriteRegister(PCReg,machine->ReadRegister(NextPCReg));
 		machine->WriteRegister(NextPCReg,machine->ReadRegister(PCReg)+4);
 		return;
-	} else if(which == PageFaultException){
-		int currentVPN = machine->ReadRegister(BadVAddrReg)/PageSize;
-		
-		if(!PopulateTLB_IPT(currentVPN)){
-			currentThread->space->PopulateTLB(currentVPN);
-		}
 	} else {
       cout<<"Unexpected user mode exception - which:"<<which<<"  type:"<< type<<endl;
       interrupt->Halt();

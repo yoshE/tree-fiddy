@@ -30,14 +30,7 @@ SynchDisk   *synchDisk;
 #ifdef USER_PROGRAM	// requires either FILESYS or FILESYS_STUB
 Table *processTable;
 BitMap *memMap;
-BitMap *swapMap;
-Lock *memoryLock;			// for memory bitmap
-Lock *iptLock;	//IPT lock
-Lock *QueueLock;
-char swapFileName[100]; //swap file name
-OpenFile *swapFile;
-Lock *swapFileLock;
-List *evictQueue;
+Lock *memMapLock;			// for memory bitmap
 BitMap *memory;
 Machine *machine;	// user program memory and registers
 #endif
@@ -92,17 +85,9 @@ Initialize(int argc, char **argv)
 	
 	processTable = new Table(PROCESS_TABLE_MAX_SIZE);		// Initialize processTable to max number of process'
 	memMap = new BitMap(NumPhysPages);		// Initialize memMap to number of physical
-	swapMap = new BitMap(4096);
 	memory = new BitMap(NumPhysPages);
 	
-	iptLock = new Lock("IPTLock");
-	memoryLock = new Lock("MemoryLock");		// for memory bitmap
-	swapFileLock = new Lock("SwapLock");
-	QueueLock = new Lock("QueueQLock");
-	sprintf(swapFileName, "../swapfile_%d\0", getpid());
-	fileSystem -> Create(swapFileName, (4096 * 128) );
-	swapFile = fileSystem -> Open(swapFileName);
-	evictQueue = new List();
+	memMapLock = new Lock("MemoryLock");		// for memory bitmap
 
 #ifdef USER_PROGRAM
     bool debugUserProg = FALSE;	// single step user program

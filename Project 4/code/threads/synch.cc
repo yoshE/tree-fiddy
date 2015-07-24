@@ -136,7 +136,7 @@ void Lock::Release() {
   Thread *thread;
   IntStatus inter = interrupt->SetLevel(IntOff);
   if(!isHeldByCurrentThread()){ // Do you own this lock?
-	std::cout << "You don't own this lock!\n";
+	//std::cout << "You don't own this lock!\n";
 	interrupt->SetLevel(inter);
 	return;
   }

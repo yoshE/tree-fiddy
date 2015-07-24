@@ -23,14 +23,8 @@
 #define MaxOpenFiles 256
 #define MaxChildSpaces 256
 
-enum State {EXECUTABLE, EMPTY, SWAP};
 extern BitMap *memMap;		// To ensure addrspace can access memMap
 extern BitMap *swapMap;
-
-struct PageTableExtend{
-	State state;
-	int pageAddrOffset;
-};
 
 class AddrSpace {
   public:
@@ -47,11 +41,9 @@ class AddrSpace {
     Table fileTable;			// Table of openfiles
 	
 	int getNumPages() { return (numPages); }
+	void setNumPages() {numPages += 8;}
 	
-	void PopulateTLB(int currentVPN);
-	int handleIPTMiss(int currentVPN);
 	Lock *pageTableLock;
-	PageTableExtend *pageTable2;
 	TranslationEntry *pageTable;	// Assume linear page table translation for now!
 	OpenFile *executable;
 

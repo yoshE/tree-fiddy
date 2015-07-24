@@ -23,24 +23,10 @@
 #include "synch.h"
 
 extern BitMap *memMap;
-extern Lock *iptLock;		// IPT lock
-extern Lock *QueueLock;		// Lock for Queue of IPT files
-extern OpenFile *swapFile;	// File that is swapped if IPT is full
-extern BitMap *swapMap;		// Map of available swap files
-extern Lock *swapFileLock;	// Lock for SwapFile
-extern Lock *memoryLock;	// Lock for accessing memory
+extern Lock *memMapLock;
 extern char swapFileName[100];		//swap file pointer
 
 extern "C" { int bzero(char *, int); };
-
-class IPT:public TranslationEntry {
-    public:
-        AddrSpace *space;// address space class pointer to identify process
-		
-	IPT(){}
-};
-
-IPT *ipt = new IPT[NumPhysPages]; //ipt is created.
 
 Table::Table(int s) : map(s), table(0), lock(0), size(s) {
     table = new void *[size];
@@ -135,7 +121,7 @@ SwapHeader (NoffHeader *noffH)
 //      constructed set to false.
 //----------------------------------------------------------------------
 
-AddrSpace::AddrSpace(OpenFile *tempExecutable) : fileTable(MaxOpenFiles) {
+AddrSpace::AddrSpace(OpenFile *executable) : fileTable(MaxOpenFiles) {
     NoffHeader noffH;
     unsigned int i, size;
 
@@ -143,8 +129,7 @@ AddrSpace::AddrSpace(OpenFile *tempExecutable) : fileTable(MaxOpenFiles) {
     fileTable.Put(0);
     fileTable.Put(0);
 	pageTableLock = new Lock("pageTableLock");
-
-	executable = tempExecutable;
+	
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
@@ -156,32 +141,37 @@ AddrSpace::AddrSpace(OpenFile *tempExecutable) : fileTable(MaxOpenFiles) {
     // we need to increase the size to leave room for the stack
     size = numPages * PageSize;
 
-    /*ASSERT(numPages <= NumPhysPages);		// check we're not trying to run anything too big --
-						// at least until we have virtual memory*/
+    ASSERT(numPages <= NumPhysPages);
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
 					
 	// first, set up the translation 
     pageTable = new TranslationEntry[numPages];
-	pageTable2 = new PageTableExtend[numPages];		// Extend the pageTable so it can include state and addrspace byte offset
+	int nextPage = -1;
 	
     for (i = 0; i < numPages; i++) {
 		pageTable[i].virtualPage = i;		// for now, virtual page # = phys page #
-		pageTable[i].physicalPage = -1;		// Set page to be used to unallocated
-		pageTable[i].valid = TRUE;
-		pageTable[i].use = FALSE;
-		pageTable[i].dirty = FALSE;
-		pageTable[i].readOnly = FALSE;  // if the code segment was entirely on a separate page, we could set its pages to be read-only
 		
-		if(i <  divRoundUp(noffH.code.size + noffH.initData.size, PageSize)){	//code and initialize data offset are stored in pagetable, location is set executable
-			pageTable2[i].state = EXECUTABLE;
-			pageTable2[i].pageAddrOffset = noffH.code.inFileAddr + (i * PageSize);		//offset in executable;   
-		} else {		// this is not in executable, so its offset is not required
-			pageTable2[i].state = EMPTY;
-			pageTable2[i].pageAddrOffset = -1;   
-		} 
-   }
+		memMapLock -> Acquire();
+		nextPage = memMap -> Find();
+		if(nextPage == -1)
+		{
+			printf("\nNachos ran out of memory : It will now halt\n");
+			interrupt -> Halt(); // Halt nachos and exit 
+		}
+		memMapLock -> Release();
+		pageTable[i].physicalPage = nextPage;
+		pageTable[i].valid = true;
+		pageTable[i].use = false;
+		pageTable[i].dirty = false;
+		pageTable[i].readOnly = false;  // if the code segment was entirely on 
+					// a separate page, we could set its 
+					// pages to be read-only
+		
+		// read the executable page by page and copy it to the main memory.
+		executable -> ReadAt(&(machine -> mainMemory[nextPage * PageSize]), PageSize, noffH.code.inFileAddr + (i * PageSize));
+    }
 }
 
 //----------------------------------------------------------------------
@@ -194,182 +184,6 @@ AddrSpace::AddrSpace(OpenFile *tempExecutable) : fileTable(MaxOpenFiles) {
 AddrSpace::~AddrSpace()
 {
     delete pageTable;
-}
-
-//----------------------------------------------------------------------
-// AddrSpace::PopulateTLB
-// 	populate the TLB from pageTable
-//----------------------------------------------------------------------
-
-int currentTLBIndex = 0;
-void AddrSpace::PopulateTLB(int n){
-	IntStatus oldLevel = interrupt->SetLevel(IntOff);		// Disable interrupts
-	currentTLBIndex = (currentTLBIndex + 1) % TLBSize;		// Covert index to memory addr space
-	
-	machine->tlb[currentTLBIndex].virtualPage = pageTable[n].virtualPage;
-	machine->tlb[currentTLBIndex].virtualPage = pageTable[n].virtualPage;
-	machine->tlb[currentTLBIndex].physicalPage = pageTable[n].physicalPage;
-	machine->tlb[currentTLBIndex].valid = pageTable[n].valid;
-	machine->tlb[currentTLBIndex].use = pageTable[n].use;
-	machine->tlb[currentTLBIndex].dirty = pageTable[n].dirty;
-	machine->tlb[currentTLBIndex].readOnly = pageTable[n].readOnly;
-	interrupt->SetLevel(oldLevel);
-}
-
-
-//----------------------------------------------------------------------
-//  Evict_IPT
-//  Evicts a page from physical memory which is further loaded with new
-//  virtual page
-//----------------------------------------------------------------------
-
-int Evict_IPT(int currentVPN){
-	int ppn = -1, i = 0, vpn = -1;
-	
-	while(true){
-		QueueLock->Acquire();
-		if(!evictQueue->IsEmpty()) ppn = (int)evictQueue->Remove();		// If there is a file to be evicted, add it to ppn
-		QueueLock->Release();
-		
-		if (ppn >= 0){		// If there was a file...
-			iptLock->Acquire();
-			if (!ipt[ppn].use){		// If the IPT file at that index wasn't in use
-				ipt[ppn].use = true;
-				if (ipt[ppn].space == currentThread->space){		// If the addrspace of the File at index in IPT is the same as the current thread
-					IntStatus oldLevel = interrupt->SetLevel(IntOff);
-					for(i = 0; i <= TLBSize; i++){		// Iterate through the TLB
-						if(machine->tlb[i].valid && ppn == machine->tlb[i].physicalPage){		// If the index at set TLB is valid and same phys page
-							ipt[ppn].dirty = machine->tlb[i].dirty;		// Propagate the dirty bit
-							machine->tlb[i].valid = false;
-							break;
-						}
-					}
-					interrupt->SetLevel(oldLevel);
-				}
-				vpn = ipt[ppn].virtualPage;		// Keep track of the virtual page of the IPT file at index ppn
-				ipt[ppn].virtualPage = currentVPN;
-				QueueLock->Acquire();
-				evictQueue->Append((void *)ppn);		// Add ppn to the Queue for eviction
-				QueueLock->Release();
-				ipt[ppn].space->pageTableLock->Acquire(); 
-				iptLock->Release();
-				break;		// End the while loop
-			}else {
-				QueueLock->Acquire();
-				evictQueue->Prepend((void *)ppn);		//then prepend it to FIFO queue.
-				QueueLock->Release();
-				iptLock->Release();		// IPT lock is released
-			}
-		}
-	}
-	
-	swapFileLock->Acquire();
-	int swapLocation = (int)swapMap->Find(); //find a free spot in the swap file
-	
-	if(ipt[ppn].dirty){
-		swapFile->WriteAt(&(machine->mainMemory[ipt[ppn].physicalPage * PageSize]),PageSize , swapLocation * PageSize); //writing to swap file
-		ipt[ppn].space->pageTable2[vpn].pageAddrOffset = swapLocation * PageSize; //saving swap file location
-		ipt[ppn].space->pageTable2[vpn].state = SWAP; //changing location of page to swap file
-	}
-	swapFileLock->Release();
-	ipt[ppn].space->pageTableLock->Release();
-	return ppn;
-} 
-
-//----------------------------------------------------------------------
-// AddrSpace::handleIPTMiss
-// 	populate the TLB from pageTable if IPT doesn't have the File
-//----------------------------------------------------------------------
-
-int AddrSpace::handleIPTMiss(int currentVPN) {
-	memoryLock->Acquire();
-	int pageIndex = -1;
-	pageIndex = memory->Find();		// Find available spot in memory
-	memoryLock->Release();
-	
-	if (pageIndex == -1) {		// If there are no available files
-		pageIndex = Evict_IPT(currentVPN); // Evict a file and return its new empty location
-	}
-	
-	currentThread->space->pageTableLock->Acquire();
-	TranslationEntry* table = currentThread->space->pageTable;		// QOL method instead of calling pageTable
-	PageTableExtend* table2 = currentThread->space->pageTable2;	
-	
-	if(table2[currentVPN].state == EXECUTABLE) {		// If the File is EXECUTABLE
-		executable->ReadAt(&(machine->mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);		// Put the file into executable
-	} else if (table2[currentVPN].state == SWAP){		// If the FIle is SWAP (it was evicted)
-		swapFileLock->Acquire();
-		swapFile -> ReadAt(&(machine -> mainMemory[pageIndex*PageSize]), PageSize, table2[currentVPN].pageAddrOffset);		// Put the file into swapFile
-		swapFileLock->Release();
-	}
-	
-	table[currentVPN].physicalPage = pageIndex;		// Set index of file to pageIndex
-	table[currentVPN].valid = true;	
-	currentThread->space->pageTableLock->Release();
-	
-	iptLock->Acquire();
-	ipt[pageIndex].physicalPage = pageIndex;
-	ipt[pageIndex].virtualPage = currentVPN;
-	ipt[pageIndex].use = true;
-	ipt[pageIndex].valid = true;
-	ipt[pageIndex].readOnly = table[currentVPN].readOnly;
-	ipt[pageIndex].space = currentThread->space;
-	
-	evictQueue->Append((void *)pageIndex);		// Add pageIndex to the eviction Queue
-	iptLock->Release();
-	
-	return pageIndex;
-}
-
-//----------------------------------------------------------------------
-//  PopulateTLB_IPT
-// 	populate the TLB from IPT
-//----------------------------------------------------------------------
-
-bool PopulateTLB_IPT(int currentVPN){
-	int i=0; 
-	bool foundInIPT = false;
-	int physicalPage = -1;
-
-	iptLock -> Acquire();		// Acquire IPT lock
-	for(i=0; i<NumPhysPages; i++){		// Search IPT if required vpn entry is in page table or not
-		// Check if there is a valid, currently unused, and same process entry required vpn in IPT
-		if( ipt[i].virtualPage == currentVPN && ipt[i].valid == TRUE && ipt[i].use == FALSE && ipt[i].space == currentThread->space){
-			physicalPage = i;			// If it exists, that ppn is used
-			ipt[i].use = TRUE; 			// Use bit is set to true
-			foundInIPT = true;
-			break;
-		}
-	}
-	iptLock -> Release(); 
-
-	// If there is a IPT miss
-	if(physicalPage == -1){
-		
-		physicalPage = currentThread->space->handleIPTMiss(currentVPN);		// Handle IPT miss NEED TO IMPLEMENT
-	}	else {	// Populate TLB from IPT
-		foundInIPT = true;
-		IntStatus oldLevel = interrupt->SetLevel(IntOff);		// Turn off interrupts
-		currentTLBIndex = (currentTLBIndex + 1)% TLBSize;		// Current index is moved to next location
-
-		if(machine->tlb[currentTLBIndex].valid == TRUE){		// If TLB index is valid
-			ipt[machine->tlb[currentTLBIndex].physicalPage].dirty = machine->tlb[currentTLBIndex].dirty;		//Propagate Dirty Bit
-		}
-
-		machine->tlb[currentTLBIndex].virtualPage = ipt[physicalPage].virtualPage;
-		machine->tlb[currentTLBIndex].physicalPage = ipt[physicalPage].physicalPage;
-		machine->tlb[currentTLBIndex].valid = ipt[physicalPage].valid;
-		machine->tlb[currentTLBIndex].use = FALSE;
-		machine->tlb[currentTLBIndex].dirty = ipt[physicalPage].dirty;
-		machine->tlb[currentTLBIndex].readOnly = ipt[physicalPage].readOnly;
-		interrupt->SetLevel(oldLevel);		// Turn Interrupts back on
-	}
-	
-	iptLock -> Acquire();
-	ipt[physicalPage].use = FALSE;
-	iptLock -> Release(); 
-	
-	return foundInIPT;
 }
 
 //----------------------------------------------------------------------
@@ -425,13 +239,6 @@ void AddrSpace::SaveState()
 
 void AddrSpace::RestoreState() 
 {
-    //machine->pageTable = pageTable;
-    //machine->pageTableSize = numPages;
-	
-	int i = 0;
-	IntStatus oldLevel = interrupt->SetLevel(IntOff);
-	for (i = 0; i < TLBSize; i++){
-		machine->tlb[i].valid = false;
-	}
-	interrupt->SetLevel(oldLevel);
+    machine->pageTable = pageTable;
+    machine->pageTableSize = numPages;
 }

@@ -118,8 +118,7 @@ struct KernelCV{		// struct to hold CVs for the CV table
 
 extern Table *processTable;		// Table of processes
 extern BitMap *memMap;		// BitMap of available pages for user programs
-extern BitMap *memory;			// BitMap for representing availability of memory
-extern List *evictQueue;
+extern Lock *memMapLock;
 extern Machine* machine;	// user program memory and registers
 #endif
 
