@@ -231,9 +231,10 @@ void Security_DoWork(int number);
 
 void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline */
 	int i, test, r, oldLine, name;
-	printf((int)"STARTED PASS\n", sizeof("STARTED PASS\n"), 0, 0);
 	Acquire(Passenger_ID_Lock);	
 	name = Passenger_ID;
+		printf((int)"STARTED PASS %d\n", sizeof("STARTED PASS %d\n"), name, 0);
+
 	simPassengers[name].name = name;
 	Passenger_ID++;
 	Release(Passenger_ID_Lock);
@@ -259,6 +260,7 @@ printf((int)"Passenger choosing liai line\n", sizeof("Passenger choosing liai li
 	LPInfo[simPassengers[name].myLine].passengerName = simPassengers[name].name;
 	LPInfo[simPassengers[name].myLine].baggageCount = simPassengers[name].baggageCount; /* Adds baggage Count to shared struct array */
 	Signal(liaisonOfficerCV[simPassengers[name].myLine], liaisonLineLocks[simPassengers[name].myLine]); /* Wakes up Liaison Officer */
+	printf((int)"Signaled Liai, PASS %d\n", sizeof("Signaled Liai, PASS %d\n"), name, 0);
 	Wait(liaisonOfficerCV[simPassengers[name].myLine], liaisonLineLocks[simPassengers[name].myLine]); /* Goes to sleep until Liaison finishes assigning airline */
 	simPassengers[name].airline = LPInfo[simPassengers[name].myLine].airline;		/* Gets airline info from Liaison Officer shared struct */
 	totalBaggage[simPassengers[name].airline] += simPassengers[name].baggageCount;
@@ -463,15 +465,19 @@ void Liaison(){
 	int beforeShield[100];
 	int name;
 	int afterShield[100];
+			printf((int)"Started Liaison %d\n", sizeof("Started Liaison %d\n"), name, 0);		/* OFFICIAL OUTPUT STATEMENT */
+
 	Acquire(Liaison_ID_Lock);
 	name = Liaison_ID;
 	liaisonOfficers[name].number = name;
 	Liaison_ID++;
 	Release(Liaison_ID_Lock);
-	while(true){		/* Always be running, never go on break */
-		Acquire(liaisonLineLock);		/* Acquire lock for lining up in order to see if there is someone waiting in your line */
-				printf((int)"LiaiLine %d = %d\n", sizeof("LiaiLine %d = %d\n"), name, liaisonLine[name]);		/* OFFICIAL OUTPUT STATEMENT */
+					printf((int)"LIAI %d ABOUT TO WHILE\n", sizeof("LIAI %d ABOUT TO WHILE\n"), name, 0);		/* OFFICIAL OUTPUT STATEMENT */
 
+	while(true){		/* Always be running, never go on break */
+			/* printf((int)"LIAI %d\n", sizeof("LIAI %d\n"), name, 0); */
+
+		Acquire(liaisonLineLock);		/* Acquire lock for lining up in order to see if there is someone waiting in your line */
 		if (liaisonLine[name] > 0){		/* Check if passengers are in your line */
 		printf((int)"LiaiLine %d = %d\n", sizeof("LiaiLine %d = %d\n"), name, liaisonLine[name]);		/* OFFICIAL OUTPUT STATEMENT */
 			Signal(liaisonLineCV[name], liaisonLineLock);		/* Signal them if there are */
@@ -480,6 +486,8 @@ void Liaison(){
 			printf((int)"LIAI ACQUIRED %d\n", sizeof("LIAI ACQUIRED %d\n"), liaisonLineLocks[name], 0);
 			
 			Wait(liaisonOfficerCV[name], liaisonLineLocks[name]);		/* Wait for passenger to give you baggage info */
+			
+			printf((int)"GOT BAGGAGE INFO LIAI %d\n", sizeof("GOT BAGGAGE INFO LIAI %d\n"), name, 0);
 			
 			/* Passenger has given bag Count info and woken up the Liaison Officer */
 			liaisonOfficers[name].passengerCount += 1;		/*Increment internal passenger counter */
@@ -533,6 +541,7 @@ int CheckIn_getOnBreak(int n) {return CheckIn[n].OnBreak;}
 void CheckIn_setOffBreak(int n) {CheckIn[n].OnBreak = false;}
 
 void CheckIn_DoWork(int number){
+printf((int)"Started CIO %d\n", sizeof("Started CIO %d\n"), number, 0);
 	while(CheckIn[number].work){		/* While there are still passengers who haven't checked in */
 		int i, x, y, helpedExecLine;
 		helpedExecLine = false;
@@ -626,6 +635,7 @@ void Cargo(){
 	cargoHandlers[n].name = n;
 	Cargo_ID++;
 	Release(Cargo_ID_Lock);
+	printf((int)"Started CARGO %d\n", sizeof("Started CARGO %d\n"), n, 0);
 	while (true){
 		cargoHandlers[n].onBreak = false;
 		Acquire(CargoHandlerLock);
@@ -680,6 +690,7 @@ void AirportManager(){
 
 void Manager_DoWork(){
 	int breakCount, y;
+	printf((int)"Started AM\n", sizeof("Started AM\n"), 0, 0);
 	while(true){
 		/*if the conveyor belt is not empty and cargo people are on break, wake them up */
 		int chCount = 0;
@@ -789,6 +800,7 @@ void Screening_setBusy(int n){
 }
 
 void Screening_DoWork(int n){
+printf((int)"Started Screening %d\n", sizeof("Started Screening %d\n"), n, 0);
 	while(true){
 		int i, y, z, x, alreadyPrinted;
 		Acquire(ScreenLines);
@@ -863,6 +875,7 @@ void SecurityOfficer(){
 
 void Security_DoWork(int number){
 	int z, x;
+	printf((int)"Started Security %d\n", sizeof("Started Security %d\n"), number, 0);
 	while(true){
 		Acquire(SecurityLines);
 		Acquire(SecurityLocks[number]);
@@ -913,7 +926,7 @@ void Security_DoWork(int number){
 			Wait(SecurityOfficerCV[number], SecurityLocks[number]);
 		}
 		Release(SecurityLocks[number]);
-		/* currentThread->Yield(); */
+		Yield();
 	}
 }
 
@@ -981,7 +994,6 @@ void createPassengers(int quantity) {
 		if(rand() % 3 == 1){		/* 25% of being executive class */
 			simPassengers[i].economy = false;
 		}
-		printf((int)"PASS CREATED\n", sizeof("PASS CREATED\n"), 0, 0);
 	}
 }
 
@@ -1143,8 +1155,6 @@ void main() {
 	
 	RunSim();	/* Sets up CVs and Locks */
 
-	Fork(AirportManager);	
-
 	for(i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
 		Fork(CheckInOfficer);
 	}
@@ -1161,6 +1171,8 @@ void main() {
 	for(i = 0; i < simNumOfCargoHandlers; i++) {
 		Fork(Cargo);
 	}
+	
+	Fork(AirportManager);
 	
 	for(i = 0; i < simNumOfPassengers; i++) {
 		Fork(Passenger);
