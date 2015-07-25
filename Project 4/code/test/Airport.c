@@ -1111,6 +1111,7 @@ void setupSingularLocks() {
 }
 
 void RunSim(){		
+	int i;
 	simNumOfPassengers = PASSENGER_COUNT;
 	simNumOfCargoHandlers = MAX_CARGOHANDLERS;
 	simNumOfAirlines = MAX_AIRLINES;
