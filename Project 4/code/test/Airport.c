@@ -581,13 +581,13 @@ void Cargo(){
 	int i, n;
 	Baggage_t temp;		/* Baggage that handler will move off conveyor */
 	Acquire(Cargo_ID_Lock);	
-	temp.weight = 0;
 	n = Cargo_ID;
 	cargoHandlers[n].name = n;
 	Cargo_ID++;
 	Release(Cargo_ID_Lock);
 	printf((int)"Started CARGO %d\n", sizeof("Started CARGO %d\n"), n, 0);
 	while (true){
+		temp.weight = 0;
 		cargoHandlers[n].onBreak = false;
 		Acquire(CargoHandlerLock);
 		for (i = 0; i < PASSENGER_COUNT*2; i++){
