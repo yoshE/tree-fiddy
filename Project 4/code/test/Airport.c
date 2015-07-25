@@ -580,8 +580,8 @@ printf((int)"Started CIO %d\n", sizeof("Started CIO %d\n"), number, 0);
 void Cargo(){
 	int i, n;
 	Baggage_t temp;		/* Baggage that handler will move off conveyor */
-	temp.weight = 0;
 	Acquire(Cargo_ID_Lock);	
+	temp.weight = 0;
 	n = Cargo_ID;
 	cargoHandlers[n].name = n;
 	Cargo_ID++;
@@ -601,6 +601,7 @@ void Cargo(){
 			cargoHandlers[n].onBreak = true;
 			printf((int)"Cargo Handler %d is going for a break\n", sizeof("Cargo Handler %d is going for a break\n"), n, -1);		/* OFFICIAL OUTPUT STATEMENT */
 			Wait(CargoHandlerCV, CargoHandlerLock);		/* Sleep until woken up by manager */
+			Release(CargoHandlerLock);
 			printf((int)"Cargo Handler %d returned from break\n", sizeof("Cargo Handler %d returned from break\n"), n, -1);		/* OFFICIAL OUTPUT STATEMENT */
 			continue;
 		}
@@ -669,6 +670,9 @@ void Manager_DoWork(){
 		}
 		
 		for(i = 0; i < simNumOfAirlines; i++){
+			printf("Boarding Lounge %d has passengers: %d\n", sizeof("Boarding Lounge %d has passengers: %d\n"), i, boardingLounges[i]);
+			printf("Total Baggage for %d has: %d\n", sizeof("Total Baggage for %d has: %d\n"), i, totalBaggage[i]);
+			printf("Aircraft Baggage for %d has: %d\n", sizeof("Aircraft Baggage for %d has: %d\n"), i, aircraftBaggageCount[i]);
 			if(boardingLounges[i] == totalPassengersOfAirline[i] && totalBaggage[i] == aircraftBaggageCount[i] && !alreadyBoarded[i]){
 				Acquire(gateLocks[i]);
 				Broadcast(gateLocksCV[i], gateLocks[i]);
@@ -839,8 +843,8 @@ void createPassengers(int quantity) {
 		simPassengers[i].airline = -1;
 		simPassengers[i].myLine = -1;
 		simPassengers[i].baggageCount = 2;
-		simPassengers[i].bags[1].weight = 0;
-		simPassengers[i].bags[0].weight = 0;
+		simPassengers[i].bags[1].weight = 30 + rand() % 30;
+		simPassengers[i].bags[0].weight = 30 + rand() % 30;
 		simPassengers[i].bags[1].airline = -1;
 		simPassengers[i].bags[0].airline = -1;
 		
