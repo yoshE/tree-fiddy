@@ -14,7 +14,7 @@ int main(){
 	Initialize();
 	Acquire(Screening_ID_Lock);	
 	n = GetMV(Screening_ID);
-	Screen[n].number = n;
+	SetMV(Screen[n].number, n);
 	SetMV(Screening_ID, n + 1);
 	Release(Screening_ID_Lock);
 	
