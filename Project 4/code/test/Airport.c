@@ -15,12 +15,12 @@
 #define false 0
 
 /* Max agent consts */
-#define PASSENGER_COUNT			6
-#define MAX_AIRLINES			2
+#define PASSENGER_COUNT			9
+#define MAX_AIRLINES			3
 #define MAX_LIAISONS			3
 #define MAX_CIOS				3
 #define MAX_CARGOHANDLERS		4
-#define MAX_SCREEN				2
+#define MAX_SCREEN				3
 #define MAX_BAGS				3
 #define AIRLINE_SEAT 			3
 
@@ -74,8 +74,6 @@ int gateLocksCV[MAX_AIRLINES];		/* CVs for waiting at the gate */
 int seatLock;			/* Lock for assigned airline seats in the Liaison */
 int execLineLocks[MAX_AIRLINES];
 int execLineCV[MAX_AIRLINES];
-int ScreenSecurityWait;
-int ScreenSecurityWaitCV;
 /*----------------------------------------------------------------------
 // Structs
 //---------------------------------------------------------------------- */
@@ -243,6 +241,8 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 	Acquire(liaisonLineLock);		/* Acquire lock to find shortest line */
 	simPassengers[name].myLine = 0;	
 
+printf((int)"Passenger choosing liai line\n", sizeof("Passenger choosing liai line\n"), 0, 0);		/* OFFICIAL OUTPUT STATEMENT */
+
 	for(i = 1; i < simNumOfLiaisons; i++){		/* Find shortest line */
 		if(liaisonLine[i] < liaisonLine[simPassengers[name].myLine]){
 			simPassengers[name].myLine = i;
@@ -335,30 +335,70 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 	Yield();	
 	
 /* ----------------------------------------------------[ Going to Screening ]---------------------------------------- */
+
+	Acquire(ScreenLines);
+	
+	test = true;
+	if (ScreenLine[0] == 0){		/* If first person in line for Screening Officer... */
+		ScreenLine[0] += 1;		/* Increment line length.... */
+		Release(ScreenLines);
+		while (test){		/* Look for a Screening Officer that isn't busy... (and keep going till you find one) */
+			Acquire(ScreenLines);
+			for (i = 0; i < simNumOfScreeningOfficers; i++){
+				if(Screen[i].IsBusy == 0){		/* This checks if that officer is busy */
+					test = Screen[i].IsBusy;		
+					simPassengers[name].myLine = i;
+				}
+			}
+			Release(ScreenLines);
+			Yield();		/* Wait a bit before re looping to give officer time to change his busy state */
+		}
+		Acquire(ScreenLines);
+	} else {		/* If not first person in line, just add yourself to the line */
+		ScreenLine[0] += 1;
+		Wait(ScreenLineCV[0], ScreenLines);
+	}
+	if (test){
+		for (i = 0; i < simNumOfScreeningOfficers; i++){
+			if(!(Screen[i].IsBusy)){
+				test = Screen[i].IsBusy;
+				simPassengers[name].myLine = i;
+			}
+		}
+	}
+	
+	Screening_setBusy(simPassengers[name].myLine);		/* Set the officer that you picked to busy */
+	Acquire(ScreenLocks[simPassengers[name].myLine]);
+	Release(ScreenLines);		/* Release the lock so others can access officer busy states */
+	printf((int)"Passenger %d gives the hand-luggage to screening officer %d\n", sizeof("Passenger %d gives the hand-luggage to screening officer %d\n"), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
+	SPInfo[simPassengers[name].myLine].passenger = simPassengers[name].name;		/* Tell Screening Officer your name */
+	Signal(ScreenOfficerCV[simPassengers[name].myLine], ScreenLocks[simPassengers[name].myLine]);		/* Wake them up */
+	Wait(ScreenOfficerCV[simPassengers[name].myLine], ScreenLocks[simPassengers[name].myLine]);		/* Go to sleep */
+	
+	oldLine = simPassengers[name].myLine;		/* Save old line to signal to Screening you are leaving */
+	simPassengers[name].myLine = SPInfo[oldLine].SecurityOfficer;		/* Receive line of which Security Officer to wait for */
+	Signal(ScreenOfficerCV[oldLine], ScreenLocks[oldLine]);		/* Tells Screening Officer Passenger is leaving */
+	if(ScreenLine[0] > 0) ScreenLine[0] -= 1;		/* Decrement line size */
+	Release(ScreenLocks[oldLine]);
+	
+	/* currentThread->Yield(); */
 	
 /* ----------------------------------------------------[ Going to Security ]---------------------------------------- */
 
 	Acquire(SecurityLines);
-	simPassengers[name].myLine = 0;
-	
-	for(i = 1; i < MAX_SCREEN; i++){		/* Find shortest line */
-		if(SecurityLine[i] < SecurityLine[simPassengers[name].myLine]){
-			simPassengers[name].myLine = i;
-		}
-	}
-	
 	SecurityLine[simPassengers[name].myLine]++;		/* Increase line length... */
-	printf((int)"Passenger %d moves to security inspector %d\n", sizeof("Passenger %d moves to security inspector %d\n"), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
-	Wait(SecurityLineCV[simPassengers[name].myLine], SecurityLines);
-	Release(SecurityLines);
-
 	Acquire(SecurityLocks[simPassengers[name].myLine]);
+	printf((int)"Passenger %d moves to security inspector %d\n", sizeof("Passenger %d moves to security inspector %d\n"), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
+
+	Release(SecurityLines);
+	Signal(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		/* Tell Security that you have arrived */
+	Wait(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);
 	SecPInfo[simPassengers[name].myLine].passenger = simPassengers[name].name;		/* Tell officer passenger name */
 	SecPInfo[simPassengers[name].myLine].questioning = false;		/* Tell officer that passenger hasn't been told to do extra questioning */
 	Signal(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		/* Tell Security that you have arrived */
 	Wait(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);
-	
 	simPassengers[name].NotTerrorist = SecPInfo[simPassengers[name].myLine].PassedSecurity;		/* Boolean of whether the passenger has passed all security */
+	
 	Acquire(SecurityLines);
 	SecurityLine[simPassengers[name].myLine] -= 1;		/* Decrement Line Size */
 	Release(SecurityLines);
@@ -373,11 +413,20 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 		}
 		
 		Acquire(SecurityLines);		/* Lock for waiting in Line*/
+		Acquire(SecurityAvail);
 		SecurityLine[simPassengers[name].myLine] += 1;		/* Add yourself to line length... */
-		Wait(SecurityLineCV[simPassengers[name].myLine], SecurityLines);
-		Release(SecurityLines);
-		
+		SecurityAvailability[simPassengers[name].myLine] = false;
+		Release(SecurityAvail);
 		Acquire(SecurityLocks[simPassengers[name].myLine]);
+		if (SecurityLine[simPassengers[name].myLine] == 1){		/* If there is no line when you return... */
+			Signal(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		/* And signal the officer (they are probably sleeping)*/
+			printf((int)"Signaled officer\n", sizeof("Signaled officer\n"), 0, 0);
+		}else {		/* Otherwise just add yourself to the line and wait (Security Officer will not take anymore passengers as you are in queue) */
+			Wait(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		/* Wait on security officer to wake you up */
+			Signal(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		/* Tell Security that you have returned from questioning */
+		}
+		Release(SecurityLines);
+		Wait(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		/* Wait on security officer to wake you up */
 		SecPInfo[simPassengers[name].myLine].passenger = simPassengers[name].name;		/* Tell Security Officer passenger name again */
 		SecPInfo[simPassengers[name].myLine].questioning = true;		/* Tell officer passenger already underwent questioning and should auto pass */
 		printf((int)"Passenger %d comes back to security inspector %d after further examination\n", sizeof("Passenger %d comes back to security inspector %d after further examination\n"), name, simPassengers[name].myLine);		/* OFFICIAL OUTPUT STATEMENT */
@@ -385,9 +434,9 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 		Wait(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);
 		Acquire(SecurityLines);
 		SecurityLine[simPassengers[name].myLine] -= 1;		/* Leave the line */
-		Release(SecurityLines);
 		Signal(SecurityOfficerCV[simPassengers[name].myLine], SecurityLocks[simPassengers[name].myLine]);		
 		Release(SecurityLocks[simPassengers[name].myLine]);		/* Go To Boarding Area */
+		Release(SecurityLines);
 	}
 	
 /* ----------------------------------------------------[ Going to Gate ]---------------------------------------- */
@@ -401,6 +450,7 @@ void Passenger(){		/* Picks a Liaison line, talks to the Officer, gets airline *
 	printf((int)"Passenger %d of Airline %d ", sizeof("Passenger %d of Airline %d "), name, simPassengers[name].airline);		/* OFFICIAL OUTPUT STATEMENT */
 	printf((int)"boarded airline %d\n", sizeof("boarded airline %d\n"), simPassengers[name].airline,0);
 	Release(gateLocks[simPassengers[name].airline]);
+	Exit(0);
 }
 
 /*----------------------------------------------------------------------
@@ -413,10 +463,8 @@ int Liaison_getAirlineBaggageCount(int n){ /* For manager to get passenger bag c
 }
 
 void Liaison(){
-	int beforeShield[100];
 	int name;
-	int afterShield[100];
-			printf((int)"Started Liaison %d\n", sizeof("Started Liaison %d\n"), name, 0);		/* OFFICIAL OUTPUT STATEMENT */
+	printf((int)"Started Liaison %d\n", sizeof("Started Liaison %d\n"), name, 0);		/* OFFICIAL OUTPUT STATEMENT */
 
 	Acquire(Liaison_ID_Lock);
 	name = Liaison_ID;
@@ -430,7 +478,7 @@ void Liaison(){
 
 		Acquire(liaisonLineLock);		/* Acquire lock for lining up in order to see if there is someone waiting in your line */
 		if (liaisonLine[name] > 0){		/* Check if passengers are in your line */
-			printf((int)"LiaiLine %d = %d\n", sizeof("LiaiLine %d = %d\n"), name, liaisonLine[name]);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"LiaiLine %d = %d\n", sizeof("LiaiLine %d = %d\n"), name, liaisonLine[name]);		/* OFFICIAL OUTPUT STATEMENT */
 			Signal(liaisonLineCV[name], liaisonLineLock);		/* Signal them if there are */
 			Acquire(liaisonLineLocks[name]);		
 			Release(liaisonLineLock);
@@ -548,6 +596,9 @@ printf((int)"Started CIO %d\n", sizeof("Started CIO %d\n"), number, 0);
 			for(y = 0; y < PASSENGER_COUNT*2; y++){
 				if(conveyor[y].weight == 0){
 					conveyor[y] = CheckIn[number].bags[i];
+					printf((int)"Airline check-in staff %d of airline %d dropped bags to the conveyor system\n", sizeof("Airline check-in staff %d of airline %d dropped bags to the conveyor system\n"), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
+					printf((int)"CCCCOOOOOOONNNNNNNNNNNNNVVVVVVEEEEEEEEEEEYYYYYYYOOOOOOOOORRRRRRRRRRRR[%d] has weight %d\n", sizeof("CCCCOOOOOOONNNNNNNNNNNNNVVVVVVEEEEEEEEEEEYYYYYYYOOOOOOOOORRRRRRRRRRRR[%d] has weight %d\n"), y, conveyor[y].weight);
+					printf((int)"%d is supposed weight\n", sizeof("%d is supposed weight\n"), CheckIn[number].bags[i].weight, 0);
 					break;
 				}
 			}
@@ -557,7 +608,6 @@ printf((int)"Started CIO %d\n", sizeof("Started CIO %d\n"), number, 0);
 			CheckIn[number].totalBags[(CheckIn[number].passengerCount - 2) + i] = (CheckIn[number].bags[i]);
 		}
 		
-		printf((int)"Airline check-in staff %d of airline %d dropped bags to the conveyor system\n", sizeof("Airline check-in staff %d of airline %d dropped bags to the conveyor system\n"), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
 		CPInfo[CheckIn[number].number].gate = gates[CheckIn[number].airline];		/* Tell Passenger Gate Number*/
 		if (!CPInfo[CheckIn[number].number].IsEconomy){
 			printf((int)"Airline check-in staff %d of airline %d ", sizeof("Airline check-in staff %d of airline %d "), number, CheckIn[number].airline);		/* OFFICIAL OUTPUT STATEMENT */
@@ -617,6 +667,7 @@ void Cargo(){
 		cargoHandlers[n].weight[temp.airline] += temp.weight;		/* Increment total weight of baggage this handler has dealt with */
 		cargoHandlers[n].count[temp.airline] ++;		/* Increment total count of baggage this handler has dealt with */
 		Release(AirlineBaggage[temp.airline]);
+		temp.weight = 0;
 		Yield();
 	}
 }
@@ -642,20 +693,14 @@ void AirportManager(){
 
 void Manager_DoWork(){
 	int breakCount, y;
-	printf((int)"Started AM\n", sizeof("Started AM\n"), 0, 0);
 	while(true){
-		/*if the conveyor belt is not empty and cargo people are on break, wake them up */
-		int chCount = 0;
 		int i;
-		for(i = 0; i < simNumOfCargoHandlers; i++){
-			chCount++;
-		}
-		
 		for (i = 0; i < PASSENGER_COUNT*2; i++){
-			if(conveyor[i].weight != 0 && chCount == MAX_CARGOHANDLERS){
+			if(conveyor[i].weight != 0){
 				Acquire(CargoHandlerLock);
 				breakCount = 0;
 				for(y = 0; y < simNumOfCargoHandlers; y++){
+				printf((int)"CH %d on break? %d\n", sizeof("CH %d on break? %d\n"), y, cargoHandlers[y].onBreak);
 					if(cargoHandlers[y].onBreak == 1){
 						breakCount++;
 					}	
@@ -663,6 +708,7 @@ void Manager_DoWork(){
 				if(breakCount == simNumOfCargoHandlers){
 					printf((int)"Airport manager calls back all the cargo handlers from break\n", sizeof("Airport manager calls back all the cargo handlers from break\n"), -1, -1);
 					Broadcast(CargoHandlerCV, CargoHandlerLock);
+					Release(CargoHandlerLock);
 					break;
 				}
 				Release(CargoHandlerLock);
@@ -732,6 +778,81 @@ void EndOfDay(){
 }
 
 /*----------------------------------------------------------------------
+// Screening Officer
+//---------------------------------------------------------------------- */
+void ScreeningOfficer(){
+	int i;
+	Acquire(Screening_ID_Lock);	
+	i = Screening_ID;
+	Screen[i].number = i;
+	Screening_ID++;
+	Release(Screening_ID_Lock);
+	
+	Acquire(ScreenLines);
+	Screen[i].IsBusy = false;		/* Set Officer to available */
+	Release(ScreenLines);
+	Screening_DoWork(i);
+}
+
+void Screening_setBusy(int n){
+	Acquire(ScreenLines);
+	Screen[n].IsBusy = true;
+	Release(ScreenLines);
+}
+
+void Screening_DoWork(int n){
+printf((int)"Started Screening %d\n", sizeof("Started Screening %d\n"), n, 0);
+	while(true){
+		int i, y, z, x, alreadyPrinted;
+		Acquire(ScreenLines);
+		if (Screen[n].IsBusy) Screen[n].IsBusy = false;		/* If busy, should no longer be busy */
+		if (ScreenLine[0] > 0){		/* Checks if the screening line has passengers */
+			Signal(ScreenLineCV[0], ScreenLines);		/* Wake them if there are */
+		}
+		Acquire(ScreenLocks[Screen[n].number]);
+		Release(ScreenLines);
+		Wait(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);		/* Wait for Passenger to start conversation */
+
+		z = SPInfo[Screen[n].number].passenger;		/* Find passenger name */
+		x = rand() % 5;		/* Generate random value for pass/fail */
+		Screen[n].ScreenPass = true;		/* Default is pass */
+		if (x == 0) Screen[n].ScreenPass = false;		/* 20% of failure */
+		ScreeningResult[z] = Screen[n].ScreenPass;
+		if (Screen[n].ScreenPass){		/* If passenger passed test */
+			printf((int)"Screening officer %d is not suspicious of the hand luggage of passenger %d\n", sizeof("Screening officer %d is not suspicious of the hand luggage of passenger %d\n"), n, z);		/* OFFICIAL OUTPUT STATEMENT */
+		}else {
+			printf((int)"Screening officer %d is suspicious of the hand luggage of passenger %d\n", sizeof("Screening officer %d is suspicious of the hand luggage of passenger %d\n"), n, z);		/* OFFICIAL OUTPUT STATEMENT */
+		}
+		alreadyPrinted = false;
+		while(true){		/* Wait for Security Officer to become available */
+			y = false;
+			for (i = 0; i < simNumOfScreeningOfficers; i++){		/* Iterate through all security officers */
+				Acquire(SecurityAvail);
+				y = SecurityAvailability[i];		/* See if they are busy */
+				if (y){			/* If a security officer is not busy, obtain his number and inform passenger */
+					SPInfo[Screen[n].number].SecurityOfficer = i;
+					SecurityAvailability[i] = false;
+				}
+				Release(SecurityAvail);
+			}
+			if(y){
+				break;
+			}
+			alreadyPrinted = true;
+			for (i = 0; i < 2; i++){		/* Wait for a while so Officer can change availability status */
+				Yield();
+				Yield();
+			}
+		}
+		printf((int)"Screening officer %d directs passenger %d ", sizeof("Screening officer %d directs passenger %d "), Screen[n].number, z);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"to security inspector %d\n", sizeof("to security inspector %d\n"), SPInfo[Screen[n].number].SecurityOfficer, 0);
+		Signal(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);		/* Signal Passenger that they should move on */
+		Wait(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);
+		Release(ScreenLocks[Screen[n].number]);
+	}
+}
+
+/*----------------------------------------------------------------------
 // Security Officer
 //---------------------------------------------------------------------- */
 void SecurityOfficer(){
@@ -741,50 +862,59 @@ void SecurityOfficer(){
 	Security[number].number = number;
 	Security_ID++;
 	Release(Security_ID_Lock);
-	Security[number].PassedPassengers = 0;
 	
+	Acquire(SecurityAvail);
+	SecurityAvailability[number] = true;
+	Release(SecurityAvail);
+	Security[number].PassedPassengers = 0;
+	printf((int)"Started Security %d\n", sizeof("Started Security %d\n"), number, 0);
 	while(true){
 		Acquire(SecurityLines);
-		
-		if (SecurityLine[number] > 0){		/* Always see if Officer has a line of returning passengers from questioning */
-			Signal(SecurityLineCV[number], SecurityLines);
-			Acquire(SecurityLocks[number]);
-			Release(SecurityLines);
-			Wait(SecurityOfficerCV[number], SecurityLocks[number]);
+		Acquire(SecurityLocks[number]);
+		if (SecurityLine[0] > 0){		/* Always see if Officer has a line of returning passengers from questioning */
+			Signal(SecurityLineCV[0], SecurityLocks[number]);
 			
-			z = SecPInfo[number].passenger;		/* Get passenger name from passenger */
-			x = rand() % 5;		/* Generate random value for pass/fail */
-			Security[number].SecurityPass = true;		/* Default is pass */
-			if (x == 0) Security[number].SecurityPass = false;		/* 20% of failure */
-		
-			if (SecPInfo[number].questioning){		/* Passenger has just returned from questioning */
-				Security[number].TotalPass = true;		/* Allow returned passenger to continue to the boarding area */
-				Security[number].PassedPassengers += 1;
-				Signal(SecurityOfficerCV[number], SecurityLocks[number]);		/* Signal passenger to move onwards */
-				printf((int)"Security inspector %d permits returning passenger %d to board\n", sizeof("Security inspector %d permits returning passenger %d to board\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
-			}else {		/* Passenger is first time */
-				if (!Security[number].SecurityPass){
-					Security[number].TotalPass = false;		/* Passenger only passes if they pass both tests */
-					printf((int)"Security inspector %d is suspicious of the passenger %d\n", sizeof("Security inspector %d is suspicious of the passenger %d\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
-					SecPInfo[number].PassedSecurity = Security[number].TotalPass;
-					printf((int)"Security inspector %d asks passenger %d to go for further examination\n", sizeof("Security inspector %d asks passenger %d to go for further examination\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
-					Signal(SecurityOfficerCV[number], SecurityLocks[number]);		/* Signal passenger to move to questioning */
-				}else {
-					Security[number].TotalPass = true;
-					printf((int)"Security inspector %d is not suspicious of the passenger %d\n", sizeof("Security inspector %d is not suspicious of the passenger %d\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
-					SecPInfo[number].PassedSecurity = Security[number].TotalPass;
-					Security[number].PassedPassengers += 1;
-					printf((int)"Security inspector %d allows passenger %d to board\n", sizeof("Security inspector %d allows passenger %d to board\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
-					Signal(SecurityOfficerCV[number], SecurityLocks[number]);		/* Signal passenger to move onwards */
-				}
-			}
-			Wait(SecurityOfficerCV[number], SecurityLocks[number]);
-			Release(SecurityLocks[number]);
-			Yield();
 		} else {
-			Release(SecurityLines);
-			Yield();
+			Acquire(SecurityAvail);
+			SecurityAvailability[number] = true;		/* Set itself to available */
+			Release(SecurityAvail);
 		}
+		Release(SecurityLines); 
+
+		Wait(SecurityOfficerCV[number], SecurityLocks[number]);	/*Wait for a passenger to arrive*/
+		Signal(SecurityOfficerCV[number], SecurityLocks[number]);	/*Signal the passenger to come over*/
+		Wait(SecurityOfficerCV[number], SecurityLocks[number]);	/*Wait for the passenger to give info*/
+		z = SecPInfo[number].passenger;		/* Get passenger name from passenger */
+		Security[number].didPassScreening = ScreeningResult[z];		/* get result of passenger screening test from screening officer */
+		
+		x = rand() % 5;		/* Generate random value for pass/fail */
+		Security[number].SecurityPass = true;		/* Default is pass */
+		if (x == 0) Security[number].SecurityPass = false;		/* 20% of failure */
+		
+		if (SecPInfo[number].questioning){		/* Passenger has just returned from questioning */
+			Security[number].TotalPass = true;		/* Allow returned passenger to continue to the boarding area */
+			Security[number].PassedPassengers += 1;
+			Signal(SecurityOfficerCV[number], SecurityLocks[number]);		/* Signal passenger to move onwards */
+			printf((int)"Security inspector %d permits returning passenger %d to board\n", sizeof("Security inspector %d permits returning passenger %d to board\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
+			Wait(SecurityOfficerCV[number], SecurityLocks[number]);
+		}else {		/* Passenger is first time */
+			if (!Security[number].didPassScreening || !Security[number].SecurityPass){
+				Security[number].TotalPass = false;		/* Passenger only passes if they pass both tests */
+				printf((int)"Security inspector %d is suspicious of the passenger %d\n", sizeof("Security inspector %d is suspicious of the passenger %d\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
+				SecPInfo[number].PassedSecurity = Security[number].TotalPass;
+				printf((int)"Security inspector %d asks passenger %d to go for further examination\n", sizeof("Security inspector %d asks passenger %d to go for further examination\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
+				Signal(SecurityOfficerCV[number], SecurityLocks[number]);		/* Signal passenger to move to questioning */
+			}else {
+				Security[number].TotalPass = true;
+				printf((int)"Security inspector %d is not suspicious of the passenger %d\n", sizeof("Security inspector %d is not suspicious of the passenger %d\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
+				SecPInfo[number].PassedSecurity = Security[number].TotalPass;
+				Security[number].PassedPassengers += 1;
+				printf((int)"Security inspector %d allows passenger %d to board\n", sizeof("Security inspector %d allows passenger %d to board\n"), number, z);		/* OFFICIAL OUTPUT STATEMENT */
+				Signal(SecurityOfficerCV[number], SecurityLocks[number]);		/* Signal passenger to move onwards */
+			}
+		}
+		Release(SecurityLocks[number]);
+		Yield();
 	}
 }
 
@@ -843,8 +973,8 @@ void createPassengers(int quantity) {
 		simPassengers[i].airline = -1;
 		simPassengers[i].myLine = -1;
 		simPassengers[i].baggageCount = 2;
-		simPassengers[i].bags[1].weight = 30 + rand() % 30;
-		simPassengers[i].bags[0].weight = 30 + rand() % 30;
+		simPassengers[i].bags[1].weight = rand() % 31 + 30;
+		simPassengers[i].bags[0].weight = rand() % 31 + 30;
 		simPassengers[i].bags[1].airline = -1;
 		simPassengers[i].bags[0].airline = -1;
 		
@@ -978,11 +1108,22 @@ void setupSingularLocks() {
 	BaggageLock = CreateLock("Baggage Lock");
 	SecurityAvail = CreateLock("Security Availability lock");
 	SecurityLines = CreateLock("Security Line Lock");
-	ScreenSecurityWait = CreateLock("Screen Security Lock");
-	ScreenSecurityWaitCV = CreateCV("Screen Security Lock");
 }
 
-void RunSim(){	
+void RunSim(){		
+	simNumOfPassengers = PASSENGER_COUNT;
+	simNumOfCargoHandlers = MAX_CARGOHANDLERS;
+	simNumOfAirlines = MAX_AIRLINES;
+	simNumOfCIOs = MAX_CIOS;
+	simNumOfLiaisons = MAX_LIAISONS;
+	simNumOfScreeningOfficers = MAX_SCREEN;
+	
+	for(i = 0; i < simNumOfAirlines; i++) {
+		liaisonBaggageCount[i] = 0;
+		ticketsIssued[i] = 0;
+		alreadyBoarded[i] = false;
+	}
+	
 	createAirportManager();
 	setupAirlines(simNumOfAirlines);
 	setupSingularLocks();
@@ -1000,19 +1141,6 @@ void RunSim(){
 void main() {
 	int i;
 	
-	simNumOfPassengers = PASSENGER_COUNT;
-	simNumOfCargoHandlers = MAX_CARGOHANDLERS;
-	simNumOfAirlines = MAX_AIRLINES;
-	simNumOfCIOs = MAX_CIOS;
-	simNumOfLiaisons = MAX_LIAISONS;
-	simNumOfScreeningOfficers = MAX_SCREEN;
-	
-	for(i = 0; i < simNumOfAirlines; i++) {
-		liaisonBaggageCount[i] = 0;
-		ticketsIssued[i] = 0;
-		alreadyBoarded[i] = false;
-	}
-	
 	RunSim();	/* Sets up CVs and Locks */
 
 	for(i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
@@ -1024,6 +1152,7 @@ void main() {
 	}
 	
 	for(i = 0; i < simNumOfScreeningOfficers; i++) {
+		Fork(ScreeningOfficer);
 		Fork(SecurityOfficer);
 	}
 	
@@ -1036,4 +1165,6 @@ void main() {
 	for(i = 0; i < simNumOfPassengers; i++) {
 		Fork(Passenger);
 	}
+	
+	printf((int)"FORK YOU\n", sizeof("FORK YOU\n"), 0, 0);
 }
