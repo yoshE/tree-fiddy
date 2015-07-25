@@ -3,28 +3,25 @@
 /*----------------------------------------------------------------------
 // Screening Officer
 //---------------------------------------------------------------------- */
-void ScreeningOfficer(){
-	int i;
-	Initialize();
-	Acquire(Screening_ID_Lock);	
-	i = Screening_ID;
-	Screen[i].number = i;
-	Screening_ID++;
-	Release(Screening_ID_Lock);
-	
-	Acquire(ScreenLines);
-	Screen[i].IsBusy = false;		/* Set Officer to available */
-	Release(ScreenLines);
-	Screening_DoWork(i);
-}
-
 void Screening_setBusy(int n){
 	Acquire(ScreenLines);
 	Screen[n].IsBusy = true;
 	Release(ScreenLines);
 }
 
-void Screening_DoWork(int n){
+int main(){
+	int n;
+	Initialize();
+	Acquire(Screening_ID_Lock);	
+	n = Screening_ID;
+	Screen[n].number = n;
+	Screening_ID++;
+	Release(Screening_ID_Lock);
+	
+	Acquire(ScreenLines);
+	Screen[n].IsBusy = false;		/* Set Officer to available */
+	Release(ScreenLines);
+	
 	printf((int)"Started Screening %d\n", sizeof("Started Screening %d\n"), n, 0);
 	while(true){
 		int i, y, z, x, alreadyPrinted;

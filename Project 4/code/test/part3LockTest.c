@@ -7,15 +7,15 @@ int main(){
 	int testMV;
 	
 	/* Creating, Acquiring, Releasing, and Destroying a lock */
-	testLock = CreateLock("tes");
+	testLock = CreateLock("tes", 1);
 	printf((int)"Created lock %d.\n", sizeof("Created lock %d.\n"), testLock, 0);
 	Acquire(testLock);
 	printf((int)"Acquired lock %d.\n", sizeof("Acquired lock %d.\n"), testLock, 0);
 	/* Creating, Waiting, Signalling and Destroying a CV */
-	testCV = CreateCV("testCV Create Destroy");
+	testCV = CreateCV("testCV Create Destroy", 1);
 	printf((int)"Created CV %d.\n", sizeof("Created CV %d.\n"), testCV, 0);
 	/* Create MV, Get MV, Destroy MV*/
-	testMV = CreateMV("mv", 0);
+	testMV = CreateMV("mv", 0, 1);
 	printf((int)"Create MV %d.\n", sizeof("Create MV %d.\n"), testMV, 0);
 	GetMV(testMV);
 	printf((int)"Get MV %d.\n", sizeof("Get MV %d.\n"), testMV, 0);

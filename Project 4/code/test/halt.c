@@ -26,7 +26,7 @@ main()
 
 int testLock(){
 	/*Test Lock Creation */
-	b = CreateLock("");
+	b = CreateLock("", 1);
 	if(b >= 0){
 		/* Tests the printf Syscall! */
 		printf((int)" Testing lock creation...Success(This was printed with printf syscall)\n", sizeof(" Testing lock creation...Success(This was printed with printf syscall)\n"),0,0);
@@ -62,7 +62,7 @@ int testLock(){
 
 int testCV(){
 	/*Test CV Creation */
-	d = CreateCV("");
+	d = CreateCV("", 1);
 	if(d >= 0){
 		Write(" Testing CV creation...Pass\n" , sizeof(" Testing CV creation...Pass\n"), ConsoleOutput );
 	} else {

@@ -8,310 +8,36 @@ Group Num 11: Name
               Yoshua Lo
 
 I. Requirements:
-    Part 1:
-        In this part we had to implement the following extensions to the memory management scheme we implemented in 
-		project 2:
-			
-			Memory management using Translation Lookaside Buffer (TLB):
-				- Software implement for TLB
-				- Use Page Translation scheme to keep track of data
-
-    Part 2:
-        In this part we had to implement demand paged virtual memory
-		
-			- Implementation of Inverted Page Table to map virtual pages
-			- Implement handling of IPT misses (when required virtual page isn't in physical memory)
-			- Implement handing of IPT eviction if memory is full
-			- Implement swap file mechanism for tracking the modified memory
-
-    Part 3:
-		In this part we had to implement remote procedure calls:
-		
-			- Implement RPC for locks and CVs
-				- These include acquire, release, wait, signal, broadcast, create destroy
-			- Create and implement RPC for Monitor Variables
-				- These include create, destroy, set, and get
-			- Create a server that communicates with the User program (client)
 
 II. Assumptions:
 
-    We assume:
-        -Functions provided by NACHOS are generally bug free and perform as specified.
-        -File system system calls are correct as provided.
-        -Programs are provided with adequate stack space to avoid overflow
-		-Server runs with the machine id as 0 and the mail box id as 000
 
 III. Design:
 
-	For Parts 1 & 2:
-	
-	In case of a TLB miss, we check whether the erroneous page is in the IPT (Inverted Page Table) or not.
-		If it is in the IPT, then we get the physical page number from there
-
-		However, if we get an IPT miss as well, then we:
-			We call find() on the bitmap to find an available page
-				If that bitmap returns us a -1 then no new pages are available
-					- We would need to evict a page from FIFO queue 
-					- We remove the entry and put its contents into the swap file that is on our filesystem
-					- We store the offset pointer of that swap file location in the page table
-					- At the page table we set the disklocation to be swapfile
-
-			If the page to be evicted belonged to same process that is now requesting a new page, we check for a 
-			valid TLB entry for the selected page. 
-	
-			We now propagate the dirty bit from the TLB to the IPT and invalidate the TLB entry
-	
-			If VPN is in the executable:
-				- Read from executable, load into TLB, and allocate physical page number
-	
-			If VPN is empty:
-				- Allocate a PPN and load it in TLB
-
-			If VPN is in the swap file:
-				- Read from the swap file, allocate physical page number, and load into TLB
-			
-			We also propagate the dirty bit on context switch
-			We copy the VPN data at IPT entry, and index PPN to the PPN page, which is found after the eviction
-			We propagate the dirty bit from TLB to IPT and copy the data to the TLB next current index
-	
-	Part 3:
-		We created a new class called server.cc in network that functions as our server. Additionally, we changed all the syscall functions
-		in exception.cc to function with a client server interactions. This means that each syscall has a ifdef NETWORK within them such that
-		each syscall will perform one of two actions depending on if the program is run as a user program or network program. If it is run
-		using a user program, then it performs the same way as Project 2. However, if it is run as a Network, then it will create a packet,
-		append the important info (depends on syscall) and send it to the server. The syscall will then receive back a packet with the return
-		value that it will use as normal. To accomplish this feat, the exception.cc class also has added functions SendToPO and ReceiveFromPO.
-		
-			SendToPO
-				This function takes as input a packet that it will parse (find length) and place into a char array called data. This array will
-				contain all important information (such as syscall type and index number). The array is then send to the server using the 
-				postOffice send() function as well as the return information for that specific client. 
-				
-			ReceiveFromPO/ RecievePacket
-				This function will use the postOffice receive() function to receive a packet from the Server. It will then parse the packet and 
-				extract the status of the packet (if the syscall was completed successfully or not) and the return value. The value is then 
-				returned at the end of the function back to the original exception.cc syscall.
-				
-		In server.cc we added in many new functions to handle each type of syscall. Then we have a RunServer() function in server.cc that uses a
-		while loop to forever wait for Client requests to appear.
-		
-			RunServer
-				This function uses a while true loop to forever wait for Client requests. Once a request comes in, the function will parse the 
-				packet and find which syscall the request is for. Then it uses a switch statement to call different functions depending on which
-				syscall the client is requesting.
-		
-			createLock, createCV, createMV
-				These functions will take in a char *name (and an initial value for MV). They will first check if an index already exists for said
-				name. If there is, then the function will return the index of the existing object and return. If not, then the system will check if
-				there are already more than 200 objects of said type. If there is still space, then a new object will be created with all initial
-				values set accordingly. Afterwards, the index of the newly created object is returned to the the server which is set back to the
-				client.
-		
-			acquire
-				This function will take in an index of the Lock that the client wants to acquire. The function will first check if the lock index is 
-				valid, if the lock itself is valid, and then check to see if the client already owns the lock. If these all pass, then the function 
-				will see if the lock is available. If not, then the client is added to a waiting Queue. If it is available, then the lock is assigned
-				to that client and the function returns with a success message.
-			
-			release
-				This function will take in an index of the Lock that the client wants to release. The function will first check if the lock index is
-				valid, if the lock itself is valid, and then check to see if the client owns the lock. If these all pass, then the function will remove
-				the client as the owner and check the lock's waitingQueue. If there are clients waiting, then it will remove a client and assign it 
-				as the owner of the lock. At the end of the function, if the lock was marked for deletion, then the function will check if the lock has
-				any waiting clients. If it doesn't, then the lock will be deleted.
-			
-			wait
-				This function takes in two indexes, a lockID index and a cvID index. The function will check if the lockId and cvID are valid, and if the
-				indexes are valid as well. If they pass, the function checks if the lockID of the cv is -1 (empty) and if it is, sets the lockId to the
-				cvID lockId. Afterwards, it releases the lock, increases CV usage count, and makes a new client based upon the requesting client and adds
-				it to the waitingQueue.
-			
-			signal
-				This function takes in two indexes, a lockID index and a cvID index. The function will check if the lockId and cvID are valid, and if the
-				indexes are valid as well. Then it checks if the CV owns the lock, if the lock matches the cvId lockid, and if the waitingQueue is empty. If
-				everything passes, then it decrements cv usage count and removes a client from the waitingQueue. If there are no more clients in the
-				waitingQueue, then reset the cvid lockid to -1.
-			
-			broadcast
-				This function takes in two indexes, a lockID index and a cvID index. The function will check if the lockId and cvID are valid, and if the
-				indexes are valid as well. Then it checks if there are any waiting Clients. If there are, then it uses a while loop to call signal on 
-				everyone of those clients.
-			
-			destroyLock, destroyCV, destroyMV
-				These functions will take an index of the object to be destroyed. For Locks and CVs, it will first verify that the index and the object are 
-				valid. Then it will check if there are waiting Clients (count > 0). If there aren't any, then it will delete the object. If there are, then
-				it will set that object for deletion at a future date (release and signal). For MVs, it will verify that the index and object are valid. Then
-				it will check if count is 0, and if it is, it will delete the MV. If count is not 0, it will return a failure.
-			
-			setMV
-				This function takes in two values, the index of the MV and the value to set it to. The function first checks if the MV index and MV are valid. 
-				If they are, then the function will set the value of the MV to the parameter requested value and return the new value.
-			
-			getMV
-				This function takes in the index of the MV whose value needs to be returned. The function checks if the MV and the index are valid. If they are
-				then the function returns the value of that MV.
-		
 IV. Implementation:
 
     + Files Modified
-        ../userprog/
-			progtest.cc
-			syscall.h
-			exception.cc
-			addrspace.cc
-			addrspace.h
-			
-		../threads/
-			system.cc
-			system.h
-			main.cc
 			
     + Files added
-		../network/server.cc
-		../test/part3DoubleExecTest
-		../test/part3DoubleForkTest
-		../test/part3LockTest
-		../test/part3LockTest2
 		
     + Data Structures added, and the file they were added to.
-		../network/server.cc
-			vector<ServerLock> ServerLocks;
-			vector<ServerCV> ServerCVS;
-			vector<ServerMV> ServerMVs;
-			
-		../threads/system.h
-			struct client{
-				int machineID;
-				int mailBoxID;
-			};
-
-			struct ServerLock{
-				char *name;
-				bool available;
-				bool valid;
-				int count;
-				client Owner;
-				List *waitingQueue;
-				bool IsDeleted;
-			};
-
-			struct ServerCV{
-				bool valid;
-				List *waitingQueue;
-				int lockID;
-				int count;
-				int cvID;
-				char *name;
-				bool IsDeleted;
-			};
-
-			struct ServerMV{
-				char *name;
-				int mvID;
-				int value;
-				int count;
-				bool valid;
-			}; 
-
-			struct clientPacket{
-				char name[30];
-				char name2[30];
-				int syscall;
-				int index;
-				int index2;
-				int value;
-			
-				void print(){
-					printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index,index2,value);
-				}
-			};
-
-			struct serverPacket{
-				bool status;
-				int value;
 	
-				void print(){
-					printf("Status: %d\tValue: %d\n",status,value);
-				}
-			};
-            
     + Data Structures modified, and the file they were added to.  
 
     + Functions added and in which file.
-		../network/server.cc
-			RunServer()
-			setMV()
-			getMV()
-			createMV()
-			destroyMV()
-			createLock()
-			destroyLock()
-			createCV()
-			destroyCV()
-			signal()
-			wait()
-			broadcast()
-			send()
 		
-		../userprog/exception.cc
-			createMV_Syscall()
-			destroyMV_Syscall()
-			setMV_Syscall()
-			getMV_Syscall()
-			SendToPO()
-			ReceivePacket()
-			ReceiveFromPO()
-			
-		../userprog/addrspace.cc
-			PopulateTLB()
-			Evict_IPT()
-			handleIPTMiss()
-			PopulateTLB_IPT()
-
     + Functions modified and in which file.
-		../userprog/addrspace.cc
-			RestoreState()
-		
-		../userprog/exception.cc
-			CreateLock_Syscall()
-			DestroyLock_Syscall()
-			Acquire_Syscall()
-			Release_Syscall()
-			Broadcast_Syscall()
-			Signal_Syscall()
-			Wait_Syscall()
-			CreateCV_Syscall()
-			DestroyCV_Syscall()
 			
 V. Testing: (For each test case, you must show)
     + How to test
 
     -Test for Part 1:
-		To show that part 1 is working, you can run matmult and sort as Nachos user programs from the vm directory. 
-		You can also run part3DoubleExecTest as a user program, which will exec 2 different matmult programs.
-		
-		To run, go to VM directory, then use:
-			nachos -x ../test/matmult
-			nachos -x ../test/part3DoubleExecTest
-		
-	-Tests for Part 2
-		To show that part 2 is working, you can run part3DoubleForkTest as a user program, which will fork 2 different 
-		matmult functions and print out their end values.
-		
-		To run, go to VM directory, then use:
-			nachos -x ../test/part3DoubleForkTest
-	
-	-Tests for Part 3
-		To show that part 3 (locks, CVs, MVs) are working, you can run part3LockTests as a network program. This test will
-		try to create locks and CVs as well as use wait, signal, acquire, and release to ensure optimal capabilities. It will
-		also create an MV, show that a different client can access and modify that MV, and eventually delete that MV. Since we
-		want to ensure deletion wont delete the same MV twice, one of the deleteMV calls will create an error (since that MV
-		has already been deleted).
-		
-		To run, go to Network directory with 3 separate shells, then use:
-			1. nachos -m 0 -Server
-			2. nachos -m 1 -x ../test/part3LockTest
-			3. nachos -m 2 -x ../test/part3LockTest2
+		Airport.c (Fixed version of Project 2)
+			1. Go to MakeFile in test directory
+			2. Uncommend the lines regarding Airport.c/Airport.o
+			3. Add the word Airport to the all line (files that are compiled)
+			4. gmake test
+			5. Run nachos -x ../test/Airport from Userprog
 	  
 VI. Discussion:
     + Experiment expectation. 

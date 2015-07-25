@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim Airport part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest
+all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -93,11 +93,11 @@ runsim: runsim.o start.o
 	$(LD) $(LDFLAGS) start.o runsim.o -o runsim.coff
 	../bin/coff2noff runsim.coff runsim
 	
-Airport.o: Airport.c
-	$(CC) $(CFLAGS) -c Airport.c
-Airport: Airport.o start.o
-	$(LD) $(LDFLAGS) start.o Airport.o -o Airport.coff
-	../bin/coff2noff Airport.coff Airport
+#Airport.o: Airport.c
+#	$(CC) $(CFLAGS) -c Airport.c
+#Airport: Airport.o start.o
+#	$(LD) $(LDFLAGS) start.o Airport.o -o Airport.coff
+#	../bin/coff2noff Airport.coff Airport
 	
 part3DoubleExecTest.o: part3DoubleExecTest.c
 	$(CC) $(CFLAGS) -c part3DoubleExecTest.c
@@ -123,6 +123,17 @@ part3LockTest2: part3LockTest2.o start.o
 	$(LD) $(LDFLAGS) start.o part3LockTest2.o -o part3LockTest2.coff
 	../bin/coff2noff part3LockTest2.coff part3LockTest2
 	
+SecurityOfficer.o: SecurityOfficer.c
+	$(CC) $(CFLAGS) -c SecurityOfficer.c
+SecurityOfficer: SecurityOfficer.o start.o
+	$(LD) $(LDFLAGS) start.o SecurityOfficer.o -o SecurityOfficer.coff
+	../bin/coff2noff SecurityOfficer.coff SecurityOfficer	
+	
+ScreeningOfficer.o: ScreeningOfficer.c
+	$(CC) $(CFLAGS) -c ScreeningOfficer.c
+ScreeningOfficer: ScreeningOfficer.o start.o
+	$(LD) $(LDFLAGS) start.o ScreeningOfficer.o -o ScreeningOfficer.coff
+	../bin/coff2noff ScreeningOfficer.coff ScreeningOfficer	
 clean:
 	rm -f *.o *.coff
 	rm halt sort matmult matmult2 testfiles forktest exectest runsim Airport part3DoubleExecTest part3DoubleForkTest

@@ -17,8 +17,8 @@ void func1(){
 }
 
 void main(){
-    lock = CreateLock("lock");
-    cv = CreateCV("condition");
+    lock = CreateLock("lock", 1);
+    cv = CreateCV("condition", 1);
     Acquire(lock);
 
     Fork(func1);

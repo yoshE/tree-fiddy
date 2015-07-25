@@ -227,9 +227,9 @@ void setupAirlines(int airlineCount) {
 	}
 	
 	if(simNumOfPassengers%simNumOfAirlines > 0){
-		x = getMV(totalPassengersOfAirline[i]);
+		x = GetMV(totalPassengersOfAirline[i]);
 		x += simNumOfPassengers%simNumOfAirlines;
-		setMV(totalPassengersOfAirline[i], x);
+		SetMV(totalPassengersOfAirline[i], x);
 	}
 	
 	for (i = 0; i < airlineCount; i++){
@@ -248,7 +248,7 @@ void createPassengers(int quantity) {
 	int i;
 
 	for(i = 0; i < quantity; i++) {
-		simPassengers[i].NotTerrorist = CreateMV("simPassengersTerrorist ", 1, i;);
+		simPassengers[i].NotTerrorist = CreateMV("simPassengersTerrorist ", 1, i);
 		simPassengers[i].gate = CreateMV("simPassengersGate ", -1, i);
 		simPassengers[i].name = CreateMV("simPassengersName ", i, i);
 		simPassengers[i].seat = CreateMV("simPassengersSeat ", -1, i);
@@ -262,7 +262,7 @@ void createPassengers(int quantity) {
 		
 		simPassengers[i].economy = CreateMV("simPassengersEconomy ", 1, i);				/* Default is economy class */
 		if(rand() % 3 == 1){		/* 25% of being executive class */
-			setMV(simPassengers[i].economy, 0);
+			SetMV(simPassengers[i].economy, 0);
 		}
 	}
 }
@@ -276,7 +276,7 @@ void createLiaisons(int quantity) {
 		liaisonOfficerCV[i] = CreateCV("LiaisonOfficerCV ", i);
 		liaisonLineLocks[i] = CreateLock("LiaisonLineLock ", i);
 		liaisonOfficers[i].airline = CreateMV("LiaisonOfficersAirline ", -1, i);
-		liaisonOfficers[i].number = CreateMV("LiaisonOfficersNumber ", i, i)
+		liaisonOfficers[i].number = CreateMV("LiaisonOfficersNumber ", i, i);
 		liaisonOfficers[i].passengerCount = CreateMV("LiaisonOfficersPassengerCount ", 0, i);
 		liaisonOfficers[i].airlineBaggageCount[0] = CreateMV("LiaisonOfficersBaggageCount1 ", 0, i);
 		liaisonOfficers[i].airlineBaggageCount[1] = CreateMV("LiaisonOfficersBaggageCount2 ", 0, i);
@@ -306,21 +306,19 @@ void setupCIOs(int airlineCount, int quantity) {
 		CPInfo[i].bag[0].weight = CreateMV("CPInfoBag1Weight ", 0, i);
 		CPInfo[i].bag[0].airline = CreateMV("CPInfoBag1Airline ", 0, i);
 		CPInfo[i].bag[1].weight = CreateMV("CPInfoBag2Weight ", 0, i);
-		CPInfo[i].bag[2].weight = CreateMV("CPInfoBag2Airline ", 0, i)
+		CPInfo[i].bag[2].weight = CreateMV("CPInfoBag2Airline ", 0, i);
+		
+		CheckIn[i].airline = CreateMV("CheckInAirline ", i/simNumOfCIOs, i);
+		CheckIn[i].passengerCount = CreateMV("CheckInPassengerCount ", 0, i);		/* Passenger Count */
+		CheckIn[i].OnBreak = CreateMV("CheckInOnBreak ", 0, i);		/* Controls break time */
+		CheckIn[i].work = CreateMV("CheckInWork ", 1, i);
+		CheckIn[i].number = CreateMV("CheckInNumber ", i, i);
 	}
 	
 	for(i = simNumOfAirlines*simNumOfCIOs; i < simNumOfAirlines*simNumOfCIOs + simNumOfAirlines; i++) {
 		CheckInLine[i] = CreateMV("CheckInLine ", 0, i);
 		CheckInLocks[i] = CreateLock("CheckInOfficerLock ", i);
 		CheckInCV[i] = CreateCV("CheckInLineCV ", i);
-	}
-	
-	for(i = 0; i < simNumOfAirlines*simNumOfCIOs; i++) {
-		CheckIn[i].airline = CreateMV("CheckInAirline ", i/simNumOfCIOs, i);
-		CheckIn[i].passengerCount = CreateMV("CheckInPassengerCount ", 0 i);		/* Passenger Count */
-		CheckIn[i].OnBreak = CreateMV("CheckInOnBreak ", 0, i);		/* Controls break time */
-		CheckIn[i].work = CreateMV("CheckInWork ", 1, i);
-		CheckIn[i].number = CreateMV("CheckInNumber ", i, i);
 	}
 }
 
@@ -413,6 +411,7 @@ void setupSingularLocks() {
 }
 
 void Initialize(){		
+	int i;
 	simNumOfPassengers = PASSENGER_COUNT;
 	simNumOfCargoHandlers = MAX_CARGOHANDLERS;
 	simNumOfAirlines = MAX_AIRLINES;
@@ -436,7 +435,7 @@ void Initialize(){
 	createAirportManager();
 	setupAirlines(simNumOfAirlines);
 	setupSingularLocks();
-	setupCIOs(simNumOfAirlines, simNumofCIOs);
+	setupCIOs(simNumOfAirlines, simNumOfCIOs);
 	createLiaisons(simNumOfLiaisons);
 	createSecurityAndScreen(simNumOfScreeningOfficers);
 	setupBaggageAndCargo(simNumOfAirlines);

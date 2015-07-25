@@ -26,6 +26,7 @@
 #include "syscall.h"
 #include "synch.h"
 #include <stdio.h>
+#include <sstream>
 #include <vector>
 #include <iostream>
 #include <cstdio>
@@ -466,7 +467,10 @@ int CreateLock_Syscall(unsigned int vaddr, int index){		// Creates a new lock sy
 	
 	stringstream ss;
 	ss << name << index;
-	string s = ss.str();
+	std::string se = ss.str();
+	char* s = new char[se.size() + 1];
+	std::copy(se.begin(), se.end(), s);
+	s[se.size()] = '\0';
 
 	#ifdef NETWORK
 		clientPacket packet;
@@ -551,7 +555,10 @@ int CreateCV_Syscall(unsigned int vaddr, int index){		// Creates a new CV in CVT
 	
 	stringstream ss;
 	ss << name << index;
-	string s = ss.str();
+	string se = ss.str();
+	char* s = new char[se.size() + 1];
+	std::copy(se.begin(), se.end(), s);
+	s[se.size()] = '\0';
 	
 	#ifdef NETWORK
 		clientPacket packet;
@@ -830,7 +837,10 @@ int CreateMV_Syscall(unsigned int vaddr, int initialValue, int index){		/*System
 	
 	stringstream ss;
 	ss << name << index;
-	string s = ss.str();
+	string se = ss.str();
+	char* s = new char[se.size() + 1];
+	std::copy(se.begin(), se.end(), s);
+	s[se.size()] = '\0';
 	
 	int id;
 	syscallLock->Acquire();									
