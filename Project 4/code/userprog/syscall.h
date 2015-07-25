@@ -151,17 +151,16 @@ void Wait(int c, int d);
 void Signal(int e, int f);
 void Broadcast(int g, int h);
 
-int CreateLock(char* name);
+int CreateLock(char* name, int index);
 void DestroyLock(int i);
-int CreateCV(char* name);
+int CreateCV(char* name, int index);
 void DestroyCV(int j);
 
 /* Syscall for MVs */
-int CreateMV(char* name, int initialValue);
+int CreateMV(char* name, int initialValue, int index);
 void SetMV(int id,int value);
 int GetMV(int id);
 void DestroyMV(int id);
-
 
 /* Syscall for user printf */
 void printf(unsigned int vaddr, int len, int k, int l);

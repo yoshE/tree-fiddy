@@ -455,7 +455,7 @@ void Broadcast_Syscall(int z, int b){		// Broadcast syscall for CV... first int 
 	#endif
 }
 
-int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
+int CreateLock_Syscall(unsigned int vaddr, int index){		// Creates a new lock syscall
 	char *name = new char[NameSize];
 	
 	if (copyin(vaddr, NameSize, name) == -1){
@@ -463,11 +463,15 @@ int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
 		delete[] name;
 		return -2;
 	}
+	
+	stringstream ss;
+	ss << name << index;
+	string s = ss.str();
 
 	#ifdef NETWORK
 		clientPacket packet;
 		packet.syscall = SC_CreateLock;
-		strncpy(packet.name, name, sizeof(name));
+		strncpy(packet.name, s, sizeof(s));
 		SendToPO("CREATELOCK", packet);
 		int n = ReceiveFromPO("CREATELOCK");
 		
@@ -482,7 +486,7 @@ int CreateLock_Syscall(unsigned int vaddr){		// Creates a new lock syscall
 		LockTableLock->Acquire();
 	
 		KernelLock new_Lock;		// Creates a new lock struct
-		Lock* tempLock = new Lock(name);		// Creates a new lock
+		Lock* tempLock = new Lock(s);		// Creates a new lock
 		new_Lock.Kernel_Lock = tempLock;		// Places lock into struct
 		new_Lock.Owner = NULL;		// Sets Owner of lock to NULL (default)
 		new_Lock.IsDeleted = false;		// Lock has not been deleted and is functional
@@ -536,7 +540,7 @@ void DestroyLock_Syscall(int n){		// Destroys an existing lock syscall
 	#endif
 }
 
-int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
+int CreateCV_Syscall(unsigned int vaddr, int index){		// Creates a new CV in CVTable
 	char *name = new char[NameSize];
 	
 	if (copyin(vaddr, NameSize, name) == -1){
@@ -545,10 +549,14 @@ int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
 		return -2;
 	}
 	
+	stringstream ss;
+	ss << name << index;
+	string s = ss.str();
+	
 	#ifdef NETWORK
 		clientPacket packet;
 		packet.syscall = SC_CreateCV;
-		strncpy(packet.name, name, sizeof(name));
+		strncpy(packet.name, s, sizeof(s));
 		
 		SendToPO("CREATECV", packet);
 		int x = ReceiveFromPO("CREATECV");
@@ -562,7 +570,7 @@ int CreateCV_Syscall(unsigned int vaddr){		// Creates a new CV in CVTable
 	#else
 		CVTableLock->Acquire();
 		KernelCV new_cv;		// New CV Struct
-		Condition* cv = new Condition(name);		// New CV
+		Condition* cv = new Condition(s);		// New CV
 		new_cv.CV = cv;		// Places new CV into struct
 		new_cv.IsDeleted = false;		// CV has not been deleted yet
 	
@@ -811,7 +819,7 @@ void printf_Syscall(unsigned int vaddr, int len, int a, int b) {
 
 #ifdef NETWORK
 
-int CreateMV_Syscall(unsigned int vaddr, int initialValue){		/*System call for creating a monitor variable*/
+int CreateMV_Syscall(unsigned int vaddr, int initialValue, int index){		/*System call for creating a monitor variable*/
 	char *name = new char[NameSize];
 	
 	if (copyin(vaddr, NameSize, name) == -1){
@@ -820,11 +828,15 @@ int CreateMV_Syscall(unsigned int vaddr, int initialValue){		/*System call for c
 		return -2;
 	}
 	
+	stringstream ss;
+	ss << name << index;
+	string s = ss.str();
+	
 	int id;
 	syscallLock->Acquire();									
 	
 	clientPacket tempPacketSend;									/*Creating a packet on the client side*/
-	strncpy(tempPacketSend.name,name,sizeof(name));
+	strncpy(tempPacketSend.name,s,sizeof(s));
 	tempPacketSend.syscall = SC_CreateMV;							
 	tempPacketSend.value = initialValue;
 	SendToPO("CREATEMV",tempPacketSend);							
@@ -958,7 +970,7 @@ void ExceptionHandler(ExceptionType which) {
 				break;
 			case SC_CreateLock:		// Syscall for creating locks
 				DEBUG('a', "Create Lock Syscall.\n");
-				rv = CreateLock_Syscall(machine->ReadRegister(4));		// Calls CreateLock_Syscall with no parameters
+				rv = CreateLock_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));		// Calls CreateLock_Syscall with no parameters
 				break;
 			case SC_DestroyLock:		// Syscall for deleting locks
 				DEBUG('a', "Destroy Lock Syscall.\n");
@@ -966,7 +978,7 @@ void ExceptionHandler(ExceptionType which) {
 				break;
 			case SC_CreateCV:		// Syscall for creating CVs
 				DEBUG('a', "Create CV Syscall.\n");
-				rv = CreateCV_Syscall(machine->ReadRegister(4));		// Calls CreateCV_Syscall with entered parameters (int)
+				rv = CreateCV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));		// Calls CreateCV_Syscall with entered parameters (int)
 				break;
 			case SC_DestroyCV:		// Syscall for destroying CVs
 				DEBUG('a', "Destroy CV Syscall.\n");
@@ -984,7 +996,7 @@ void ExceptionHandler(ExceptionType which) {
 			#ifdef NETWORK
 			case SC_CreateMV:
 				DEBUG('a', "CreateMV Syscall.\n");
-				rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5));
+				rv = CreateMV_Syscall(machine->ReadRegister(4), machine->ReadRegister(5), machine->ReadRegister(6));
 				break;
 			case SC_SetMV:
 				DEBUG('a', "SetMV Syscall.\n");
