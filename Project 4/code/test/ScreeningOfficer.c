@@ -65,8 +65,8 @@ int main(){
 				Yield();
 			}
 		}
-		printf((int)"Screening officer %d directs passenger %d ", sizeof("Screening officer %d directs passenger %d "), Screen[n].number, z);		/* OFFICIAL OUTPUT STATEMENT */
-		printf((int)"to security inspector %d\n", sizeof("to security inspector %d\n"), SPInfo[Screen[n].number].SecurityOfficer, 0);
+		printf((int)"Screening officer %d directs passenger %d ", sizeof("Screening officer %d directs passenger %d "), GetMV(Screen[n].number), z);		/* OFFICIAL OUTPUT STATEMENT */
+		printf((int)"to security inspector %d\n", sizeof("to security inspector %d\n"), GetMV(SPInfo[Screen[n].number].SecurityOfficer), 0);
 		Signal(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);		/* Signal Passenger that they should move on */
 		Wait(ScreenOfficerCV[Screen[n].number], ScreenLocks[Screen[n].number]);
 		Release(ScreenLocks[Screen[n].number]);

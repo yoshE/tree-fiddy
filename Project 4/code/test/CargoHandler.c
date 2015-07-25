@@ -40,8 +40,6 @@ int main() {
 		SetMV(aircraftBaggageWeight[temp.airline], aircraftBaggageWeight[temp.airline] + temp.weight);		/* Increase baggage weight of airline */
 		printf((int)"Cargo Handler %d picked bag of airline %d ", sizeof("Cargo Handler %d picked bag of airline %d "), n, temp.airline);		/* OFFICIAL OUTPUT STATEMENT */
 		printf((int)"with weighing %d lbs\n", sizeof("with weighing %d lbs\n"), temp.weight, 0);
-		printf((int)"ID is: %d\n", sizeof("ID is: %d\n"), Cargo_ID, -1);
-		printf((int)"number is: %d\n", sizeof("number is: %d\n"), n, -1);
 		SetMV(cargoHandlers[n].weight[temp.airline], cargoHandlers[n].weight[temp.airline] + temp.weight);		/* Increment total weight of baggage this handler has dealt with */
 		SetMV(cargoHandlers[n].count[temp.airline], cargoHandlers[n].count[temp.airline] + 1);		/* Increment total count of baggage this handler has dealt with */
 		Release(AirlineBaggage[temp.airline]);
