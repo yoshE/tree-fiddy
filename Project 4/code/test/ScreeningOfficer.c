@@ -13,21 +13,23 @@ int main(){
 	int n;
 	Initialize();
 	Acquire(Screening_ID_Lock);	
-	n = Screening_ID;
+	n = GetMV(Screening_ID);
 	Screen[n].number = n;
-	Screening_ID++;
+	SetMV(Screening_ID, n + 1);
 	Release(Screening_ID_Lock);
 	
 	Acquire(ScreenLines);
-	Screen[n].IsBusy = false;		/* Set Officer to available */
+	SetMV(Screen[n].IsBusy, false);		/* Set Officer to available */
 	Release(ScreenLines);
 	
 	printf((int)"Started Screening %d\n", sizeof("Started Screening %d\n"), n, 0);
 	while(true){
-		int i, y, z, x, alreadyPrinted;
+		int i, y, z, x;
 		Acquire(ScreenLines);
-		if (Screen[n].IsBusy) Screen[n].IsBusy = false;		/* If busy, should no longer be busy */
-		if (ScreenLine[0] > 0){		/* Checks if the screening line has passengers */
+		if (GetMV(Screen[n].IsBusy)){ 
+			SetMV(Screen[n].IsBusy, false);		/* If busy, should no longer be busy */
+		}
+		if (GetMV(ScreenLine[0])){		/* Checks if the screening line has passengers */
 			Signal(ScreenLineCV[0], ScreenLines);		/* Wake them if there are */
 		}
 		Acquire(ScreenLocks[Screen[n].number]);
@@ -36,30 +38,28 @@ int main(){
 
 		z = SPInfo[Screen[n].number].passenger;		/* Find passenger name */
 		x = rand() % 5;		/* Generate random value for pass/fail */
-		Screen[n].ScreenPass = true;		/* Default is pass */
-		if (x == 0) Screen[n].ScreenPass = false;		/* 20% of failure */
-		ScreeningResult[z] = Screen[n].ScreenPass;
-		if (Screen[n].ScreenPass){		/* If passenger passed test */
+		SetMV(Screen[n].ScreenPass, true);		/* Default is pass */
+		if (x == 0) SetMV(Screen[n].ScreenPass, false);		/* 20% of failure */
+		SetMV(ScreeningResult[z], Screen[n].ScreenPass);
+		if (GetMV(Screen[n].ScreenPass)){		/* If passenger passed test */
 			printf((int)"Screening officer %d is not suspicious of the hand luggage of passenger %d\n", sizeof("Screening officer %d is not suspicious of the hand luggage of passenger %d\n"), n, z);		/* OFFICIAL OUTPUT STATEMENT */
 		}else {
 			printf((int)"Screening officer %d is suspicious of the hand luggage of passenger %d\n", sizeof("Screening officer %d is suspicious of the hand luggage of passenger %d\n"), n, z);		/* OFFICIAL OUTPUT STATEMENT */
 		}
-		alreadyPrinted = false;
 		while(true){		/* Wait for Security Officer to become available */
 			y = false;
 			for (i = 0; i < simNumOfScreeningOfficers; i++){		/* Iterate through all security officers */
 				Acquire(SecurityAvail);
-				y = SecurityAvailability[i];		/* See if they are busy */
+				y = GetMV(SecurityAvailability[i]);		/* See if they are busy */
 				if (y){			/* If a security officer is not busy, obtain his number and inform passenger */
-					SPInfo[Screen[n].number].SecurityOfficer = i;
-					SecurityAvailability[i] = false;
+					SetMV(SPInfo[Screen[n].number].SecurityOfficer, i);
+					SetMV(SecurityAvailability[i], false);
 				}
 				Release(SecurityAvail);
 			}
 			if(y){
 				break;
 			}
-			alreadyPrinted = true;
 			for (i = 0; i < 2; i++){		/* Wait for a while so Officer can change availability status */
 				Yield();
 				Yield();
