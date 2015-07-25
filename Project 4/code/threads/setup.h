@@ -172,6 +172,7 @@ CheckInOfficer_t CheckIn[MAX_CIOS*MAX_AIRLINES];		/* Array of CheckIn Officers*/
 SecurityOfficer_t Security[MAX_SCREEN];		/* Array of Security Officers*/
 ScreeningOfficer_t Screen[MAX_SCREEN];		/* Array of Screening Officers*/
 CargoHandler_t cargoHandlers[MAX_CARGOHANDLERS];				/* Array of Cargo Handlers*/
+
 LiaisonPassengerInfo_t LPInfo[MAX_LIAISONS];		/* Array of Structs that contain info from passenger to Liaison*/
 CheckInPassengerInfo_t CPInfo[MAX_CIOS*MAX_AIRLINES];		/* Array of Structs that contain info from pasenger to CheckIn*/
 ScreenPassengerInfo_t SPInfo[MAX_SCREEN+1];		/* Array of Structs that contain info from screening to passenger*/
@@ -280,6 +281,10 @@ void createLiaisons(int quantity) {
 		liaisonOfficers[i].airlineBaggageCount[0] = CreateMV("LiaisonOfficersBaggageCount1 ", 0, i);
 		liaisonOfficers[i].airlineBaggageCount[1] = CreateMV("LiaisonOfficersBaggageCount2 ", 0, i);
 		liaisonOfficers[i].airlineBaggageCount[2] = CreateMV("LiaisonOfficersBaggageCount3 ", 0, i);
+
+		LPInfo[i].baggageCount = CreateMV("LPInfoBaggageCount ", 0, i);		/* Array of Structs that contain info from passenger to Liaison*/
+		LPInfo[i].airline = CreateMV("LPInfoAirline ", 0, i);
+		LPInfo[i].passengerName = CreateMV("LPInfoPassengerName ", 0, i);
 	}
 }
 
@@ -291,6 +296,17 @@ void setupCIOs(int airlineCount, int quantity) {
 		CheckInBreakCV[i] = CreateCV("CheckInBreakTimeCV ", i);
 		CheckInCV[i] = CreateCV("CheckInLineCV ", i);
 		CheckInOfficerCV[i] = CreateCV("CheckInOfficerCV ", i);
+
+		CPInfo[i].baggageCount = CreateMV("CPInfoBaggageCount ", 0, i);
+		CPInfo[i].passenger = CreateMV("CPInfoPassenger ", 0, i);
+		CPInfo[i].IsEconomy = CreateMV("CPInfoIsEconomy ", 1, i);
+		CPInfo[i].seat = CreateMV("CPInfoSeat ", 0, i);
+		CPInfo[i].gate = CreateMV("CPInfoGate ", 0, i);
+		CPInfo[i].line = CreateMV("CPInfoLine ", 0, i);
+		CPInfo[i].bag[0].weight = CreateMV("CPInfoBag1Weight ", 0, i);
+		CPInfo[i].bag[0].airline = CreateMV("CPInfoBag1Airline ", 0, i);
+		CPInfo[i].bag[1].weight = CreateMV("CPInfoBag2Weight ", 0, i);
+		CPInfo[i].bag[2].weight = CreateMV("CPInfoBag2Airline ", 0, i)
 	}
 	
 	for(i = simNumOfAirlines*simNumOfCIOs; i < simNumOfAirlines*simNumOfCIOs + simNumOfAirlines; i++) {
@@ -336,6 +352,17 @@ void createSecurityAndScreen(int quantity) {
 		SecurityLineCV[i] = CreateCV("SecuritylineCV ", i);
 		simScreeningOfficers[i] = Screen[i];
 		simSecurityOfficers[i] = Security[i];
+		
+		SSInfo[i].ScreenLine = CreateMV("SSInfoScreenLine ", 0, i);
+
+		SecPInfo[i].PassedSecurity = CreateMV("SecPInfoPassedSecurity ", 0, i);
+		SecPInfo[i].questioning = CreateMV("SecPInfoQuestioning ", 0, i);
+		SecPInfo[i].passenger = CreateMV("SecPInfoPassenger ", 0, i);
+	}
+	
+	for (i = 0; i < quantity + 1; i ++){
+		SPInfo[i].passenger = CreateMV("SPInfoPassenger ", 0, i);
+		SPInfo[i].SecurityOfficer = CreateMV("SPInfoSecurityOfficer ", 0, i);
 	}
 	
 	ScreenLineCV[0] = CreateCV("ScreenLineCV ", 0);
@@ -398,6 +425,13 @@ void Initialize(){
 		ticketsIssued[i] = CreateMV("TicketsIssued ", 0, i);
 		alreadyBoarded[i] = CreateMV("alreadyBoarded ", 0, i);
 	}
+	
+	Passenger_ID = CreateMV("PassengerID ", 0, 0);
+	Liaison_ID = CreateMV("LiaisonID ", 0, 0);
+	Screening_ID = CreateMV("ScreenID ", 0, 0);
+	CheckIn_ID = CreateMV("CheckInID ", 0, 0);
+	Security_ID = CreateMV("SecurityID ", 0, 0);
+	Cargo_ID = CreateMV("CargoID ", 0, 0);
 	
 	createAirportManager();
 	setupAirlines(simNumOfAirlines);
