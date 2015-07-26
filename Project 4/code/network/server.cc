@@ -250,7 +250,14 @@ void destroyCV(int index, int machineID, int mailBoxID){
 //  Call Signal on a CV
 //----------------------------------------------------------------------
 void signal(int lockID, int index, int machineID, int mailBoxID){
-	client signalClient;	// client that will be signalled
+	clientPacket packetToSend;
+	client signalClient;
+	PacketHeader pFromSToS;
+	MailHeader mFromSToS;
+	
+	int len = sizeof(packetToSend);
+	char *data=new char[len+1];
+	data[len]='\0';
 	
 	if(lockID < 0 || index > MAX_LOCK){		// Is lock index invalid?
 		printf("LOCK TO SIGNAL IS INVALID\n");
@@ -264,7 +271,7 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 		printf("LOCK WITH CV IS INVALID\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (ServerLocks[lockID].Owner.machineID != machineID || ServerLocks[lockID].Owner.mailBoxID != mailBoxID){		// Does client own lock?
+	} else if (SERVERS == 1 && ServerLocks[lockID].Owner.machineID != machineID || ServerLocks[lockID].Owner.mailBoxID != mailBoxID){		// Does client own lock?
 		printf(" CLIENT DOESN'T HAVE THE LOCK\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
@@ -283,7 +290,25 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 	}
 	
 	ServerCVs[index].count--;		// Decrement usage count of CV
-	acquire(index, signalClient.machineID, signalClient.mailBoxID);		// acquire the lock for the client
+	
+	if(SERVERS == 1){
+		acquireLock(lockID, signalClient.machineID, signalClient.mailBoxID);
+	}
+	else{
+		packetToSend.index = lockID;
+		packetToSend.syscall = SC_AcquireLock;
+		packetToSend.ServerArg = 0;
+		
+		pFromSToS.from = signalClient.machineID;
+		mFromSToS.from = signalClient.mailBoxID;
+		pFromSToS.to = lockID/1000;
+		mFromSToS.to = 0;
+		mFromSToS.length = sizeof(packetToSend);
+		
+		memcpy((void *)data,(void *)&packetToSend,len);
+		postOffice->Send(pFromSToS,mFromSToS,data);
+	}
+	
 	send("SIGNAL", true, index, machineID, mailBoxID);		// send success msg
 }
 
@@ -292,7 +317,14 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 //  Call Wait on a CV
 //----------------------------------------------------------------------
 void wait(int lockID, int index, int machineID, int mailBoxID){
-	client *waitingClient = NULL;		// client that will be appended to wait queue
+	clientPacket packetToSend;
+	client *waitingClient = NULL;
+	PacketHeader packet_From_SToS;
+	MailHeader mail_From_SToS;
+	
+	int len = sizeof(packetToSend);
+	char *data=new char[len+1];
+	data[len]='\0';
 		
 	if(lockID < 0 || lockID > MAX_LOCK){		// Is lock index invalid?
 		printf("LOCK TO WAIT ON IS INVALID\n");
@@ -312,7 +344,24 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 		ServerCVs[index].lockID = lockID;		// Set lockID of CV to current lock
 	}
 	
-	release(lockID, machineID, mailBoxID, 1);		// release the lock
+	if(SERVERS == 1){
+		release(lockID, machineID, mailBoxID, 1);		// release the lock
+	}else{
+		packetToSend.value = SC_WaitCV;
+		packetToSend.index = lockID;
+		packetToSend.syscall = SC_ReleaseLock;
+		packetToSend.ServerArg = 0;
+		
+		packet_From_SToS.from = machineID;
+		mail_From_SToS.from = mailBoxID;
+		packet_From_SToS.to = lockID/1000;
+		mail_From_SToS.to = 0;
+		mail_From_SToS.length = sizeof(packetToSend);
+		
+		memcpy((void *)data,(void *)&packetToSend,len);
+		postOffice->Send(packet_From_SToS,mail_From_SToS,data);
+	}
+	
 	ServerCVs[index].count++;		// add CV usage count
 	waitingClient = new client;
 	waitingClient -> machineID = machineID;
@@ -444,6 +493,88 @@ void setMV(int index, int value, int machineID, int mailBoxID){
 	return;
 }
 
+//----------------------------------------------------------------------
+//  End
+//  Ends the server simulation
+//----------------------------------------------------------------------
+
+//----------------------------------------------------------------------
+//  SearchMyself
+//  See if current server has data entry
+//----------------------------------------------------------------------
+int SearchMyself(int syscall,char name[],int index){
+	int ID = -1;
+	if(syscall == SC_CreateLock){
+		for (int i = 0; i < (signed)ServerLocks.size(); i++){
+			if(strcmp(ServerLocks[i].name, name) == 0){
+				ID = i;
+				break;
+			}
+		}
+	}
+	if(syscall == SC_CreateCV){
+		for (int i = 0; i < (signed)ServerCVs.size(); i++){
+			if(strcmp(ServerCVs[i].name, name) == 0){
+				ID = i;
+				break;
+			}
+		}
+	}
+	if(syscall == SC_CreateMV){
+		for (int i = 0; i < (signed)ServerMVs.size(); i++){
+			if(strcmp(ServerMVs[i].name, name) == 0){
+				ID = i;
+				break;
+			}
+		}
+	}
+	if(syscall==SC_GetMV || syscall == SC_SetMV){
+		if(serverMVs[index].valid){
+			for (int i = 0; i < (signed)ServerMVs.size(); i++){
+				if(strcmp(ServerMVs[i].name, name) == 0){
+					ID = i;
+					break;
+				}
+			}
+		} else{
+			ID = -1;
+		}
+	}
+	if(syscall==SC_AcquireLock || syscall == SC_ReleaseLock){
+		if(serverLock[index].valid){
+			for (int i = 0; i < (signed)ServerLocks.size(); i++){
+				if(strcmp(ServerLocks[i].name, name) == 0){
+					ID = i;
+					break;
+				}
+			}
+		} else {
+			ID = -1;
+		}
+	}
+	if(syscall==SC_WaitCV || syscall == SC_SignalCV || syscall == SC_BroadcastCV){
+		if(serverCV[index].valid){
+			for (int i = 0; i < (signed)ServerCVs.size(); i++){
+				if(strcmp(ServerCVs[i].name, name) == 0){
+					ID = i;
+					break;
+				}
+			}
+		} else {
+			ID = -1;
+		}
+	}
+	return ID;
+}
+
+//----------------------------------------------------------------------
+//  serverToserver
+//  Send messages between servers
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+//  clientToserver
+//  Send messages between client and server
+//----------------------------------------------------------------------
 //----------------------------------------------------------------------
 //  RunServer
 //  Runs the server using a switch statement to handle incoming messages

@@ -79,6 +79,7 @@ struct clientPacket{
 	int index;
 	int index2;
 	int value;
+	int ServerArg;
 	
 	void print(){
 		printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index,index2,value);
@@ -93,6 +94,9 @@ struct serverPacket{
 		printf("Status: %d\tValue: %d\n",status,value);
 	}
 };
+
+extern int SERVERS;
+extern int myMachineID;
 
 //----------------------------------------------------------------------
 // USER_PROGRAM

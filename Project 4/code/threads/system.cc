@@ -18,6 +18,9 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
+					
+int SERVERS;
+int myMachineID;
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -132,6 +135,11 @@ Initialize(int argc, char **argv)
 	} else if (!strcmp(*argv, "-m")) {
 	    ASSERT(argc > 1);
 	    netname = atoi(*(argv + 1));
+		myMachineID = netname;
+	    argCount = 2;
+	}else if (!strcmp(*argv, "-nos")) {
+	    ASSERT(argc > 1);
+		SERVERS = atoi(*(argv + 1));
 	    argCount = 2;
 	}
 #endif
