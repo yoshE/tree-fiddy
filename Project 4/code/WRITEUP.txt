@@ -16,14 +16,36 @@ I. Requirements:
 	
 II. Assumptions:
 
-	We have 32768 physical pages.
+	We have 32768 physical pages
+	Nachos works accordingly
+	We do not need virtual memory
+	Clients randomly request servers
 
 III. Design:
 
-	For our agents we pulled each of them out of our original airport simulation and converted them into separate clients
-	that use MVs for getting/setting data. The data is stored on the server-side and can be accessed by any client. Locks
-	and CVs are still shared data accessible by clients. Servers can also communicate with each other now, and will do so
-	to complete tasks requested by the clients.
+	For our agents we pulled each of them out of our original airport simulation that was created in Project 2. We separated
+	each object into their own .c files and created a setup.h file in threads that initialized all the locks, cvs, and mvs. The 
+	data is stored on the server-side and can be accessed by a client. We assumed that a client will randomly select a server
+	to message.
+	
+	Servers can also communicate with each other. Once a server receives a user request, they will check to see if there are many
+	servers or just 1. If there is only one, then they will function as they did in Project3. However, if there are more than one
+	server, then they will utilize a requestQueue to communicate with each other. Once a client request comes in, the server will
+	check to see if they have the data needed by the client. If they do they will perform the needed task and return to the client.
+	However, if the server doesn't have the needed data, then they will see if they have any requests from other servers that 
+	match the client request. Based upon that query, the server will either send requests to other servers or try to accomplish the
+	task the client is asking for.
+	
+	For example, if they send out a request and another server responds with a success (that other server completed the needed task), 
+	then the server will return to the client with a success. 
+	
+		serverToServer()
+			This function will deal with server to server communication. This includes sending a request to another server and receiving
+			a request from another server.
+		
+		Run()
+			We modified the run function in Server to deal with multiple servers. The functionality of run() is very similar to the
+			above function that detailed its run.
 
 IV. Implementation:
 
@@ -35,7 +57,6 @@ IV. Implementation:
 		userprog/syscall.h
 		network/server.cc
 		test/Airport.c
-		threads/setup.h
 		threads/synch.cc
 		threads/system.cc
 		threads/system.h
@@ -50,16 +71,53 @@ IV. Implementation:
 		test/Passenger.c
 		test/ScreeningOfficer.c
 		test/SecurityOfficer.c
+		threads/setup.h
 		
     + Data Structures added, and the file they were added to.
+		network/server
+			struct pendingRequests{
+				int doYouHave[5];
+				int doYouHaveReply[5];
+				int syscall;
+				int count;
+				int value;
+				int clientCount;
+				int noOfReplies;
+				int flag;
+				
+				char name[10];
+				
+				bool received;
+				 
+				List *requestWaitQueue;
+				List *serverQueue;	
+				List *clientQueue;
+			};
 	
-    + Data Structures modified, and the file they were added to.  
+    + Data Structures modified, and the file they were added to. 
+		threads/system.h
+			strct clientPacket{
+				bool status;
+				int clientID;
+			}
 
     + Functions added and in which file.
 		All functions for agents from Airport.c were moved into the now-independent agent files
 		NetworkedAirportTest main function
+		network/server
+			serverToServer
 		
     + Functions modified and in which file.
+		network/server
+			Run()
+			Signal()
+			Wait()
+			Broadcast()
+			DestroyCV()
+			Destroy()
+		
+		userprog/exception.cc
+			Fork_Syscall() - This was because our fork from project2 was incorrect
 			
 V. Testing: (For each test case, you must show)
     + How to test
