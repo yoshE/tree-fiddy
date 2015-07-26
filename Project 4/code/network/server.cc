@@ -680,7 +680,7 @@ void RunServer(){
 		postOffice->Receive(0,&packet_From_Client, &mail_From_Client, data);		// Receive packet from Clients
 		memcpy((void *)&packet, (void *)data, len);
 		
-		if(packet.ServerArg == 0){ // request From client	
+		if(packet.ServerArg == 0){ // Request From client	
 			if(SERVERS == 1){	
 				switchCase(packet.syscall, packet.name, packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from, packet.value);
 				continue;
@@ -697,7 +697,7 @@ void RunServer(){
 			packetSend.value = packet.value;
 			packetSend.syscall = packet.syscall;
 			strcpy(packetSend.name,packet.name);
-			packetSend.ServerArg = 1;
+			packetSend.ServerArg = 1;		// Msg is from a Server
 			
 			ID = -1;
 			if(packet.syscall == SC_Wait || packet.syscall == SC_Signal || packet.syscall == SC_Broadcast){
@@ -706,24 +706,22 @@ void RunServer(){
 				ID = SearchMyself(packet.syscall,packet.name,packet.index);
 			}
 			
-			if(ID == -1){
-				if(packet.syscall==SC_CreateLock || packet.syscall==SC_CreateCV || packet.syscall == SC_CreateMV){
+			if(ID == -1){		// Server doesn't have the data
+				if(packet.syscall==SC_CreateLock || packet.syscall==SC_CreateCV || packet.syscall == SC_CreateMV){		// Incoming request from client is for create	
 					index = -1;
 					for(j=0;j<200;j++){
-						if(requests[j].received){
+						if(requests[j].received){		// Look through request list to see if there exists a request that matches incoming client request
 							if(requests[j].syscall==packet.syscall && !strcmp(requests[j].name,packet.name)){
-								index = j;
+								index = j;		// If there is, set index to that request index
 								break;
 							}	
 						}
 					}
-					if(index == -1){
+					if(index == -1){		// If there are no server requests that match client request
 						index = requestMap->Find();
 						requests[index].requestWaitQueue = new List;
-						for(j=0;j<SERVERS;j++)
-							requests[index].doYouHave[j] = 3;
-						if(requests[index].requestWaitQueue->IsEmpty())
-							printf("\n List is initially empty");
+						for(j = 0; j < SERVERS; j++) requests[index].doYouHave[j] = 3;
+						if(requests[index].requestWaitQueue->IsEmpty())	printf("\n List is initially empty");
 						
 					}
 					
@@ -759,7 +757,7 @@ void RunServer(){
 					
 					memcpy((void *)data,(void *)&packetSend,len);
 					postOffice->Send(pFromSToS,mFromSToS,data);
-				}else{
+				}else{		/* If syscall is for Signal, Wait, or Broadcast */
 					packetSend.index = packet.index;
 					packetSend.syscall = packet.syscall;
 					packetSend.ServerArg = 0;
