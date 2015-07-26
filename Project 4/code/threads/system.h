@@ -80,6 +80,8 @@ struct clientPacket{
 	int index2;
 	int value;
 	int ServerArg;
+	int clientID;
+	bool status;
 	
 	void print(){
 		printf("Syscall: %d\tName1: %sName2: %s\tIndex1: %d\tIndex2: %d\tValue: %d\n",syscall,name,name2,index,index2,value);

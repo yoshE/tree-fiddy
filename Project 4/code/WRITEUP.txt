@@ -37,7 +37,7 @@ V. Testing: (For each test case, you must show)
 			2. Uncommend the lines regarding Airport.c/Airport.o
 			3. Add the word Airport to the all line (files that are compiled)
 			4. gmake test
-			5. Run nachos -x ../test/Airport from Userprog
+			5. Run nachos -x ../test/runsim from Userprog
 	  
 VI. Discussion:
     + Experiment expectation. 

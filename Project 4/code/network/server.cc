@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "thread.h"
 #include "list.h"
+#include "bitmap.h"
 #include <sstream>
 #include <string.h>
 #include <stdio.h>
@@ -26,6 +27,28 @@
 std::vector<ServerLock> ServerLocks;		// vector of server locks
 std::vector<ServerCV> ServerCVs;		// vector of server cvs
 std::vector<ServerMV> ServerMVs;		// vector of server mvs
+
+struct pendingRequests{
+	int doYouHave[5];
+	int doYouHaveReply[5];
+	int syscall;
+	int count;
+	int value;
+	int clientCount;
+	int noOfReplies;
+	int flag;
+	
+	char name[10];
+	
+	bool received;
+	 
+	List *requestWaitQueue;
+	List *serverQueue;	
+	List *clientQueue;
+};
+
+struct pendingRequests requests[6000];
+BitMap *requestMap;
 
 void send(char *type, bool status, int ID, int machineID, int mailBoxID){		// Send a file from the server to the client
 	serverPacket packet_Send;		// packet that will be sent to the client
@@ -292,16 +315,16 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 	ServerCVs[index].count--;		// Decrement usage count of CV
 	
 	if(SERVERS == 1){
-		acquireLock(lockID, signalClient.machineID, signalClient.mailBoxID);
+		acquire(lockID, signalClient.machineID, signalClient.mailBoxID);
 	}
 	else{
 		packetToSend.index = lockID;
-		packetToSend.syscall = SC_AcquireLock;
+		packetToSend.syscall = SC_Acquire;
 		packetToSend.ServerArg = 0;
 		
 		pFromSToS.from = signalClient.machineID;
 		mFromSToS.from = signalClient.mailBoxID;
-		pFromSToS.to = lockID/1000;
+		pFromSToS.to = lockID/200;
 		mFromSToS.to = 0;
 		mFromSToS.length = sizeof(packetToSend);
 		
@@ -347,14 +370,14 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 	if(SERVERS == 1){
 		release(lockID, machineID, mailBoxID, 1);		// release the lock
 	}else{
-		packetToSend.value = SC_WaitCV;
+		packetToSend.value = SC_Wait;
 		packetToSend.index = lockID;
-		packetToSend.syscall = SC_ReleaseLock;
+		packetToSend.syscall = SC_Release;
 		packetToSend.ServerArg = 0;
 		
 		packet_From_SToS.from = machineID;
 		mail_From_SToS.from = mailBoxID;
-		packet_From_SToS.to = lockID/1000;
+		packet_From_SToS.to = lockID/200;
 		mail_From_SToS.to = 0;
 		mail_From_SToS.length = sizeof(packetToSend);
 		
@@ -431,7 +454,7 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 //  Get a monitor variable
 //----------------------------------------------------------------------
 void getMV(int index, int machineID, int mailBoxID){
-	if(index >= MAX_MV || index < 0){		// Is MV index invalid?
+	if(index >= ((myMachineID+1)*MAX_MV || index < 0)){		// Is MV index invalid?
 		printf("TOO MANY MVs\n");
 		send("GETMV", false, -1, machineID, mailBoxID);
 		return;
@@ -529,7 +552,7 @@ int SearchMyself(int syscall,char name[],int index){
 		}
 	}
 	if(syscall==SC_GetMV || syscall == SC_SetMV){
-		if(serverMVs[index].valid){
+		if(ServerMVs[index].valid){
 			for (int i = 0; i < (signed)ServerMVs.size(); i++){
 				if(strcmp(ServerMVs[i].name, name) == 0){
 					ID = i;
@@ -540,8 +563,8 @@ int SearchMyself(int syscall,char name[],int index){
 			ID = -1;
 		}
 	}
-	if(syscall==SC_AcquireLock || syscall == SC_ReleaseLock){
-		if(serverLock[index].valid){
+	if(syscall==SC_Acquire || syscall == SC_Release){
+		if(ServerLocks[index].valid){
 			for (int i = 0; i < (signed)ServerLocks.size(); i++){
 				if(strcmp(ServerLocks[i].name, name) == 0){
 					ID = i;
@@ -552,8 +575,8 @@ int SearchMyself(int syscall,char name[],int index){
 			ID = -1;
 		}
 	}
-	if(syscall==SC_WaitCV || syscall == SC_SignalCV || syscall == SC_BroadcastCV){
-		if(serverCV[index].valid){
+	if(syscall==SC_Wait || syscall == SC_Signal || syscall == SC_Broadcast){
+		if(ServerCVs[index].valid){
 			for (int i = 0; i < (signed)ServerCVs.size(); i++){
 				if(strcmp(ServerCVs[i].name, name) == 0){
 					ID = i;
@@ -568,24 +591,100 @@ int SearchMyself(int syscall,char name[],int index){
 }
 
 //----------------------------------------------------------------------
-//  serverToserver
+//  serverToServer
 //  Send messages between servers
 //----------------------------------------------------------------------
+void serverToServer(clientPacket packetReceived,int serverID){
+	
+}
+
 //----------------------------------------------------------------------
-//  clientToserver
-//  Send messages between client and server
+//  SwitchCase
+//	call different internal methods
 //----------------------------------------------------------------------
+
+void switchCase(int syscall,char name[],int index,int index2,int machineID,int mailBoxID,int value){
+	switch(syscall){		// Parse based on syscall requested
+		case SC_Acquire:
+			printf("REQUEST: ACQUIRE LOCK FROM CLIENT\n");
+			acquire(index, machineID, mailBoxID);
+			break;
+		case SC_Release:
+			printf("REQUEST: RELEASE LOCK FROM CLIENT\n");
+			release(index, machineID, mailBoxID, SC_Release);
+			break;
+		case SC_Wait:
+			printf("REQUEST: WAIT FROM CLIENT\n");
+			wait(index, index2, machineID, mailBoxID);
+			break;
+		case SC_Signal:
+			printf("REQUEST: SIGNAL FROM CLIENT\n");
+			signal(index, index2, machineID, mailBoxID);
+			break;
+		case SC_Broadcast:
+			printf("REQUEST: BROADCAST FROM CLIENT\n");
+			broadcast(index, index2, machineID, mailBoxID);
+			break;
+		case SC_CreateLock:
+			printf("REQUEST: CREATE LOCK FROM CLIENT\n");
+			createLock(name,machineID, mailBoxID);
+			break;
+		case SC_DestroyLock:
+			printf("REQUEST: DESTROY LOCK FROM CLIENT\n");
+			createLock(name, machineID, mailBoxID);
+			break;
+		case SC_CreateCV:
+			printf("REQUEST: CREATE CV FROM CLIENT\n");
+			createCV(name, machineID, mailBoxID);
+			break;
+		case SC_DestroyCV:
+			printf("REQUEST: DESTROY CV FROM CLIENT\n");
+			destroyCV(index, machineID, mailBoxID);
+			break;
+		case SC_CreateMV:
+			printf("REQUEST: CREATE MV FROM CLIENT\n");
+			createMV(name, value, machineID, mailBoxID);
+			break;
+		case SC_SetMV:
+			printf("REQUEST: SET MV FROM CLIENT\n");
+			setMV(index, value, machineID, mailBoxID);
+			break;
+		case SC_GetMV:
+			printf("REQUEST: GET MV FROM CLIENT\n");
+			getMV(index, machineID, mailBoxID);
+			break;
+		case SC_DestroyMV:
+			printf("REQUEST: DELETE MV FROM CLIENT\n");
+			destroyMV(index, machineID, mailBoxID);
+			break;
+		default:
+			printf("SERVER: INVALID SYSCALL %d\n", syscall);
+	}
+}
 //----------------------------------------------------------------------
 //  RunServer
 //  Runs the server using a switch statement to handle incoming messages
 //----------------------------------------------------------------------
 void RunServer(){
-	PacketHeader packet_From_Client;
-	MailHeader mail_From_Client;
+	PacketHeader packet_From_Client, pFromSToS;
+	MailHeader mail_From_Client, mFromSToS;
 	clientPacket packet;
+	clientPacket packetSend;
 	int len = sizeof(packet);
 	char *data = new char[len];
 	//data[len] = '\0';
+	
+	requestMap = new BitMap(5000);
+	                                
+	int index;
+	int clientID,j;
+	int count = 0;
+	int terminatingCount = 0;
+	int ID = -1;
+	int holdingServer = -1;
+	
+	client *waitingClient = NULL;
+	client *processingClient = NULL;
 	
 	while(true){		// Run forever
 		printf("SERVER: WAITING FOR CLIENT REQUEST\n");
@@ -593,61 +692,143 @@ void RunServer(){
 		postOffice->Receive(0,&packet_From_Client, &mail_From_Client, data);		// Receive packet from Clients
 		memcpy((void *)&packet, (void *)data, len);
 		
-		switch(packet.syscall){		// Parse based on syscall requested
-			case SC_Acquire:
-				printf("REQUEST: ACQUIRE LOCK FROM CLIENT\n");
-				acquire(packet.index, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_Release:
-				printf("REQUEST: RELEASE LOCK FROM CLIENT\n");
-				release(packet.index, packet_From_Client.from, mail_From_Client.from, SC_Release);
-				break;
-			case SC_Wait:
-				printf("REQUEST: WAIT FROM CLIENT\n");
-				wait(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_Signal:
-				printf("REQUEST: SIGNAL FROM CLIENT\n");
-				signal(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_Broadcast:
-				printf("REQUEST: BROADCAST FROM CLIENT\n");
-				broadcast(packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_CreateLock:
-				printf("REQUEST: CREATE LOCK FROM CLIENT\n");
-				createLock(packet.name,packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_DestroyLock:
-				printf("REQUEST: DESTROY LOCK FROM CLIENT\n");
-				createLock(packet.name,packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_CreateCV:
-				printf("REQUEST: CREATE CV FROM CLIENT\n");
-				createCV(packet.name, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_DestroyCV:
-				printf("REQUEST: DESTROY CV FROM CLIENT\n");
-				destroyCV(packet.index, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_CreateMV:
-				printf("REQUEST: CREATE MV FROM CLIENT\n");
-				createMV(packet.name, packet.value, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_SetMV:
-				printf("REQUEST: SET MV FROM CLIENT\n");
-				setMV(packet.index, packet.value, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_GetMV:
-				printf("REQUEST: GET MV FROM CLIENT\n");
-				getMV(packet.index, packet_From_Client.from, mail_From_Client.from);
-				break;
-			case SC_DestroyMV:
-				printf("REQUEST: DELETE MV FROM CLIENT\n");
-				destroyMV(packet.index, packet_From_Client.from, mail_From_Client.from);
-				break;
-			default:
-				printf("SERVER: INVALID SYSCALL %d\n", packet.syscall);
+		if(packet.ServerArg == 0){ // request From client	
+			if(SERVERS == 1){	
+				switchCase(packet.syscall, packet.name, packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from, packet.value);
+				continue;
+			}
+			
+			mFromSToS.from = 0;			/*Assign it the required fields to send the packet*/
+			mFromSToS.to = 0;
+			pFromSToS.from = myMachineID;
+			mFromSToS.length = mail_From_Client.length;
+			
+			packetSend.clientID = (packet_From_Client.from*100)+mail_From_Client.from;		/*This is done for appending both the machine and the mailbox id into a single value, for the server to identify the credentials of the client*/
+			packetSend.index = packet.index;
+			packetSend.index2 = packet.index2;
+			packetSend.value = packet.value;
+			packetSend.syscall = packet.syscall;
+			strcpy(packetSend.name,packet.name);
+			packetSend.ServerArg = 1;
+			
+			ID = -1;
+			if(packet.syscall == SC_Wait || packet.syscall == SC_Signal || packet.syscall == SC_Broadcast){
+				ID = SearchMyself(packet.syscall,packet.name,packet.index2); /* Check to see if ID exists in vector */
+			}else{
+				ID = SearchMyself(packet.syscall,packet.name,packet.index);
+			}
+			
+			if(ID == -1){
+				if(packet.syscall==SC_CreateLock || packet.syscall==SC_CreateCV || packet.syscall == SC_CreateMV){
+					index = -1;
+					for(j=0;j<200;j++){
+						if(requests[j].received){
+							if(requests[j].syscall==packet.syscall && !strcmp(requests[j].name,packet.name)){
+								index = j;
+								break;
+							}	
+						}
+					}
+					if(index == -1){
+						index = requestMap->Find();
+						requests[index].requestWaitQueue = new List;
+						for(j=0;j<SERVERS;j++)
+							requests[index].doYouHave[j] = 3;
+						if(requests[index].requestWaitQueue->IsEmpty())
+							printf("\n List is initially empty");
+						
+					}
+					
+					waitingClient = new client;
+					waitingClient->machineID = packet_From_Client.from;
+					waitingClient->mailBoxID = mail_From_Client.from;
+					
+					requests[index].syscall = packet.syscall;
+					strcpy(requests[index].name,packet.name);
+					requests[index].value = packet.value;
+					requests[index].received = true;
+					requests[index].requestWaitQueue->Append((void *)waitingClient);
+					requests[index].doYouHave[myMachineID] = 0;
+					memcpy((void *)data,(void *)&packetSend,len);
+					
+					for(j=0;j<SERVERS;j++){
+						if(j!=myMachineID){ 										// Current Server shouldnt send to its own mailbox
+							printf("\nSending doyouhave to servers");
+							pFromSToS.to = j;
+							postOffice->Send(pFromSToS,mFromSToS,data);
+						}
+					}
+				} else if(packet.syscall==SC_Acquire || packet.syscall==SC_Release || packet.syscall==SC_GetMV || packet.syscall==SC_SetMV){																	// Handling non create requests
+					packetSend.index = packet.index;
+					packetSend.syscall = packet.syscall;
+					packetSend.ServerArg = 0;
+					
+					pFromSToS.from = packet_From_Client.from;
+					mFromSToS.from = mail_From_Client.from;
+					pFromSToS.to = packet.index/200;
+					mFromSToS.to = 0;
+					mFromSToS.length = sizeof(packetSend);
+					
+					memcpy((void *)data,(void *)&packetSend,len);
+					postOffice->Send(pFromSToS,mFromSToS,data);
+				}
+				else{
+					packetSend.index = packet.index;
+					packetSend.syscall = packet.syscall;
+					packetSend.ServerArg = 0;
+					
+					pFromSToS.from = packet_From_Client.from;
+					mFromSToS.from = mail_From_Client.from;
+					pFromSToS.to = packet.index2/200;
+					mFromSToS.to = 0;
+					mFromSToS.length = sizeof(packetSend);
+					
+					memcpy((void *)data,(void *)&packetSend,len);
+					postOffice->Send(pFromSToS,mFromSToS,data);
+				}
+			}else{		// Processing the request since the resource is available in the current server
+				switchCase(packet.syscall, packet.name, packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from, packet.value);
+			}
+		} else if(packet.ServerArg == 1){		// doYouHave request From server
+			printf("\nInside doyouhave request server message : From Server : %d", packet_From_Client.from);
+			serverToServer(packet, packet_From_Client.from);
+		} else if(packet.ServerArg ==2){		// doYouHave reply from server
+			index = -1;
+			for(j=0;j<200;j++){
+				if(requests[j].received){		// Identify the corresponding entry in the pending queue
+					if(requests[j].syscall == packet.syscall && !strcmp(requests[j].name, packet.name)){
+						index = j;
+						break;
+					}	
+				}else {
+					index = -1;
+				}
+			}
+			if(index != -1){
+				requests[index].doYouHave[packet_From_Client.from] = packet.status;
+				count = 0;
+				terminatingCount = 0;
+				for(j=0;j<SERVERS;j++){												
+					if(requests[index].doYouHave[j]==0)	count++;		// Identifying the number of servers which said NO
+					if(requests[index].doYouHave[j]!=3)	terminatingCount++;	// Identifying the number of servers which replied	
+				}
+				printf("\n So far Doyouhave msgs from %d servers have been received",count);
+				if(count==SERVERS){
+					while(!(requests[index].requestWaitQueue->IsEmpty())){		// Process the request if all the other servers said No for the DoYouHave request
+						processingClient = ((client*)requests[index].requestWaitQueue->Remove());
+						switchCase(packet.syscall, packet.name, packet.index, packet.index2, processingClient->machineID, processingClient->mailBoxID, packet.value);
+					}
+				}
+				if(terminatingCount==SERVERS){		// Remove the entry in the pending queue if all the servers replied
+					requests[index].syscall = -1;
+					requests[index].name[0] = '\0';
+					requests[index].received = false;
+				}
+			} else {
+				printf("\nPending Queue(%d,%s): %d is no longer valid", packet.syscall, packet.name, index);
+			}
+		} else{													// Never occurs
+			printf("\nINVALID SERVER ARGUMENT");
 		}
-	}	
+	}
 }

@@ -257,13 +257,16 @@ void SendToPO(char *syscallType,clientPacket packet){		// Sends a packet from th
 	MailHeader mail_From_Client;
 	int len = sizeof(packet);		// Find size of given packet
 	char* data = new char[len];		// Creates a char array data that contains the packet
+	packet.ServerArg = 0;
 	memcpy((void *)data, (void *)&packet, len);		// Copy in the data
 	// data[len - 1] = '\0';
 	
-	packet_From_Client.to = 0;
+	packet_From_Client.to = rand()%SERVERS;
 	mail_From_Client.to = 0;
-	mail_From_Client.from = 0;
+	packet_From_Client.from = myMachineID;
+	mail_From_Client.from = currentThread->getPID();
 	mail_From_Client.length = len;
+	
 	bool s = postOffice->Send(packet_From_Client, mail_From_Client, data);		// Sends the data from the client to the server
 	if (!s){		// If send returned as a failure
 		printf("COULDN'T SEND DATA\n");
