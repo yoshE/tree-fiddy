@@ -5,12 +5,12 @@
 #define false 0
 
 /* Max agent consts */
-#define PASSENGER_COUNT			9
+#define PASSENGER_COUNT			6
 #define MAX_AIRLINES			3
-#define MAX_LIAISONS			3
-#define MAX_CIOS				3
-#define MAX_CARGOHANDLERS		4
-#define MAX_SCREEN				3
+#define MAX_LIAISONS			2
+#define MAX_CIOS				1
+#define MAX_CARGOHANDLERS		2
+#define MAX_SCREEN				2
 #define MAX_BAGS				3
 #define AIRLINE_SEAT 			3
 
