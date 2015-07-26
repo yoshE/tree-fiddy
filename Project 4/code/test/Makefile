@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer CargoHandler CheckInOfficer LiaisonOfficer AirportManager Passenger
+all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer CargoHandler CheckInOfficer LiaisonOfficer AirportManager Passenger NetworkedAirportTest
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -165,7 +165,13 @@ AirportManager: AirportManager.o start.o
 	$(LD) $(LDFLAGS) start.o AirportManager.o -o AirportManager.coff
 	../bin/coff2noff AirportManager.coff AirportManager	
 	
+NetworkedAirportTest.o: NetworkedAirportTest.c
+	$(CC) $(CFLAGS) -c NetworkedAirportTest.c
+NetworkedAirportTest: NetworkedAirportTest.o start.o
+	$(LD) $(LDFLAGS) start.o NetworkedAirportTest.o -o NetworkedAirportTest.coff
+	../bin/coff2noff NetworkedAirportTest.coff NetworkedAirportTest	
+	
 clean:
 	rm -f *.o *.coff
-	rm halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer CargoHandler CheckInOfficer LiaisonOfficer AirportManager Passenger
+	rm halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer CargoHandler CheckInOfficer LiaisonOfficer AirportManager Passenger NetworkedAirportTest
 	rm *~
