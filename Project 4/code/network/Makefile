@@ -2404,7 +2404,7 @@ translate.o: ../machine/translate.cc ../threads/copyright.h \
   ../threads/../userprog/bitmap.h ../filesys/filesys.h ../network/post.h \
   ../threads/copyright.h ../machine/network.h ../threads/synchlist.h
 nettest.o: ../network/nettest.cc ../threads/copyright.h \
-  ../network/system.h ../threads/utility.h ../threads/copyright.h \
+  ../threads/system.h ../threads/utility.h ../threads/copyright.h \
   ../threads/bool.h ../threads/../machine/sysdep.h ../threads/copyright.h \
   /usr/sfw/lib/gcc/sparc-sun-solaris2.10/3.4.3/include/stdio.h \
   /usr/include/stdarg.h /usr/include/iso/stdarg_iso.h \
