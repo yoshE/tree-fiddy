@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer Passenger
+all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer CargoHandler CheckInOfficer LiaisonOfficer AirportManager Passenger
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -141,7 +141,31 @@ Passenger: Passenger.o start.o
 	$(LD) $(LDFLAGS) start.o Passenger.o -o Passenger.coff
 	../bin/coff2noff Passenger.coff Passenger
 	
+CargoHandler.o: CargoHandler.c
+	$(CC) $(CFLAGS) -c CargoHandler.c
+CargoHandler: CargoHandler.o start.o
+	$(LD) $(LDFLAGS) start.o CargoHandler.o -o CargoHandler.coff
+	../bin/coff2noff CargoHandler.coff CargoHandler	
+	
+CheckInOfficer.o: CheckInOfficer.c
+	$(CC) $(CFLAGS) -c CheckInOfficer.c
+CheckInOfficer: CheckInOfficer.o start.o
+	$(LD) $(LDFLAGS) start.o CheckInOfficer.o -o CheckInOfficer.coff
+	../bin/coff2noff CheckInOfficer.coff CheckInOfficer	
+	
+LiaisonOfficer.o: LiaisonOfficer.c
+	$(CC) $(CFLAGS) -c LiaisonOfficer.c
+LiaisonOfficer: LiaisonOfficer.o start.o
+	$(LD) $(LDFLAGS) start.o LiaisonOfficer.o -o LiaisonOfficer.coff
+	../bin/coff2noff LiaisonOfficer.coff LiaisonOfficer	
+	
+AirportManager.o: AirportManager.c
+	$(CC) $(CFLAGS) -c AirportManager.c
+AirportManager: AirportManager.o start.o
+	$(LD) $(LDFLAGS) start.o AirportManager.o -o AirportManager.coff
+	../bin/coff2noff AirportManager.coff AirportManager	
+	
 clean:
 	rm -f *.o *.coff
-	rm halt sort matmult matmult2 testfiles forktest exectest runsim Airport part3DoubleExecTest part3DoubleForkTest SecurityOfficer ScreeningOfficer Passenger
+	rm halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer CargoHandler CheckInOfficer LiaisonOfficer AirportManager Passenger
 	rm *~
