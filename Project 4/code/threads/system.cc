@@ -18,10 +18,7 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
-					
-int SERVERS;
-int myMachineID;
-
+			
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
 #endif
@@ -36,6 +33,10 @@ BitMap *memMap;
 Lock *memMapLock;			// for memory bitmap
 BitMap *memory;
 Machine *machine;	// user program memory and registers
+
+		
+int SERVERS;
+int myMachineID;
 #endif
 
 #ifdef NETWORK
