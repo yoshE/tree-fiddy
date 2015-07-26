@@ -413,6 +413,7 @@ void broadcast(int lockID, int index, int machineID, int mailBoxID){
 //  Create a new monitor variable
 //----------------------------------------------------------------------
 void createMV(char *name, int value, int machineID, int mailBoxID){
+	printf("CREATEMV CALLED IN SERVER\n");
 	for(int i = 0; i < (signed)ServerMVs.size(); i++){		// Check if MV already exists
 		if (strcmp(ServerMVs[i].name, name) == 0){
 			send("CREATEMV", true, i, machineID, mailBoxID);
@@ -420,6 +421,7 @@ void createMV(char *name, int value, int machineID, int mailBoxID){
 	}
 		
 	int mvID = ServerMVs.size();
+	printf("MV ID %d\n", mvID);
 	if(mvID >= MAX_MV || mvID < 0){
 		printf("TOO MANY MVs\n");
 		send("CREATEMV", false, -1, machineID, mailBoxID);
@@ -780,7 +782,7 @@ void RunServer(){
 	
 	while(true){		// Run forever
 		printf("SERVER: WAITING FOR CLIENT REQUEST\n");
-		
+		printf("SERVERS: %d\n", SERVERS);
 		postOffice->Receive(0,&packet_From_Client, &mail_From_Client, data);		// Receive packet from Clients
 		memcpy((void *)&packet, (void *)data, len);
 		
