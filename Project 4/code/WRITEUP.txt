@@ -50,8 +50,10 @@ IV. Implementation:
 		test/Passenger.c
 		test/ScreeningOfficer.c
 		test/SecurityOfficer.c
+		test/setup.h
 		
     + Data Structures added, and the file they were added to.
+		struct pendingRequests - server.cc
 	
     + Data Structures modified, and the file they were added to.  
 

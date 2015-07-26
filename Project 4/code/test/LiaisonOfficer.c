@@ -15,6 +15,7 @@ int Liaison_getAirlineBaggageCount(int n) {
 
 int main() {
 	int name;
+	printf((int)"TESTY FACK L\n", sizeof("TESTY FACK U\n"), 0, 0);
 	Initialize();
 	Acquire(Liaison_ID_Lock);
 	name = GetMV(Liaison_ID);
