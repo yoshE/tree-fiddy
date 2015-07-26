@@ -115,7 +115,7 @@ void createLock(char *name, int machineID, int mailBoxID){
 void acquire(int index, int machineID, int mailBoxID){
 	client *waitingClient = NULL;
 	
-	if(index < 0 || index > MAX_LOCK){		// if lock to be acquired has an incorrect index (under 0 or over 200)
+	if(index < 0 || index > (myMachineID+1)*MAX_LOCK){		// if lock to be acquired has an incorrect index (under 0 or over 200)
 		printf("LOCK TO BE ACQUIRED IS INVALID\n");
 		send("ACQUIRE", false, -1, machineID, mailBoxID);
 		return;
@@ -149,7 +149,7 @@ void acquire(int index, int machineID, int mailBoxID){
 //  Release a lock
 //----------------------------------------------------------------------
 void release(int index, int machineID, int mailBoxID, int syscall){
-	if(index < 0 || index > MAX_LOCK){
+	if(index < 0 || index > (myMachineID+1)*MAX_LOCK){
 		printf("LOCK TO BE RELEASED IS INVALID\n");
 		send("RELEASE", false, -1, machineID, mailBoxID);
 		return;
@@ -187,7 +187,7 @@ void release(int index, int machineID, int mailBoxID, int syscall){
 //  Destroy a lock
 //----------------------------------------------------------------------
 void destroy(int index, int machineID, int mailBoxID){
-	if(index < 0 || index > MAX_LOCK){
+	if(index < 0 || index > (myMachineID+1)*MAX_LOCK){
 		printf("LOCK TO BE DESTROYED IS INVALID\n");
 		send("DESTROYLOCK", false, -1, machineID, mailBoxID);
 		return;
@@ -247,7 +247,7 @@ void createCV(char *name, int machineID, int mailBoxID){
 //  destroy CVs (same as destroyLock)
 //----------------------------------------------------------------------
 void destroyCV(int index, int machineID, int mailBoxID){
-	if(index < 0 || index > MAX_CV){
+	if(index < 0 || index > (myMachineID+1)*MAX_CV){
 		printf("CV TO BE DESTROYED IS INVALID\n");
 		send("DESTROYCV", false, -1, machineID, mailBoxID);
 		return;
@@ -282,15 +282,11 @@ void signal(int lockID, int index, int machineID, int mailBoxID){
 	char *data=new char[len+1];
 	data[len]='\0';
 	
-	if(lockID < 0 || index > MAX_LOCK){		// Is lock index invalid?
-		printf("LOCK TO SIGNAL IS INVALID\n");
-		send("SIGNAL", false, -2, machineID, mailBoxID);
-		return;
-	} else if (index < 0 || index > MAX_CV){		// Is CV index invalid?
+	if (index < 0 || index > (myMachineID+1)*MAX_CV){		// Is CV index invalid?
 		printf("SIGNAL INVALID INDEX\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
-	} else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){		// Are both lock and CV valid?
+	} else if (!ServerCVs[index].valid){		// Are both lock and CV valid?
 		printf("LOCK WITH CV IS INVALID\n");
 		send("SIGNAL", false, -2, machineID, mailBoxID);
 		return;
@@ -349,15 +345,11 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 	char *data=new char[len+1];
 	data[len]='\0';
 		
-	if(lockID < 0 || lockID > MAX_LOCK){		// Is lock index invalid?
-		printf("LOCK TO WAIT ON IS INVALID\n");
-		send("WAIT", false, -1, machineID, mailBoxID);
-		return;
-	} else if(index < 0 || index > MAX_CV){		// Is CV index invalid?
+	if(index < 0 || index > (myMachineID+1)*MAX_CV){		// Is CV index invalid?
 		printf("CV TO WAIT ON IS INVALID\n");
 		send("WAIT", false, -1, machineID, mailBoxID);
 		return;
-	}  else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){		// Are both CV and Lock valid?
+	}  else if (!ServerCVs[index].valid){		// Are both CV and Lock valid?
 		printf("CV AND LOCK ARE INVALID\n");
 		send ("WAITCV", false, -2, machineID, mailBoxID);
 		return;
@@ -399,15 +391,11 @@ void wait(int lockID, int index, int machineID, int mailBoxID){
 void broadcast(int lockID, int index, int machineID, int mailBoxID){
 	client signalClient;
 	
-	if(lockID < 0 || lockID > MAX_LOCK){
-		printf("LOCK TO WAIT ON IS INVALID\n");
-		send("WAIT", false, -1, machineID, mailBoxID);
-		return;
-	} else if(index < 0 || index > MAX_CV){
+	if(index < 0 || index > (myMachineID+1)*MAX_CV){
 		printf("CV TO WAIT ON IS INVALID\n");
 		send("WAIT", false, -1, machineID, mailBoxID);
 		return;
-	} else if (!ServerLocks[lockID].valid || !ServerCVs[index].valid){
+	} else if (!ServerCVs[index].valid){
 		printf("CV AND LOCK ARE INVALID\n");
 		send ("WAITCV", false, -2, machineID, mailBoxID);
 		return;
@@ -753,7 +741,7 @@ void RunServer(){
 					
 					for(j=0;j<SERVERS;j++){
 						if(j!=myMachineID){ 										// Current Server shouldnt send to its own mailbox
-							printf("\nSending doyouhave to servers");
+							printf("Asking servers if they have\n");
 							pFromSToS.to = j;
 							postOffice->Send(pFromSToS,mFromSToS,data);
 						}
@@ -771,8 +759,7 @@ void RunServer(){
 					
 					memcpy((void *)data,(void *)&packetSend,len);
 					postOffice->Send(pFromSToS,mFromSToS,data);
-				}
-				else{
+				}else{
 					packetSend.index = packet.index;
 					packetSend.syscall = packet.syscall;
 					packetSend.ServerArg = 0;
