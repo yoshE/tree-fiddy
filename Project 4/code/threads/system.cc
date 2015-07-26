@@ -136,11 +136,11 @@ Initialize(int argc, char **argv)
 	} else if (!strcmp(*argv, "-m")) {
 	    ASSERT(argc > 1);
 	    netname = atoi(*(argv + 1));
-		myMachineID = netname;
+		myMachineID = netname;		// Set machineID to differentiate servers
 	    argCount = 2;
 	}else if (!strcmp(*argv, "-nos")) {
 	    ASSERT(argc > 1);
-		SERVERS = atoi(*(argv + 1));
+		SERVERS = atoi(*(argv + 1));		// Set Servers in command line
 	    argCount = 2;
 	}
 #endif

@@ -740,8 +740,6 @@ void serverToServer(clientPacket packet,int serverID){
 	strcpy(packetToSend.name,packet.name);
 	packetToSend.value = packet.value;
 	
-	//packetToSend.print();
-	
 	mFromSToS.to = 0;
 	mFromSToS.length = sizeof(packet);
 	pFromSToS.to = SERVERS;
@@ -875,7 +873,7 @@ void RunServer(){
 					mFromSToS.length = sizeof(packetSend);
 					
 					memcpy((void *)data,(void *)&packetSend,len);
-					postOffice->Send(pFromSToS,mFromSToS,data);
+					postOffice->Send(pFromSToS,mFromSToS,data);		// Send packet to another server
 				}
 			}else{		// Processing the request since the resource is available in the current server
 				switchCase(packet.syscall, packet.name, packet.index, packet.index2, packet_From_Client.from, mail_From_Client.from, packet.value);
