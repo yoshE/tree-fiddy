@@ -75,15 +75,19 @@ V. Testing: (For each test case, you must show)
 			5. Run nachos -x ../test/runsim from Userprog
 		
 		NetworkedAirportTest.c
-			1. Run nachos -server 0 -nos 1
-			2. Open second window and run nachos -m 1 -x ../test/NetworkedAirportTest
+			1. Run nachos -Server -m 0 -nos 1
+			2. Open second window and run nachos -x ../test/NetworkedAirportTest -m 1 -nos 1
 	  
 VI. Discussion:
     + Experiment expectation. 
         We expect our tests to all complete successfully and our code to fully accomplish all requirements.
 			
     + Experiment result.
-    
+		Our test did not complete successfully due to some bugs that we know of and others that are magical...
+			1. We get a Exception error of Type:106 which we believe to be a memory issue. Unfortunately even after
+			increasing NumPhysPages we were not able to resolve the error
+	
     + Explanation
+		
 
 VII. Miscellaneous:
