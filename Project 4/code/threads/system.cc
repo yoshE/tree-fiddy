@@ -18,7 +18,11 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
+<<<<<<< HEAD
 
+=======
+			
+>>>>>>> origin/Project4
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
 #endif
@@ -35,6 +39,10 @@ BitMap *memMap;
 Lock *memMapLock;			// for memory bitmap
 BitMap *memory;
 Machine *machine;	// user program memory and registers
+
+		
+int SERVERS;
+int myMachineID;
 #endif
 
 #ifdef NETWORK
@@ -134,11 +142,11 @@ Initialize(int argc, char **argv)
 	} else if (!strcmp(*argv, "-m")) {
 	    ASSERT(argc > 1);
 	    netname = atoi(*(argv + 1));
-		myMachineID = netname;
+		myMachineID = netname;		// Set machineID to differentiate servers
 	    argCount = 2;
 	}else if (!strcmp(*argv, "-nos")) {
 	    ASSERT(argc > 1);
-		SERVERS = atoi(*(argv + 1));
+		SERVERS = atoi(*(argv + 1));		// Set Servers in command line
 	    argCount = 2;
 	}
 #endif
