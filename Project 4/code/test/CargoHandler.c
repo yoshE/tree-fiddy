@@ -6,6 +6,7 @@
 int main() {
 	int i, n;
 	Baggage_t temp;		/* Baggage that handler will move off conveyor */
+	printf((int)"TESTY FACK CH\n", sizeof("TESTY FACK UH\n"), 0, 0);
 	Initialize();
 	Acquire(Cargo_ID_Lock);	
 	n = GetMV(Cargo_ID);

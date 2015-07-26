@@ -776,6 +776,8 @@ void RunServer(){
 	client *waitingClient = NULL;
 	client *processingClient = NULL;
 	
+	printf("Size of packet: %d\n", len);
+	
 	while(true){		// Run forever
 		printf("SERVER: WAITING FOR CLIENT REQUEST\n");
 		
@@ -915,7 +917,7 @@ void RunServer(){
 				printf("\nPending Queue(%d,%s): %d is no longer valid", packet.syscall, packet.name, index);
 			}
 		} else{													// Never occurs
-			printf("\nINVALID SERVER ARGUMENT");
+			printf("\nINVALID SERVER ARGUMENT: %d\n", packet.ServerArg);
 		}
 	}
 }

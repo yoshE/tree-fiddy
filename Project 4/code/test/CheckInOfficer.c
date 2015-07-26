@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------- */
 int main() {
 	int i;
+	printf((int)"TESTY FACK CI\n", sizeof("TESTY FACK UI\n"), 0, 0);
 	Initialize();
 	Acquire(CheckIn_ID_Lock);	
 	i = GetMV(CheckIn_ID);

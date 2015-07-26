@@ -277,10 +277,10 @@ void createLiaisons(int quantity) {
 		liaisonLineLocks[i] = CreateLock("LiaisonLineLock ", i);
 		liaisonOfficers[i].airline = CreateMV("LiaisonOfficersAirline ", -1, i);
 		liaisonOfficers[i].number = CreateMV("LiaisonOfficersNumber ", i, i);
-		liaisonOfficers[i].passengerCount = CreateMV("LiaisonOfficersPassengerCount ", 0, i);
-		liaisonOfficers[i].airlineBaggageCount[0] = CreateMV("LiaisonOfficersBaggageCount1 ", 0, i);
-		liaisonOfficers[i].airlineBaggageCount[1] = CreateMV("LiaisonOfficersBaggageCount2 ", 0, i);
-		liaisonOfficers[i].airlineBaggageCount[2] = CreateMV("LiaisonOfficersBaggageCount3 ", 0, i);
+		liaisonOfficers[i].passengerCount = CreateMV("LiaisonOfficerPassengerCount ", 0, i);
+		liaisonOfficers[i].airlineBaggageCount[0] = CreateMV("LiaisonOfficerBaggageCount1 ", 0, i);
+		liaisonOfficers[i].airlineBaggageCount[1] = CreateMV("LiaisonOfficerBaggageCount2 ", 0, i);
+		liaisonOfficers[i].airlineBaggageCount[2] = CreateMV("LiaisonOfficerBaggageCount3 ", 0, i);
 
 		LPInfo[i].baggageCount = CreateMV("LPInfoBaggageCount ", 0, i);		/* Array of Structs that contain info from passenger to Liaison*/
 		LPInfo[i].airline = CreateMV("LPInfoAirline ", 0, i);
@@ -406,7 +406,7 @@ void setupSingularLocks() {
 	airlineSeatLock = CreateLock("AirlineSeatLock ", 1);
 	seatLock = CreateLock("SeatLock ", 1);
 	BaggageLock = CreateLock("BaggageLock ", 1);
-	SecurityAvail = CreateLock("SecurityAvailabilitylock ", 1);
+	SecurityAvail = CreateLock("SecurityAvailabilityLock ", 1);
 	SecurityLines = CreateLock("SecurityLineLock ", 1);
 }
 
@@ -419,7 +419,10 @@ void Initialize(){
 	simNumOfLiaisons = MAX_LIAISONS;
 	simNumOfScreeningOfficers = MAX_SCREEN;
 	
+	printf((int)"Start creating everything\n", sizeof("Start creating everything\n"), 0, 0);
+	
 	for(i = 0; i < simNumOfAirlines; i++) {
+		printf((int)"Start creating loop\n", sizeof("Start creating loop\n"), 0, 0);
 		liaisonBaggageCount[i] = CreateMV("LiaisonBaggageCount ", 0, i);
 		ticketsIssued[i] = CreateMV("TicketsIssued ", 0, i);
 		alreadyBoarded[i] = CreateMV("alreadyBoarded ", 0, i);
@@ -432,6 +435,8 @@ void Initialize(){
 	Security_ID = CreateMV("SecurityID ", 0, 0);
 	Cargo_ID = CreateMV("CargoID ", 0, 0);
 	
+	printf((int)"Start creating Airport stuff\n", sizeof("Start creating Airport stuff\n"), 0, 0);
+	
 	createAirportManager();
 	setupAirlines(simNumOfAirlines);
 	setupSingularLocks();
@@ -443,9 +448,6 @@ void Initialize(){
 	createPassengers(simNumOfPassengers);
 	printf((int)"Created everything\n", sizeof("Created everything\n"), 0, 0);
 }
-
-
-
 
 
 

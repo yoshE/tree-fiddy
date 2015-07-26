@@ -5,9 +5,11 @@
 // Passenger
 //---------------------------------------------------------------------- */
 
-int main() {		
+int main() {
 	/* Picks a Liaison line, talks to the Officer, gets airline */
 	int i, test, r, oldLine, name;
+	printf((int)"TESTY FACK U\n", sizeof("TESTY FACK U\n"), 0, 0);
+	Initialize();
 	Acquire(Passenger_ID_Lock);	
 	name = GetMV(Passenger_ID);
 		printf((int)"STARTED PASS %d\n", sizeof("STARTED PASS %d\n"), name, 0);

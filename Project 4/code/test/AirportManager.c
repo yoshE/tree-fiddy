@@ -6,6 +6,7 @@
 
 int main() {
 	int i;
+	printf((int)"TESTY FACK AM\n", sizeof("TESTY FACK AM\n"), 0, 0);
 	Initialize();
 	for(i = 0; i < MAX_AIRLINES; i++){
 		simAirportManager.CargoHandlerTotalWeight[i] = CreateMV("CargoHandlerTotalWeight ", 0, i);

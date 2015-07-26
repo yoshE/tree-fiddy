@@ -6,6 +6,7 @@
 //---------------------------------------------------------------------- */
 int main(){
 	int number, z, w, x;
+	printf((int)"TESTY FACK S\n", sizeof("TESTY FACK U\n"), 0, 0);
 	Initialize();
 	Acquire(Security_ID_Lock);	
 	number = GetMV(Security_ID);
