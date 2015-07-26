@@ -31,7 +31,7 @@ CPP = $(GCCDIR)cpp
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR)
 
-all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer
+all: halt matmult matmult2 sort testfiles forktest Exec_Test exectest runsim part3LockTest part3LockTest2 part3DoubleForkTest part3DoubleExecTest SecurityOfficer ScreeningOfficer Passenger
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -133,8 +133,15 @@ ScreeningOfficer.o: ScreeningOfficer.c
 	$(CC) $(CFLAGS) -c ScreeningOfficer.c
 ScreeningOfficer: ScreeningOfficer.o start.o
 	$(LD) $(LDFLAGS) start.o ScreeningOfficer.o -o ScreeningOfficer.coff
-	../bin/coff2noff ScreeningOfficer.coff ScreeningOfficer	
+	../bin/coff2noff ScreeningOfficer.coff ScreeningOfficer
+	
+Passenger.o: Passenger.c
+	$(CC) $(CFLAGS) -c Passenger.c
+Passenger: Passenger.o start.o
+	$(LD) $(LDFLAGS) start.o Passenger.o -o Passenger.coff
+	../bin/coff2noff Passenger.coff Passenger
+	
 clean:
 	rm -f *.o *.coff
-	rm halt sort matmult matmult2 testfiles forktest exectest runsim Airport part3DoubleExecTest part3DoubleForkTest
+	rm halt sort matmult matmult2 testfiles forktest exectest runsim Airport part3DoubleExecTest part3DoubleForkTest SecurityOfficer ScreeningOfficer Passenger
 	rm *~
