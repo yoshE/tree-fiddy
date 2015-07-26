@@ -3,6 +3,7 @@
 
 int main() {
 	int i;
+	Initialize();
 	Write("Execing Airport\n", sizeof("Execing Airport\n"), ConsoleOutput);
 	
 		Exec("../test/LiaisonOfficer", sizeof("../test/LiaisonOfficer"));

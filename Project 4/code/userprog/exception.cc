@@ -260,8 +260,13 @@ void SendToPO(char *syscallType,clientPacket packet){		// Sends a packet from th
 	packet.ServerArg = 0;
 	memcpy((void *)data, (void *)&packet, len);		// Copy in the data
 	// data[len - 1] = '\0';
-	
-	packet_From_Client.to = rand()%SERVERS;
+
+	if(SERVERS <= 1){
+		packet_From_Client.to = 0;
+	} else {
+		packet_From_Client.to = rand()%SERVERS;
+	}
+
 	mail_From_Client.to = 0;
 	packet_From_Client.from = myMachineID;
 	mail_From_Client.from = currentThread->getPID();
@@ -847,12 +852,11 @@ int CreateMV_Syscall(unsigned int vaddr, int initialValue, int index){		/*System
 	
 	int id;
 	syscallLock->Acquire();									
-	
 	clientPacket tempPacketSend;									/*Creating a packet on the client side*/
 	strncpy(tempPacketSend.name,s,sizeof(s));
 	tempPacketSend.syscall = SC_CreateMV;							
 	tempPacketSend.value = initialValue;
-	SendToPO("CREATEMV",tempPacketSend);							
+	SendToPO("CREATEMV",tempPacketSend);		
 	id = ReceiveFromPO("CREATEMV");
 	if(id == -1){												/*Halts the program if the id received is -1*/
 		printf("CREATEMV ERROR CREATING MV\n");

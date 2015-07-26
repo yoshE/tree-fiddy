@@ -11,8 +11,6 @@ void Screening_setBusy(int n){
 
 int main(){
 	int n;
-	printf((int)"TESTY FACK SC\n", sizeof("TESTY FACK UC\n"), 0, 0);
-	Initialize();
 	Acquire(Screening_ID_Lock);	
 	n = GetMV(Screening_ID);
 	SetMV(Screen[n].number, n);
@@ -23,7 +21,6 @@ int main(){
 	SetMV(Screen[n].IsBusy, false);		/* Set Officer to available */
 	Release(ScreenLines);
 	
-	printf((int)"Started Screening %d\n", sizeof("Started Screening %d\n"), n, 0);
 	while(true){
 		int i, y, z, x;
 		Acquire(ScreenLines);

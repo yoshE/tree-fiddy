@@ -6,14 +6,11 @@
 int main() {
 	int i, n;
 	Baggage_t temp;		/* Baggage that handler will move off conveyor */
-	printf((int)"TESTY FACK CH\n", sizeof("TESTY FACK UH\n"), 0, 0);
-	Initialize();
 	Acquire(Cargo_ID_Lock);	
 	n = GetMV(Cargo_ID);
 	SetMV(cargoHandlers[n].name, n);
 	SetMV(Cargo_ID, n + 1);
 	Release(Cargo_ID_Lock);
-	printf((int)"Started CARGO %d\n", sizeof("Started CARGO %d\n"), n, 0);
 	while (true){
 		temp.weight = 0;
 		SetMV(cargoHandlers[n].onBreak, false);

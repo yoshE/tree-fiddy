@@ -5,8 +5,6 @@
 //---------------------------------------------------------------------- */
 int main() {
 	int i;
-	printf((int)"TESTY FACK CI\n", sizeof("TESTY FACK UI\n"), 0, 0);
-	Initialize();
 	Acquire(CheckIn_ID_Lock);	
 	i = GetMV(CheckIn_ID);
 	SetMV(CheckIn[i].number, i);
@@ -21,7 +19,6 @@ int CheckIn_getOnBreak(int n) {return CheckIn[n].OnBreak;}
 void CheckIn_setOffBreak(int n) {CheckIn[n].OnBreak = false;}
 
 void CheckIn_DoWork(int number){
-	printf((int)"Started CIO %d\n", sizeof("Started CIO %d\n"), number, 0);
 	while(CheckIn[number].work){		/* While there are still passengers who haven't checked in */
 		int i, x, y, helpedExecLine;
 		helpedExecLine = false;

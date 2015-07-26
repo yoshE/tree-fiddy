@@ -8,18 +8,12 @@
 int main() {
 	/* Picks a Liaison line, talks to the Officer, gets airline */
 	int i, test, r, oldLine, name;
-	printf((int)"TESTY FACK U\n", sizeof("TESTY FACK U\n"), 0, 0);
-	Initialize();
 	Acquire(Passenger_ID_Lock);	
 	name = GetMV(Passenger_ID);
-		printf((int)"STARTED PASS %d\n", sizeof("STARTED PASS %d\n"), name, 0);
-
 	SetMV(simPassengers[name].name, name);
 	Release(Passenger_ID_Lock);
 	Acquire(liaisonLineLock);		/* Acquire lock to find shortest line */
 	SetMV(simPassengers[name].myLine, 0);	
-
-	printf((int)"Passenger choosing liai line\n", sizeof("Passenger choosing liai line\n"), 0, 0);		/* OFFICIAL OUTPUT STATEMENT */
 
 	for(i = 1; i < simNumOfLiaisons; i++){		/* Find shortest line */
 		if(GetMV(liaisonLine[i]) < GetMV(liaisonLine[simPassengers[name].myLine])){
@@ -34,11 +28,9 @@ int main() {
 	Wait(liaisonLineCV[simPassengers[name].myLine], liaisonLineLock);
 	Acquire(liaisonLineLocks[simPassengers[name].myLine]); /* New lock needed for liaison interaction */
 	Release(liaisonLineLock);		/* Release the lock you acquired from waking up */
-	printf((int)"PASS ACQUIRED %d\n", sizeof("PASS ACQUIRED %d\n"), GetMV(liaisonLineLocks[simPassengers[name].myLine]), 0);
 	SetMV(LPInfo[simPassengers[name].myLine].passengerName, GetMV(simPassengers[name].name));
 	SetMV(LPInfo[simPassengers[name].myLine].baggageCount, GetMV(simPassengers[name].baggageCount)); /* Adds baggage Count to shared struct array */
 	Signal(liaisonOfficerCV[simPassengers[name].myLine], liaisonLineLocks[simPassengers[name].myLine]); /* Wakes up Liaison Officer */
-	printf((int)"Signaled Liai, PASS %d\n", sizeof("Signaled Liai, PASS %d\n"), name, 0);
 	Wait(liaisonOfficerCV[simPassengers[name].myLine], liaisonLineLocks[simPassengers[name].myLine]); /* Goes to sleep until Liaison finishes assigning airline */
 	SetMV(simPassengers[name].airline, GetMV(LPInfo[simPassengers[name].myLine].airline));		/* Gets airline info from Liaison Officer shared struct */
 	SetMV(totalBaggage[simPassengers[name].airline], GetMV(totalBaggage[simPassengers[name].airline]) + GetMV(simPassengers[name].baggageCount));
