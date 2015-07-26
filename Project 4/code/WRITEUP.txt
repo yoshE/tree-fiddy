@@ -1,6 +1,6 @@
-Title: Writeup for Project 3, Summer 2015
+Title: Writeup for Project 4, Summer 2015
 
-Date: 7/17/2015
+Date: 7/25/2015
 
 Group Num 11: Name
               Vance Lindholm 
@@ -8,23 +8,56 @@ Group Num 11: Name
               Yoshua Lo
 
 I. Requirements:
-
+	
+	All agents (passengers, liaison officers, etc.) must be separated into their own independently-functioning
+	files that only work together via communication through a set of servers. These agents must be started through
+	Exec system calls. Nachos instances must be able to run at least 10 user programs each, concurrently.
+	There must also be a set of servers (5+) that cooperate to process client messages and keep the simulation running.
+	
 II. Assumptions:
 
+	We have 32768 physical pages.
 
 III. Design:
+
+	For our agents we pulled each of them out of our original airport simulation and converted them into separate clients
+	that use MVs for getting/setting data. The data is stored on the server-side and can be accessed by any client. Locks
+	and CVs are still shared data accessible by clients. Servers can also communicate with each other now, and will do so
+	to complete tasks requested by the clients.
 
 IV. Implementation:
 
     + Files Modified
+		userprog/addrspace.cc
+		userprog/addrspace.h
+		userprog/exception.cc
+		userprog/progtest.cc
+		userprog/syscall.h
+		network/server.cc
+		test/Airport.c
+		threads/setup.h
+		threads/synch.cc
+		threads/system.cc
+		threads/system.h
+		machine/machine.cc
+		All relevant Makefiles in order for new files to be compiled
 			
     + Files added
+		test/AirportManager.c
+		test/CargoHandler.c
+		test/CheckInOfficer.c
+		test/NetworkedAirportTest.c
+		test/Passenger.c
+		test/ScreeningOfficer.c
+		test/SecurityOfficer.c
 		
     + Data Structures added, and the file they were added to.
 	
     + Data Structures modified, and the file they were added to.  
 
     + Functions added and in which file.
+		All functions for agents from Airport.c were moved into the now-independent agent files
+		NetworkedAirportTest main function
 		
     + Functions modified and in which file.
 			
