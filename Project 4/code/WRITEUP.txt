@@ -84,7 +84,7 @@ VI. Discussion:
 			
     + Experiment result.
 		Our test did not complete successfully due to some bugs that we know of and others that are magical...
-			1. We get a Exception error of Type:106 which we believe to be a memory issue. Unfortunately even after
+			1. We get a Exception error of Which:5 Type:106 which we believe to be a memory issue. Unfortunately even after
 			increasing NumPhysPages we were not able to resolve the error
 	
     + Explanation
