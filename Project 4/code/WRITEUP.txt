@@ -129,6 +129,10 @@ V. Testing: (For each test case, you must show)
 			3. Add the word Airport to the all line (files that are compiled)
 			4. gmake test
 			5. Run nachos -x ../test/runsim from Userprog
+		
+		NetworkedAirportTest.c
+			1. Run nachos -server 0 -nos 1
+			2. Open second window and run nachos -m 1 -x ../test/NetworkedAirportTest
 	  
 VI. Discussion:
     + Experiment expectation. 
