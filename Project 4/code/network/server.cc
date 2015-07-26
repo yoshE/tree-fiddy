@@ -28,7 +28,7 @@ std::vector<ServerLock> ServerLocks;		// vector of server locks
 std::vector<ServerCV> ServerCVs;		// vector of server cvs
 std::vector<ServerMV> ServerMVs;		// vector of server mvs
 
-struct pendingRequests{
+struct pendingRequests{		// Struct for dealing with server requests
 	int doYouHave[5];
 	int doYouHaveReply[5];
 	int syscall;
@@ -511,7 +511,8 @@ void setMV(int index, int value, int machineID, int mailBoxID){
 
 //----------------------------------------------------------------------
 //  SearchMyself
-//  See if current server has data entry
+//  See if current server has data by iterating through vector and comparing
+//  name strings. Return index if a match is found.
 //----------------------------------------------------------------------
 int SearchMyself(int syscall,char name[],int index){
 	int ID = -1;
@@ -579,18 +580,9 @@ int SearchMyself(int syscall,char name[],int index){
 }
 
 //----------------------------------------------------------------------
-//  serverToServer
-//  Send messages between servers
-//----------------------------------------------------------------------
-void serverToServer(clientPacket packetReceived,int serverID){
-	
-}
-
-//----------------------------------------------------------------------
 //  SwitchCase
 //	call different internal methods
 //----------------------------------------------------------------------
-
 void switchCase(int syscall,char name[],int index,int index2,int machineID,int mailBoxID,int value){
 	switch(syscall){		// Parse based on syscall requested
 		case SC_Acquire:
@@ -649,6 +641,116 @@ void switchCase(int syscall,char name[],int index,int index2,int machineID,int m
 			printf("SERVER: INVALID SYSCALL %d\n", syscall);
 	}
 }
+
+//----------------------------------------------------------------------
+//  serverToServer
+//  Send messages between servers
+//----------------------------------------------------------------------
+void serverToServer(clientPacket packet,int serverID){
+	PacketHeader pFromSToS,pFromSToC;									/*Creating Machine id objects*/
+	MailHeader mFromSToS,mFromSToC;										/*Creating Mailbox id objects*/	
+	clientPacket packetToSend;											/*Creating client packet object*/		
+	serverPacket packetToSendToClient;									/*Creating server packet object*/
+	
+	int len = sizeof (packet);
+	int clientID, j, index, ID;
+	int holdingServer = -1;
+	client *waitingClient = NULL;
+	
+	bool flag=false;
+	char *data=new char[len];
+	ID = -1;
+	
+	if(packet.syscall == SC_Wait || packet.syscall == SC_Signal || packet.syscall == SC_Broadcast)
+		ID = SearchMyself(packet.syscall, packet.name, packet.index2);				/*Searching in the current server vector*/
+	else													
+		ID = SearchMyself(packet.syscall, packet.name, packet.index);				/*Searching in the current server vector*/
+			
+	clientID = packet.clientID;
+	pFromSToC.to = clientID/100;																			/*Assigning the machine id of the client to send the packet to the client directly*/
+	mFromSToC.to = clientID%100;																			/*Assigning the mailbox id of the client to send the packet to the client directly*/
+	pFromSToC.from = myMachineID;
+	mFromSToC.from = 0;
+	mFromSToC.length = sizeof(packet);
+	if(ID!=-1){																								/*The program comes here if the current server has got the client's syscall in its vector*/
+		flag = 1;
+		switchCase(packet.syscall,packet.name,packet.index,packet.index2,pFromSToC.to,mFromSToC.to,packet.value);
+	}
+	else{
+		index = -1;																							/*If the syscall is not in the current server's vector, it will add the client packet to its pendingRequest structure*/
+		for(j=0;j<200;j++){
+			if(requests[j].received){
+				if(requests[j].syscall==packet.syscall && !strcmp(requests[j].name,packet.name)){
+					index = j;																				/*Checks if the syscall is already in its requests structure*/
+					break;
+				}
+			}
+		}
+		waitingClient = new client;
+		waitingClient->machineID = pFromSToC.to;
+		waitingClient->mailBoxID = mFromSToC.to;
+		if(index !=-1){
+			if(packet.syscall==SC_CreateLock || packet.syscall==SC_CreateCV || packet.syscall == SC_CreateMV){			
+				if (serverID < myMachineID) {
+					if(requests[index].doYouHave[serverID] == 0){										/*If current server's machine id > requested server's machine id*/
+						printf("\n Replying yes to Server %d since that server already said NO",serverID);
+						flag = 1;
+						requests[index].requestWaitQueue->Append((void *)waitingClient);				/*If the syscall is already present in current server's pending queue, it will append the current syscall request to the index of its already present syscall using a queue data structure*/
+						// Send YES - 1
+					}else if(requests[index].doYouHave[serverID] == 1){									/*Sets the flag to 1 if the requested server's doYouHave has the value 1*/
+						flag = 0;
+						printf("\nReplying no to Server %d since my priority is low for request(%d,%s)", serverID, packet.syscall, packet.name);
+						//Send NO - 0
+					}else{																					/*Sets the flag to 0 if the requested server's doYouHave doesn't have the value either 0 or 1 */
+						flag = 0;
+						printf("\nReplying NO to Server %d since my priority is low for request(%d,%s)",serverID,packet.syscall,packet.name);
+						//Send NO - 0
+					}
+				}else{ //My machine's priority is more													/*If current server's machine id < requested server's machine id*/
+					if (requests[index].doYouHave[serverID] == 0 ) {
+						flag = 1;
+						printf("\n Replying yes to Server %d since my priority is higher",serverID);
+						requests[index].requestWaitQueue->Append((void *)waitingClient);
+						// Send  YES - 1
+					}else if(requests[index].doYouHave[serverID] == 1){								/*Sets the flag to 0 if the requested server's doYouHave has the value 1*/
+						flag = 0;
+						printf("\n Replying no to Server %d since that server already said yes",serverID);
+					}else{																				/*Sets the flag to 1 if the requested server's doYouHave doesn't have the value either 0 or 1 */
+						flag = 1;
+						printf("\n Replying YES to Server %d since that server didn't reply anything to me yet and my priority is higher",serverID);
+						requests[index].requestWaitQueue->Append((void *)waitingClient);
+					}
+				}
+			}
+		}else{																							/*Enters here if the current server doesn't have the requested syscall in its pendingQueue*/		
+			flag = 0;
+			printf("\nReplying no to Server %d since I don't have any pending request(%d,%s)",serverID,packet.syscall,packet.name);
+			//Send NO - 0
+		}
+	}
+	
+	packetToSend.clientID = clientID;																	/*Assigning the required fields to a new packet which is to be sent*/	
+	packetToSend.syscall = packet.syscall;
+	packetToSend.status = flag;
+	packetToSend.index = packet.index;
+	packetToSend.index2 = packet.index2;
+	packetToSend.ServerArg = 2;																			/*Assigning the serverArg value to 2 which indicates that the reply is for the doYouHave message*/
+	strcpy(packetToSend.name,packet.name);
+	packetToSend.value = packet.value;
+	
+	//packetToSend.print();
+	
+	mFromSToS.to = 0;
+	mFromSToS.length = sizeof(packet);
+	pFromSToS.to = SERVERS;
+	pFromSToS.from = myMachineID;
+	
+	printf("\n Server %d sending %d to Server %d's doYouHave request",myMachineID,flag,serverID); 
+	memcpy((void *)data,(void *)&packetToSend,len);
+	postOffice->Send(pFromSToS,mFromSToS,data);															/*Sending the reply*/
+	return;
+}
+
 //----------------------------------------------------------------------
 //  RunServer
 //  Runs the server using a switch statement to handle incoming messages
@@ -729,7 +831,7 @@ void RunServer(){
 					waitingClient->machineID = packet_From_Client.from;
 					waitingClient->mailBoxID = mail_From_Client.from;
 					
-					requests[index].syscall = packet.syscall;
+					requests[index].syscall = packet.syscall;		// Create a request 
 					strcpy(requests[index].name,packet.name);
 					requests[index].value = packet.value;
 					requests[index].received = true;
@@ -737,8 +839,8 @@ void RunServer(){
 					requests[index].doYouHave[myMachineID] = 0;
 					memcpy((void *)data,(void *)&packetSend,len);
 					
-					for(j=0;j<SERVERS;j++){
-						if(j!=myMachineID){ 										// Current Server shouldnt send to its own mailbox
+					for(j = 0; j < SERVERS; j++){
+						if(j != myMachineID){ 										// Current Server shouldn't send to its own mailbox
 							printf("Asking servers if they have\n");
 							pFromSToS.to = j;
 							postOffice->Send(pFromSToS,mFromSToS,data);

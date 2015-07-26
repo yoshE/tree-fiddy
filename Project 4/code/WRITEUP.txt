@@ -139,3 +139,11 @@ VI. Discussion:
     + Explanation
 
 VII. Miscellaneous:
+	We spend a lot of time getting our Project2 code to work. We realized that our fork syscall was incorrect
+	so we had to spend time to fix it up as well as get the rest of our objects to communicate properly. As such,
+	we managed to make our project2 code function properly before we started this project. To test this, you can
+	use the Airport.c test in the test directory as that code is essentially our Project2 code.
+	
+	However, for this project, we were not able to fully test and complete the assignment. While we were testing
+	part 1, we received many errors that seems to be unresolvable. As such, we didn't manage to fully complete the 
+	assignment as needed.
