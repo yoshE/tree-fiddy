@@ -69,7 +69,7 @@ V. Testing: (For each test case, you must show)
     -Test for Part 1:
 		Airport.c (Fixed version of Project 2)
 			1. Go to MakeFile in test directory
-			2. Uncommend the lines regarding Airport.c/Airport.o
+			2. Uncomment the lines regarding Airport.c/Airport.o
 			3. Add the word Airport to the all line (files that are compiled)
 			4. gmake test
 			5. Run nachos -x ../test/runsim from Userprog
@@ -91,3 +91,9 @@ VI. Discussion:
 		
 
 VII. Miscellaneous:
+	We spend a lot of timing fixing our Fork Syscall and Airport.c files because they weren't working in Project2. Do show this,
+	you can run Airport.c with the above instructions and it should function properly. 
+	
+	Additionally, we weren't able to fix the
+	test for part1 so we didn't have time to create a test for part2. As such, we have no idea if our code for the second part
+	functions as we weren't able to test it.
